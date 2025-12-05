@@ -566,17 +566,15 @@ class Storage {
 
   async createCustomer(customerData: InsertCustomer): Promise<Customer> {
     try {
+      if (customerData.phone) {
+        const existing = await db
+          .select()
+          .from(customers)
+          .where(eq(customers.phone, customerData.phone));
 
-      const existing = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.phone, customerData.phone));
-
-        console.log(existing);
-        
-
-      if (existing.length > 0) {
-        throw new Error(`Customer with phone ${customerData.phone} already exists`);
+        if (existing.length > 0) {
+          throw new Error(`Customer with phone ${customerData.phone} already exists`);
+        }
       }
 
       const result = await db
@@ -586,25 +584,11 @@ class Storage {
 
       const customer = result[0];
 
-      // Create general ledger account for the customer
-      // await this.createGeneralLedgerEntry({
-      //   entryType: "receivable",
-      //   referenceType: "manual",
-      //   accountName: `Customer: ${customer.name}`,
-      //   description: `Customer account created: ${customer.name}`,
-      //   debitAmount: "0",
-      //   creditAmount: "0",
-      //   entityId: customer.id,
-      //   entityName: customer.name,
-      //   transactionDate: new Date().toISOString().split("T")[0],
-      //   status: "active",
-      // });
-
       return customer;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createCustomer: " + (error?.message || "Unknown error"),
-        stack: error?.stack,
+        message: "Error in createCustomer: " + (error.message || "Unknown error"),
+        stack: error.stack,
         component: "createCustomer",
         severity: "error",
       });
@@ -617,6 +601,21 @@ class Storage {
     customerData: Partial<InsertCustomer>,
   ): Promise<Customer | undefined> {
     try {
+      if (customerData.phone) {
+        const existing = await db
+          .select()
+          .from(customers)
+          .where(
+            and(
+              eq(customers.phone, customerData.phone),
+              ne(customers.id, id)
+            )
+          );
+
+        if (existing.length > 0) {
+          throw new Error(`Another customer with phone ${customerData.phone} already exists`);
+        }
+      }
       const result = await db
         .update(customers)
         .set(customerData)
@@ -625,8 +624,8 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateCustomer (id: ${id}): ` + (error?.message || "Unknown error"),
-        stack: error?.stack,
+        message: `Error in updateCustomer (id: ${id}): ` + (error.message || "Unknown error"),
+        stack: error.stack,
         component: "updateCustomer",
         severity: "error",
       });
