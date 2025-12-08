@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,11 @@ import { Project } from "@shared/schema";
 import { startTransition } from 'react';
 
 export default function ProjectsIndex() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { isAuthenticated, user } = useAuth();
+
+  const searchParams = new URLSearchParams(location.search);
+  const customerId = searchParams.get("customer");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -20,7 +23,17 @@ export default function ProjectsIndex() {
   }, [isAuthenticated, setLocation]);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: ["/api/projects", customerId],
+    queryFn: async () => {
+      const url = customerId
+        ? `/api/projects?customerId=${customerId}`
+        : "/api/projects";
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error("Failed to fetch projects");
+      }
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
@@ -66,12 +79,19 @@ export default function ProjectsIndex() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Projects</h1>
           <p className="text-slate-600 dark:text-slate-400">Manage marine operations and vessel projects</p>
         </div>
+        <div className="flex items-center space-x-2">
+        {customerId && (
+            <Link to="/projects">
+              <Button variant="outline">Clear Filter</Button>
+            </Link>
+          )}
         {canCreateProject && (
           <Button onClick={() => setLocation("/projects/create")}>
             <Plus className="h-4 w-4 mr-2" />
             New Project
           </Button>
         )}
+        </div>
       </div>
 
       {isLoading ? (

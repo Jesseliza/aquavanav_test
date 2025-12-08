@@ -1756,6 +1756,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project routes
   app.get("/api/projects", requireAuth, async (req, res) => {
     try {
+      const { customerId } = req.query;
+
+      if (customerId) {
+        const projects = await storage.getProjectsByCustomer(
+          parseInt(customerId as string),
+        );
+        return res.json(projects);
+      }
+
       let projects = await storage.getProjects();
 
       // Filter by customer for customer role
