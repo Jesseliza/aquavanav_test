@@ -567,13 +567,10 @@ class Storage {
   async createCustomer(customerData: InsertCustomer): Promise<Customer> {
     try {
 
-      const existing = await db
+    const existing = await db
         .select()
         .from(customers)
         .where(eq(customers.phone, customerData.phone));
-
-        console.log(existing);
-        
 
       if (existing.length > 0) {
         throw new Error(`Customer with phone ${customerData.phone} already exists`);
