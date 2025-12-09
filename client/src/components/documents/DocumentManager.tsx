@@ -159,7 +159,6 @@ export function DocumentManager({ entityId, entityType, title }: DocumentManager
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete document");
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/${entityType}s/${entityId}/documents`] });
