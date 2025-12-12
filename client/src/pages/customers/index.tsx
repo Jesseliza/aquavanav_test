@@ -47,6 +47,7 @@ const customerSchema = z.object({
 });
 
 type Customer = z.infer<typeof customerSchema>;
+type CreateCustomerData = z.infer<typeof createCustomerSchema>;
 
 export default function CustomersIndex() {
   const [, setLocation] = useLocation();
@@ -75,7 +76,6 @@ export default function CustomersIndex() {
     phone: "",
     address: "",
     taxId: "",
-    userId: null,
     // UAE VAT Compliance Fields
     vatNumber: "",
     vatRegistrationStatus: "not_registered",
@@ -301,7 +301,6 @@ export default function CustomersIndex() {
       phone: customer.phone || "",
       address: customer.address || "",
       taxId: customer.taxId || "",
-      userId: customer.userId,
       // UAE VAT Compliance Fields
       vatNumber: customer.vatNumber || "",
       vatRegistrationStatus: customer.vatRegistrationStatus || "not_registered",
@@ -476,6 +475,7 @@ export default function CustomersIndex() {
                       placeholder="100123456700003"
                       required
                     />
+                    {formErrors.vatNumber && <p className="text-red-500 text-xs">{formErrors.vatNumber}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="vatRegistrationStatus">VAT Registration Status</Label>
@@ -711,6 +711,7 @@ export default function CustomersIndex() {
                       placeholder="100123456700003"
                       required
                     />
+                    {formErrors.vatNumber && <p className="text-red-500 text-xs">{formErrors.vatNumber}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-vatRegistrationStatus">VAT Registration Status</Label>
