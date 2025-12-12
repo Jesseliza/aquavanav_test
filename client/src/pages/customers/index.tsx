@@ -48,8 +48,8 @@ const customerSchema = z.object({
 const createCustomerSchema = z.object({
   name: z.string().min(1, "Company name is required"),
   contactPerson: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
+  email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal("")),
+  phone: z.string().min(1, "Phone number is required"),
   address: z.string().optional(),
   taxId: z.string().optional(),
   userId: z.number().nullable().optional(),
@@ -65,6 +65,7 @@ const createCustomerSchema = z.object({
   isVatApplicable: z.boolean().default(true),
   notes: z.string().optional(),
 });
+
 
 type Customer = z.infer<typeof customerSchema>;
 type CreateCustomerData = z.infer<typeof createCustomerSchema>;
@@ -88,6 +89,7 @@ export default function CustomersIndex() {
     totalPages: number;
   } | null>(null);
 
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof CreateCustomerData, string>>>({});
   const [formData, setFormData] = useState<CreateCustomerData>({
     name: "",
     contactPerson: "",
@@ -289,6 +291,16 @@ export default function CustomersIndex() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const result = createCustomerSchema.safeParse(formData);
+    if (!result.success) {
+      const newErrors: Partial<Record<keyof CreateCustomerData, string>> = {};
+      result.error.errors.forEach((error) => {
+        newErrors[error.path[0] as keyof CreateCustomerData] = error.message;
+      });
+      setFormErrors(newErrors);
+      return;
+    }
+    setFormErrors({});
     startTransition(() => {
       if (editingCustomer) {
         updateCustomerMutation.mutate({ ...formData, id: editingCustomer.id });
@@ -385,7 +397,15 @@ export default function CustomersIndex() {
             <Filter className="h-4 w-4 mr-2" />
             {showArchived ? "Show Active" : "Show Archived"}
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(isOpen) => {
+              setIsDialogOpen(isOpen);
+              if (!isOpen) {
+                setFormErrors({});
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="w-full md:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
@@ -406,6 +426,7 @@ export default function CustomersIndex() {
                   placeholder="e.g., Maritime Logistics Corp"
                   required
                 />
+                {formErrors.name && <p className="text-red-500 text-xs">{formErrors.name}</p>}
               </div>
 
               <div className="space-y-2">
@@ -428,6 +449,7 @@ export default function CustomersIndex() {
                     onChange={(e) => handleChange("email", e.target.value)}
                     placeholder="contact@company.com"
                   />
+                  {formErrors.email && <p className="text-red-500 text-xs">{formErrors.email}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone</Label>
@@ -436,7 +458,9 @@ export default function CustomersIndex() {
                     value={formData.phone}
                     onChange={(e) => handleChange("phone", e.target.value)}
                     placeholder="+1-555-0123"
+                    required
                   />
+                  {formErrors.phone && <p className="text-red-500 text-xs">{formErrors.phone}</p>}
                 </div>
               </div>
 
@@ -613,7 +637,15 @@ export default function CustomersIndex() {
         </div>
 
         {/* Edit Customer Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog
+          open={isEditDialogOpen}
+          onOpenChange={(isOpen) => {
+            setIsEditDialogOpen(isOpen);
+            if (!isOpen) {
+              setFormErrors({});
+            }
+          }}
+        >
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Customer</DialogTitle>
@@ -628,6 +660,7 @@ export default function CustomersIndex() {
                   placeholder="e.g., Maritime Logistics Corp"
                   required
                 />
+                {formErrors.name && <p className="text-red-500 text-xs">{formErrors.name}</p>}
               </div>
 
               <div className="space-y-2">
@@ -650,6 +683,7 @@ export default function CustomersIndex() {
                     onChange={(e) => handleChange("email", e.target.value)}
                     placeholder="contact@company.com"
                   />
+                  {formErrors.email && <p className="text-red-500 text-xs">{formErrors.email}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-phone">Phone</Label>
@@ -658,7 +692,9 @@ export default function CustomersIndex() {
                     value={formData.phone}
                     onChange={(e) => handleChange("phone", e.target.value)}
                     placeholder="+1-555-0123"
+                    required
                   />
+                  {formErrors.phone && <p className="text-red-500 text-xs">{formErrors.phone}</p>}
                 </div>
               </div>
 

@@ -920,7 +920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const id = parseInt(req.params.id);
-        const customerData = req.body;
+        const customerData = insertCustomerSchema.parse(req.body);
         const customer = await storage.updateCustomer(id, customerData);
 
         if (!customer) {
@@ -929,6 +929,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(customer);
       } catch (error) {
+        if (error instanceof ZodError) {
+          return res
+            .status(400)
+            .json({ message: "Invalid data", errors: error.errors });
+        }
         console.log(error);
         
         res.status(500).json({ message: "Failed to update customer" });
