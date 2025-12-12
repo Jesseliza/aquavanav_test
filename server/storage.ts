@@ -82,7 +82,6 @@ import {
   type InsertProject,
   type InventoryItem,
   type InsertInventoryItem,
-
   type DailyActivity,
   type InsertDailyActivity,
   type Supplier,
@@ -119,6 +118,7 @@ import {
   type InsertAssetType,
 } from "@shared/schema";
 import bcrypt from "bcrypt";
+import fs from "fs/promises";
 
 // Helper type for count results
 type CountResult = { count: number };
@@ -186,7 +186,8 @@ export interface SalesQuotationWithCustomerName extends SalesQuotation {
 }
 
 // For getProjectAssetAssignments return type
-export interface ProjectAssetAssignmentWithAssetInfo extends ProjectAssetAssignment {
+export interface ProjectAssetAssignmentWithAssetInfo
+  extends ProjectAssetAssignment {
   assetName: string | null;
   assetCode: string | null;
 }
@@ -204,7 +205,8 @@ export interface AllAssetAssignmentsEntry extends ProjectAssetAssignment {
 }
 
 // For getProjectConsumables return type
-export interface ProjectConsumableItemWithDetails extends ProjectConsumableItem {
+export interface ProjectConsumableItemWithDetails
+  extends ProjectConsumableItem {
   itemName: string | null;
   itemUnit: string | null;
 }
@@ -293,7 +295,6 @@ export interface CreditNoteWithDetails extends CreditNote {
   invoiceNumber: string | null;
 }
 
-
 class Storage {
   private _cleanDateValue(value: any): Date | null | undefined {
     // Test comment
@@ -303,7 +304,7 @@ class Storage {
     if (value instanceof Date) {
       return isNaN(value.getTime()) ? undefined : value;
     }
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const parsedDate = new Date(value);
       return isNaN(parsedDate.getTime()) ? undefined : parsedDate;
     }
@@ -314,7 +315,7 @@ class Storage {
     dataQueryBuilder: Select,
     countQueryBuilder: Select<CountResult>,
     page: number,
-    limit: number,
+    limit: number
   ): Promise<PaginatedResponse<TData>> {
     try {
       const totalResult = await countQueryBuilder;
@@ -323,7 +324,9 @@ class Storage {
 
       // The dataQueryBuilder should already have conditions and ordering applied.
       // We just add limit and offset here.
-      const data = await dataQueryBuilder.limit(limit).offset((page - 1) * limit);
+      const data = await dataQueryBuilder
+        .limit(limit)
+        .offset((page - 1) * limit);
 
       return {
         data: data as TData[], // We cast here, assuming TData is the correct shape
@@ -366,7 +369,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getUser (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getUser (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getUser",
         severity: "error",
@@ -414,7 +419,7 @@ class Storage {
 
   async updateUser(
     id: number,
-    userData: Partial<InsertUser>,
+    userData: Partial<InsertUser>
   ): Promise<User | undefined> {
     try {
       const result = await db
@@ -425,7 +430,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateUser (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateUser (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateUser",
         severity: "error",
@@ -440,7 +447,9 @@ class Storage {
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteUser (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteUser (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteUser",
         severity: "error",
@@ -484,7 +493,8 @@ class Storage {
       }
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in updateCompany: " + (error?.message || "Unknown error"),
+        message:
+          "Error in updateCompany: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateCompany",
         severity: "error",
@@ -499,7 +509,8 @@ class Storage {
       return await db.select().from(customers);
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getCustomers: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getCustomers: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getCustomers",
         severity: "error",
@@ -512,7 +523,7 @@ class Storage {
     page: number,
     limit: number,
     search: string,
-    showArchived: boolean,
+    showArchived: boolean
   ): Promise<PaginatedResponse<Customer>> {
     try {
       const whereClauses = [];
@@ -521,12 +532,16 @@ class Storage {
       }
       whereClauses.push(eq(customers.isArchived, showArchived));
 
-      const conditions = whereClauses.length > 0 ? and(...whereClauses) : undefined;
+      const conditions =
+        whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
       const dataQueryBuilder = db.select().from(customers).where(conditions);
       // Note: original count query had a simpler where clause `eq(customers.isArchived, showArchived)`
       // This should ideally be consistent. For now, using the combined `conditions` for count.
-      const countQueryBuilder = db.select({ count: sql<number>`count(*)` }).from(customers).where(conditions);
+      const countQueryBuilder = db
+        .select({ count: sql<number>`count(*)` })
+        .from(customers)
+        .where(conditions);
 
       return this._getPaginatedResults<Customer>(
         dataQueryBuilder,
@@ -536,7 +551,9 @@ class Storage {
       );
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getCustomersPaginated: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getCustomersPaginated: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getCustomersPaginated",
         severity: "error",
@@ -555,7 +572,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getCustomer (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getCustomer (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getCustomer",
         severity: "error",
@@ -566,14 +585,15 @@ class Storage {
 
   async createCustomer(customerData: InsertCustomer): Promise<Customer> {
     try {
-
-    const existing = await db
+      const existing = await db
         .select()
         .from(customers)
         .where(eq(customers.phone, customerData.phone));
 
       if (existing.length > 0) {
-        throw new Error(`Customer with phone ${customerData.phone} already exists`);
+        throw new Error(
+          `Customer with phone ${customerData.phone} already exists`
+        );
       }
 
       const result = await db
@@ -600,7 +620,8 @@ class Storage {
       return customer;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createCustomer: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createCustomer: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createCustomer",
         severity: "error",
@@ -611,7 +632,7 @@ class Storage {
 
   async updateCustomer(
     id: number,
-    customerData: Partial<InsertCustomer>,
+    customerData: Partial<InsertCustomer>
   ): Promise<Customer | undefined> {
     try {
       const result = await db
@@ -619,10 +640,14 @@ class Storage {
         .set(customerData)
         .where(eq(customers.id, id))
         .returning();
+        console.log(result);
+        
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateCustomer (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateCustomer (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateCustomer",
         severity: "error",
@@ -637,7 +662,9 @@ class Storage {
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteCustomer (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteCustomer (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteCustomer",
         severity: "error",
@@ -652,7 +679,8 @@ class Storage {
       return await db.select().from(suppliers);
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getSuppliers: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getSuppliers: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSuppliers",
         severity: "error",
@@ -665,7 +693,7 @@ class Storage {
     page: number,
     limit: number,
     search: string,
-    showArchived: boolean,
+    showArchived: boolean
   ): Promise<PaginatedResponse<Supplier>> {
     try {
       const whereClauses = [];
@@ -674,12 +702,16 @@ class Storage {
       }
       whereClauses.push(eq(suppliers.isArchived, showArchived));
 
-      const conditions = whereClauses.length > 0 ? and(...whereClauses) : undefined;
+      const conditions =
+        whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
       const dataQueryBuilder = db.select().from(suppliers).where(conditions);
       // Original count query for suppliers also only filtered by showArchived.
       // Sticking to applying all conditions for count for consistency in the helper.
-      const countQueryBuilder = db.select({ count: sql<number>`count(*)` }).from(suppliers).where(conditions);
+      const countQueryBuilder = db
+        .select({ count: sql<number>`count(*)` })
+        .from(suppliers)
+        .where(conditions);
 
       return this._getPaginatedResults<Supplier>(
         dataQueryBuilder,
@@ -689,7 +721,9 @@ class Storage {
       );
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getSuppliersPaginated: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getSuppliersPaginated: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSuppliersPaginated",
         severity: "error",
@@ -708,7 +742,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getSupplier (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getSupplier (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSupplier",
         severity: "error",
@@ -743,7 +779,8 @@ class Storage {
       return supplier;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createSupplier: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createSupplier: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createSupplier",
         severity: "error",
@@ -754,7 +791,7 @@ class Storage {
 
   async updateSupplier(
     id: number,
-    supplierData: Partial<InsertSupplier>,
+    supplierData: Partial<InsertSupplier>
   ): Promise<Supplier | undefined> {
     try {
       const result = await db
@@ -765,7 +802,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateSupplier (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateSupplier (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateSupplier",
         severity: "error",
@@ -780,7 +819,9 @@ class Storage {
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteSupplier (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteSupplier (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteSupplier",
         severity: "error",
@@ -799,7 +840,9 @@ class Storage {
         .orderBy(desc(customerDocuments.createdAt));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getCustomerDocuments (customerId: ${customerId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getCustomerDocuments (customerId: ${customerId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getCustomerDocuments",
         severity: "error",
@@ -808,7 +851,9 @@ class Storage {
     }
   }
 
-  async createCustomerDocument(data: InsertCustomerDocument): Promise<CustomerDocument> {
+  async createCustomerDocument(
+    data: InsertCustomerDocument
+  ): Promise<CustomerDocument> {
     try {
       const result = await db
         .insert(customerDocuments)
@@ -817,7 +862,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createCustomerDocument: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createCustomerDocument: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createCustomerDocument",
         severity: "error",
@@ -826,7 +873,10 @@ class Storage {
     }
   }
 
-  async updateCustomerDocument(id: number, data: Partial<InsertCustomerDocument>): Promise<CustomerDocument | null> {
+  async updateCustomerDocument(
+    id: number,
+    data: Partial<InsertCustomerDocument>
+  ): Promise<CustomerDocument | null> {
     try {
       const result = await db
         .update(customerDocuments)
@@ -836,7 +886,9 @@ class Storage {
       return result[0] || null;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateCustomerDocument (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateCustomerDocument (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateCustomerDocument",
         severity: "error",
@@ -847,11 +899,15 @@ class Storage {
 
   async deleteCustomerDocument(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(customerDocuments).where(eq(customerDocuments.id, id));
-      return result.rowCount > 0;
+      const result = await db
+        .delete(customerDocuments)
+        .where(eq(customerDocuments.id, id)).returning();
+      return result.length > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteCustomerDocument (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteCustomerDocument (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteCustomerDocument",
         severity: "error",
@@ -870,7 +926,9 @@ class Storage {
         .orderBy(desc(supplierDocuments.createdAt));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getSupplierDocuments (supplierId: ${supplierId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getSupplierDocuments (supplierId: ${supplierId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSupplierDocuments",
         severity: "error",
@@ -879,7 +937,9 @@ class Storage {
     }
   }
 
-  async createSupplierDocument(data: InsertSupplierDocument): Promise<SupplierDocument> {
+  async createSupplierDocument(
+    data: InsertSupplierDocument
+  ): Promise<SupplierDocument> {
     try {
       const result = await db
         .insert(supplierDocuments)
@@ -888,7 +948,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createSupplierDocument: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createSupplierDocument: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createSupplierDocument",
         severity: "error",
@@ -897,7 +959,10 @@ class Storage {
     }
   }
 
-  async updateSupplierDocument(id: number, data: Partial<InsertSupplierDocument>): Promise<SupplierDocument | null> {
+  async updateSupplierDocument(
+    id: number,
+    data: Partial<InsertSupplierDocument>
+  ): Promise<SupplierDocument | null> {
     try {
       const result = await db
         .update(supplierDocuments)
@@ -907,7 +972,9 @@ class Storage {
       return result[0] || null;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateSupplierDocument (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateSupplierDocument (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateSupplierDocument",
         severity: "error",
@@ -918,11 +985,15 @@ class Storage {
 
   async deleteSupplierDocument(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(supplierDocuments).where(eq(supplierDocuments.id, id));
+      const result = await db
+        .delete(supplierDocuments)
+        .where(eq(supplierDocuments.id, id));
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteSupplierDocument (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteSupplierDocument (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteSupplierDocument",
         severity: "error",
@@ -937,7 +1008,8 @@ class Storage {
       return await db.select().from(employees);
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getEmployees: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getEmployees: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getEmployees",
         severity: "error",
@@ -955,7 +1027,8 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createEmployee: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createEmployee: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createEmployee",
         severity: "error",
@@ -966,7 +1039,7 @@ class Storage {
 
   async updateEmployee(
     id: number,
-    employeeData: Partial<InsertEmployee>,
+    employeeData: Partial<InsertEmployee>
   ): Promise<Employee | undefined> {
     try {
       const result = await db
@@ -977,7 +1050,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateEmployee (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateEmployee (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateEmployee",
         severity: "error",
@@ -995,7 +1070,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getEmployee (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getEmployee (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getEmployee",
         severity: "error",
@@ -1013,7 +1090,9 @@ class Storage {
         .where(eq(employeeNextOfKin.employeeId, employeeId));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getEmployeeNextOfKin (employeeId: ${employeeId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getEmployeeNextOfKin (employeeId: ${employeeId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getEmployeeNextOfKin",
         severity: "error",
@@ -1022,7 +1101,9 @@ class Storage {
     }
   }
 
-  async createEmployeeNextOfKin(data: InsertEmployeeNextOfKin): Promise<EmployeeNextOfKin> {
+  async createEmployeeNextOfKin(
+    data: InsertEmployeeNextOfKin
+  ): Promise<EmployeeNextOfKin> {
     try {
       const result = await db
         .insert(employeeNextOfKin)
@@ -1031,7 +1112,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createEmployeeNextOfKin: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createEmployeeNextOfKin: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createEmployeeNextOfKin",
         severity: "error",
@@ -1040,7 +1123,10 @@ class Storage {
     }
   }
 
-  async updateEmployeeNextOfKin(id: number, data: Partial<InsertEmployeeNextOfKin>): Promise<EmployeeNextOfKin | undefined> {
+  async updateEmployeeNextOfKin(
+    id: number,
+    data: Partial<InsertEmployeeNextOfKin>
+  ): Promise<EmployeeNextOfKin | undefined> {
     try {
       const result = await db
         .update(employeeNextOfKin)
@@ -1050,7 +1136,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateEmployeeNextOfKin (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateEmployeeNextOfKin (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateEmployeeNextOfKin",
         severity: "error",
@@ -1061,11 +1149,15 @@ class Storage {
 
   async deleteEmployeeNextOfKin(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(employeeNextOfKin).where(eq(employeeNextOfKin.id, id));
+      const result = await db
+        .delete(employeeNextOfKin)
+        .where(eq(employeeNextOfKin.id, id));
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteEmployeeNextOfKin (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteEmployeeNextOfKin (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteEmployeeNextOfKin",
         severity: "error",
@@ -1075,7 +1167,9 @@ class Storage {
   }
 
   // Employee Training Records methods
-  async getEmployeeTrainingRecords(employeeId: number): Promise<EmployeeTrainingRecord[]> {
+  async getEmployeeTrainingRecords(
+    employeeId: number
+  ): Promise<EmployeeTrainingRecord[]> {
     try {
       return await db
         .select()
@@ -1084,7 +1178,9 @@ class Storage {
         .orderBy(desc(employeeTrainingRecords.trainingDate));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getEmployeeTrainingRecords (employeeId: ${employeeId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getEmployeeTrainingRecords (employeeId: ${employeeId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getEmployeeTrainingRecords",
         severity: "error",
@@ -1093,7 +1189,9 @@ class Storage {
     }
   }
 
-  async createEmployeeTrainingRecord(data: InsertEmployeeTrainingRecord): Promise<EmployeeTrainingRecord> {
+  async createEmployeeTrainingRecord(
+    data: InsertEmployeeTrainingRecord
+  ): Promise<EmployeeTrainingRecord> {
     try {
       const result = await db
         .insert(employeeTrainingRecords)
@@ -1102,7 +1200,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createEmployeeTrainingRecord: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createEmployeeTrainingRecord: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createEmployeeTrainingRecord",
         severity: "error",
@@ -1111,7 +1211,10 @@ class Storage {
     }
   }
 
-  async updateEmployeeTrainingRecord(id: number, data: Partial<InsertEmployeeTrainingRecord>): Promise<EmployeeTrainingRecord | undefined> {
+  async updateEmployeeTrainingRecord(
+    id: number,
+    data: Partial<InsertEmployeeTrainingRecord>
+  ): Promise<EmployeeTrainingRecord | undefined> {
     try {
       const result = await db
         .update(employeeTrainingRecords)
@@ -1121,7 +1224,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateEmployeeTrainingRecord (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateEmployeeTrainingRecord (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateEmployeeTrainingRecord",
         severity: "error",
@@ -1132,11 +1237,15 @@ class Storage {
 
   async deleteEmployeeTrainingRecord(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(employeeTrainingRecords).where(eq(employeeTrainingRecords.id, id));
+      const result = await db
+        .delete(employeeTrainingRecords)
+        .where(eq(employeeTrainingRecords.id, id));
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteEmployeeTrainingRecord (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteEmployeeTrainingRecord (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteEmployeeTrainingRecord",
         severity: "error",
@@ -1146,8 +1255,16 @@ class Storage {
   }
 
   async getExpiringDocuments(daysAhead: number = 30): Promise<{
-    visas: Array<Employee & { documentType: string; expiryDate: string; daysToExpiry: number }>;
-    trainings: Array<EmployeeTrainingRecord & { employee: Employee; daysToExpiry: number }>;
+    visas: Array<
+      Employee & {
+        documentType: string;
+        expiryDate: string;
+        daysToExpiry: number;
+      }
+    >;
+    trainings: Array<
+      EmployeeTrainingRecord & { employee: Employee; daysToExpiry: number }
+    >;
   }> {
     try {
       const targetDate = new Date();
@@ -1160,12 +1277,18 @@ class Storage {
         .where(
           or(
             and(
-              eq(employees.usVisaStatus, 'valid'),
-              lte(employees.usVisaExpiryDate, targetDate.toISOString().split('T')[0])
+              eq(employees.usVisaStatus, "valid"),
+              lte(
+                employees.usVisaExpiryDate,
+                targetDate.toISOString().split("T")[0]
+              )
             ),
             and(
-              eq(employees.schengenVisaStatus, 'valid'),
-              lte(employees.schengenVisaExpiryDate, targetDate.toISOString().split('T')[0])
+              eq(employees.schengenVisaStatus, "valid"),
+              lte(
+                employees.schengenVisaExpiryDate,
+                targetDate.toISOString().split("T")[0]
+              )
             )
           )
         );
@@ -1174,55 +1297,73 @@ class Storage {
       const expiringTrainings = await db
         .select({
           training: employeeTrainingRecords,
-          employee: employees
+          employee: employees,
         })
         .from(employeeTrainingRecords)
-        .leftJoin(employees, eq(employeeTrainingRecords.employeeId, employees.id))
+        .leftJoin(
+          employees,
+          eq(employeeTrainingRecords.employeeId, employees.id)
+        )
         .where(
           and(
-            eq(employeeTrainingRecords.status, 'active'),
+            eq(employeeTrainingRecords.status, "active"),
             isNotNull(employeeTrainingRecords.expiryDate),
-            lte(employeeTrainingRecords.expiryDate, targetDate.toISOString().split('T')[0])
+            lte(
+              employeeTrainingRecords.expiryDate,
+              targetDate.toISOString().split("T")[0]
+            )
           )
         );
 
       // Transform data to include days to expiry
-      const visas = employeesWithExpiringVisas.flatMap(emp => {
+      const visas = employeesWithExpiringVisas.flatMap((emp) => {
         const results = [];
-        if (emp.usVisaStatus === 'valid' && emp.usVisaExpiryDate) {
-          const daysToExpiry = Math.ceil((new Date(emp.usVisaExpiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        if (emp.usVisaStatus === "valid" && emp.usVisaExpiryDate) {
+          const daysToExpiry = Math.ceil(
+            (new Date(emp.usVisaExpiryDate).getTime() - new Date().getTime()) /
+              (1000 * 60 * 60 * 24)
+          );
           results.push({
             ...emp,
-            documentType: 'US Visa',
+            documentType: "US Visa",
             expiryDate: emp.usVisaExpiryDate,
-            daysToExpiry
+            daysToExpiry,
           });
         }
-        if (emp.schengenVisaStatus === 'valid' && emp.schengenVisaExpiryDate) {
-          const daysToExpiry = Math.ceil((new Date(emp.schengenVisaExpiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        if (emp.schengenVisaStatus === "valid" && emp.schengenVisaExpiryDate) {
+          const daysToExpiry = Math.ceil(
+            (new Date(emp.schengenVisaExpiryDate).getTime() -
+              new Date().getTime()) /
+              (1000 * 60 * 60 * 24)
+          );
           results.push({
             ...emp,
-            documentType: 'Schengen Visa',
+            documentType: "Schengen Visa",
             expiryDate: emp.schengenVisaExpiryDate,
-            daysToExpiry
+            daysToExpiry,
           });
         }
         return results;
       });
 
       const trainings = expiringTrainings.map(({ training, employee }) => {
-        const daysToExpiry = Math.ceil((new Date(training.expiryDate!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        const daysToExpiry = Math.ceil(
+          (new Date(training.expiryDate!).getTime() - new Date().getTime()) /
+            (1000 * 60 * 60 * 24)
+        );
         return {
           ...training,
           employee: employee!,
-          daysToExpiry
+          daysToExpiry,
         };
       });
 
       return { visas, trainings };
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getExpiringDocuments: ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getExpiringDocuments: ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getExpiringDocuments",
         severity: "error",
@@ -1235,7 +1376,7 @@ class Storage {
     try {
       const employee = await this.getEmployee(employeeId);
       if (!employee) {
-        throw new Error('Employee not found');
+        throw new Error("Employee not found");
       }
 
       // UAE Employment Contract Template
@@ -1244,7 +1385,9 @@ class Storage {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Employment Contract - ${employee.firstName} ${employee.lastName}</title>
+    <title>Employment Contract - ${employee.firstName} ${
+        employee.lastName
+      }</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
         .header { text-align: center; margin-bottom: 30px; }
@@ -1280,11 +1423,13 @@ class Storage {
             <tr>
                 <th>EMPLOYEE</th>
                 <td>
-                    <strong>${employee.firstName} ${employee.lastName}</strong><br>
+                    <strong>${employee.firstName} ${
+        employee.lastName
+      }</strong><br>
                     Employee ID: ${employee.employeeCode}<br>
-                    ${employee.grade ? `Grade: ${employee.grade}<br>` : ''}
-                    Position: ${employee.position || 'Marine Engineer'}<br>
-                    Department: ${employee.department || 'Engineering'}
+                    ${employee.grade ? `Grade: ${employee.grade}<br>` : ""}
+                    Position: ${employee.position || "Marine Engineer"}<br>
+                    Department: ${employee.department || "Engineering"}
                 </td>
             </tr>
         </table>
@@ -1297,21 +1442,29 @@ class Storage {
         <table>
             <tr>
                 <th>Position/Job Title</th>
-                <td>${employee.position || 'Marine Engineer'}</td>
+                <td>${employee.position || "Marine Engineer"}</td>
             </tr>
             <tr>
                 <th>Department</th>
-                <td>${employee.department || 'Engineering'}</td>
+                <td>${employee.department || "Engineering"}</td>
             </tr>
-            ${employee.grade ? `
+            ${
+              employee.grade
+                ? `
             <tr>
                 <th>Employee Grade</th>
                 <td>${employee.grade}</td>
             </tr>
-            ` : ''}
+            `
+                : ""
+            }
             <tr>
                 <th>Start Date</th>
-                <td>${employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : '[To be filled]'}</td>
+                <td>${
+                  employee.hireDate
+                    ? new Date(employee.hireDate).toLocaleDateString()
+                    : "[To be filled]"
+                }</td>
             </tr>
             <tr>
                 <th>Contract Duration</th>
@@ -1325,7 +1478,11 @@ class Storage {
         <table>
             <tr>
                 <th>Basic Salary</th>
-                <td>AED ${employee.salary ? parseFloat(employee.salary).toLocaleString() : '[To be filled]'} per month</td>
+                <td>AED ${
+                  employee.salary
+                    ? parseFloat(employee.salary).toLocaleString()
+                    : "[To be filled]"
+                } per month</td>
             </tr>
             <tr>
                 <th>Housing Allowance</th>
@@ -1401,7 +1558,9 @@ class Storage {
       return contractTemplate;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in generateEmploymentContract (employeeId: ${employeeId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in generateEmploymentContract (employeeId: ${employeeId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "generateEmploymentContract",
         severity: "error",
@@ -1420,7 +1579,9 @@ class Storage {
         .orderBy(desc(employeeDocuments.createdAt));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getEmployeeDocuments (employeeId: ${employeeId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getEmployeeDocuments (employeeId: ${employeeId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getEmployeeDocuments",
         severity: "error",
@@ -1429,7 +1590,9 @@ class Storage {
     }
   }
 
-  async createEmployeeDocument(data: InsertEmployeeDocument): Promise<EmployeeDocument> {
+  async createEmployeeDocument(
+    data: InsertEmployeeDocument
+  ): Promise<EmployeeDocument> {
     try {
       const result = await db
         .insert(employeeDocuments)
@@ -1438,7 +1601,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in createEmployeeDocument: ` + (error?.message || "Unknown error"),
+        message:
+          `Error in createEmployeeDocument: ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createEmployeeDocument",
         severity: "error",
@@ -1447,7 +1612,10 @@ class Storage {
     }
   }
 
-  async updateEmployeeDocument(id: number, data: Partial<InsertEmployeeDocument>): Promise<EmployeeDocument | null> {
+  async updateEmployeeDocument(
+    id: number,
+    data: Partial<InsertEmployeeDocument>
+  ): Promise<EmployeeDocument | null> {
     try {
       const result = await db
         .update(employeeDocuments)
@@ -1457,7 +1625,9 @@ class Storage {
       return result[0] || null;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateEmployeeDocument (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateEmployeeDocument (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateEmployeeDocument",
         severity: "error",
@@ -1468,11 +1638,15 @@ class Storage {
 
   async deleteEmployeeDocument(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(employeeDocuments).where(eq(employeeDocuments.id, id));
+      const result = await db
+        .delete(employeeDocuments)
+        .where(eq(employeeDocuments.id, id));
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteEmployeeDocument (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteEmployeeDocument (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteEmployeeDocument",
         severity: "error",
@@ -1481,7 +1655,11 @@ class Storage {
     }
   }
 
-  async getExpiringEmployeeDocuments(daysAhead: number = 30): Promise<Array<EmployeeDocument & { employee: Employee; daysToExpiry: number }>> {
+  async getExpiringEmployeeDocuments(
+    daysAhead: number = 30
+  ): Promise<
+    Array<EmployeeDocument & { employee: Employee; daysToExpiry: number }>
+  > {
     try {
       const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() + daysAhead);
@@ -1489,32 +1667,45 @@ class Storage {
       const result = await db
         .select({
           document: employeeDocuments,
-          employee: employees
+          employee: employees,
         })
         .from(employeeDocuments)
         .leftJoin(employees, eq(employeeDocuments.employeeId, employees.id))
         .where(
           and(
-            eq(employeeDocuments.status, 'active'),
+            eq(employeeDocuments.status, "active"),
             or(
-              lte(employeeDocuments.expiryDate, targetDate.toISOString().split('T')[0]),
-              lte(employeeDocuments.validTill, targetDate.toISOString().split('T')[0])
+              lte(
+                employeeDocuments.expiryDate,
+                targetDate.toISOString().split("T")[0]
+              ),
+              lte(
+                employeeDocuments.validTill,
+                targetDate.toISOString().split("T")[0]
+              )
             )
           )
         );
 
       return result.map(({ document, employee }) => {
         const expiryDate = document.expiryDate || document.validTill;
-        const daysToExpiry = expiryDate ? Math.ceil((new Date(expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        const daysToExpiry = expiryDate
+          ? Math.ceil(
+              (new Date(expiryDate).getTime() - new Date().getTime()) /
+                (1000 * 60 * 60 * 24)
+            )
+          : 0;
         return {
           ...document,
           employee: employee!,
-          daysToExpiry
+          daysToExpiry,
         };
       });
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getExpiringEmployeeDocuments: ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getExpiringEmployeeDocuments: ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getExpiringEmployeeDocuments",
         severity: "error",
@@ -1548,7 +1739,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProject (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProject (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProject",
         severity: "error",
@@ -1565,7 +1758,9 @@ class Storage {
         .where(eq(projects.customerId, customerId));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProjectsByCustomer (customerId: ${customerId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProjectsByCustomer (customerId: ${customerId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectsByCustomer",
         severity: "error",
@@ -1580,7 +1775,8 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createProject: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createProject: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProject",
         severity: "error",
@@ -1591,7 +1787,7 @@ class Storage {
 
   async updateProject(
     id: number,
-    data: Partial<Project>,
+    data: Partial<Project>
   ): Promise<Project | undefined> {
     try {
       const updatePayload: Partial<Project> = {};
@@ -1600,31 +1796,45 @@ class Storage {
       for (const key in data) {
         if (Object.prototype.hasOwnProperty.call(data, key)) {
           const value = (data as any)[key];
-          if (key === "startDate" || key === "plannedEndDate" || key === "actualEndDate") {
+          if (
+            key === "startDate" ||
+            key === "plannedEndDate" ||
+            key === "actualEndDate"
+          ) {
             const cleanedDate = this._cleanDateValue(value);
             if (cleanedDate !== undefined) {
               (updatePayload as any)[key] = cleanedDate;
-            } else if (value !== undefined) { // If _cleanDateValue returns undefined, but original value was present, it means invalid date to be ignored.
-              console.warn(`Invalid date value for ${key} will be ignored:`, value);
+            } else if (value !== undefined) {
+              // If _cleanDateValue returns undefined, but original value was present, it means invalid date to be ignored.
+              console.warn(
+                `Invalid date value for ${key} will be ignored:`,
+                value
+              );
             }
           } else if (key === "locations") {
-             if (value !== undefined) {
-                // Ensure it's an array, don't modify if already valid JSON or array
-                if (Array.isArray(value)) {
-                    (updatePayload as any)[key] = value;
-                } else {
-                    // Attempt to parse if it's a string, otherwise default to empty array or handle error
-                    try {
-                        const parsedLocations = typeof value === 'string' ? JSON.parse(value) : value;
-                        (updatePayload as any)[key] = Array.isArray(parsedLocations) ? parsedLocations : [];
-                    } catch (e) {
-                        console.warn(`Invalid JSON for locations, defaulting to empty array:`, value);
-                        (updatePayload as any)[key] = [];
-                    }
+            if (value !== undefined) {
+              // Ensure it's an array, don't modify if already valid JSON or array
+              if (Array.isArray(value)) {
+                (updatePayload as any)[key] = value;
+              } else {
+                // Attempt to parse if it's a string, otherwise default to empty array or handle error
+                try {
+                  const parsedLocations =
+                    typeof value === "string" ? JSON.parse(value) : value;
+                  (updatePayload as any)[key] = Array.isArray(parsedLocations)
+                    ? parsedLocations
+                    : [];
+                } catch (e) {
+                  console.warn(
+                    `Invalid JSON for locations, defaulting to empty array:`,
+                    value
+                  );
+                  (updatePayload as any)[key] = [];
                 }
+              }
             } else {
-                // if locations is explicitly undefined in payload, we might want to skip update or set to null
-                // For now, let's skip if undefined. If it needs to be settable to null, adjust logic.
+              // if locations is explicitly undefined in payload, we might want to skip update or set to null
+              // For now, let's skip if undefined. If it needs to be settable to null, adjust logic.
             }
           } else if (value !== undefined) {
             // For other fields, directly assign if the value is not undefined
@@ -1653,7 +1863,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updateProject:", error); // Keep original console.error for context if needed
       await this.createErrorLog({
-        message: `Error in updateProject (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateProject (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateProject",
         severity: "error",
@@ -1664,37 +1876,57 @@ class Storage {
 
   // Project Employee methods
   async getProjectEmployees(
-    projectId: number,
+    projectId: number
   ): Promise<
     Array<
       Employee & { startDate?: string; endDate?: string; assignedAt?: string }
     >
   > {
     try {
-      console.log(`[Payroll] getProjectEmployees called for project ID: ${projectId}`);
-      console.log(`[Payroll] Querying project assignments for project ID: ${projectId}`);
+      console.log(
+        `[Payroll] getProjectEmployees called for project ID: ${projectId}`
+      );
+      console.log(
+        `[Payroll] Querying project assignments for project ID: ${projectId}`
+      );
       const assignments = await db
         .select()
         .from(projectEmployees)
         .where(eq(projectEmployees.projectId, projectId));
 
-      console.log(`[Payroll] Found ${assignments.length} assignments for project ID: ${projectId}`);
+      console.log(
+        `[Payroll] Found ${assignments.length} assignments for project ID: ${projectId}`
+      );
       if (assignments.length === 0) {
         return [];
       }
 
-      const employeeIds = assignments.map((a) => a.employeeId).filter(id => id != null && typeof id === 'number') as number[];
+      const employeeIds = assignments
+        .map((a) => a.employeeId)
+        .filter((id) => id != null && typeof id === "number") as number[];
       if (employeeIds.length === 0) {
-        console.log(`[Payroll] No valid employee IDs found from assignments for project ID: ${projectId}. Returning empty.`);
+        console.log(
+          `[Payroll] No valid employee IDs found from assignments for project ID: ${projectId}. Returning empty.`
+        );
         return [];
       }
 
-      console.log(`[Payroll] Querying employee details for ${employeeIds.length} employee IDs related to project ID: ${projectId}`);
-      console.log(`[Payroll] Employee IDs to query: ${JSON.stringify(employeeIds)}`);
-      
+      console.log(
+        `[Payroll] Querying employee details for ${employeeIds.length} employee IDs related to project ID: ${projectId}`
+      );
+      console.log(
+        `[Payroll] Employee IDs to query: ${JSON.stringify(employeeIds)}`
+      );
+
       // Validate that employeeIds array is not empty and contains valid numbers
-      if (!Array.isArray(employeeIds) || employeeIds.length === 0 || employeeIds.some(id => typeof id !== 'number' || isNaN(id))) {
-        console.error(`[Payroll] Invalid employee IDs array: ${JSON.stringify(employeeIds)}`);
+      if (
+        !Array.isArray(employeeIds) ||
+        employeeIds.length === 0 ||
+        employeeIds.some((id) => typeof id !== "number" || isNaN(id))
+      ) {
+        console.error(
+          `[Payroll] Invalid employee IDs array: ${JSON.stringify(employeeIds)}`
+        );
         return [];
       }
 
@@ -1717,36 +1949,39 @@ class Storage {
         .from(employees)
         .where(inArray(employees.id, employeeIds));
 
-      console.log(`[Payroll] Fetched ${employeesData.length} employee details for project ID: ${projectId}`);
+      console.log(
+        `[Payroll] Fetched ${employeesData.length} employee details for project ID: ${projectId}`
+      );
       // Combine employee data with assignment dates
-      const result = employeesData
-        .map((employee) => {
-          // Find the corresponding assignment. Since employeeIds are unique from assignments,
-          // and we filtered for employees based on these IDs, each employee should have an assignment.
-          const assignment = assignments.find(
-            (a) => a.employeeId === employee.id,
-          );
-          // If for some reason an employee record was fetched but no assignment matches
-          // (e.g. if employeeId in assignments could be null and not filtered out, though employeeIds filters nulls now)
-          // we might want to handle that, but current logic implies a match will be found.
-          return {
-            ...employee, // Spread all selected fields of Employee
-            startDate: assignment?.startDate
-              ? assignment.startDate.toISOString()
-              : undefined,
-            endDate: assignment?.endDate
-              ? assignment.endDate.toISOString()
-              : undefined,
-            assignedAt: assignment?.assignedAt
-              ? assignment.assignedAt.toISOString()
-              : undefined,
-          };
-        });
+      const result = employeesData.map((employee) => {
+        // Find the corresponding assignment. Since employeeIds are unique from assignments,
+        // and we filtered for employees based on these IDs, each employee should have an assignment.
+        const assignment = assignments.find(
+          (a) => a.employeeId === employee.id
+        );
+        // If for some reason an employee record was fetched but no assignment matches
+        // (e.g. if employeeId in assignments could be null and not filtered out, though employeeIds filters nulls now)
+        // we might want to handle that, but current logic implies a match will be found.
+        return {
+          ...employee, // Spread all selected fields of Employee
+          startDate: assignment?.startDate
+            ? assignment.startDate.toISOString()
+            : undefined,
+          endDate: assignment?.endDate
+            ? assignment.endDate.toISOString()
+            : undefined,
+          assignedAt: assignment?.assignedAt
+            ? assignment.assignedAt.toISOString()
+            : undefined,
+        };
+      });
 
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProjectEmployees (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProjectEmployees (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectEmployees",
         severity: "error",
@@ -1757,7 +1992,7 @@ class Storage {
 
   async assignEmployeeToProject(
     projectId: number,
-    employeeId: number,
+    employeeId: number
   ): Promise<ProjectEmployee | undefined> {
     try {
       const result: ProjectEmployee[] = await db
@@ -1770,7 +2005,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in assignEmployeeToProject (projectId: ${projectId}, employeeId: ${employeeId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in assignEmployeeToProject (projectId: ${projectId}, employeeId: ${employeeId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "assignEmployeeToProject",
         severity: "error",
@@ -1781,7 +2018,7 @@ class Storage {
 
   async assignEmployeesToProject(
     projectId: number,
-    assignments: AssignEmployeeData[],
+    assignments: AssignEmployeeData[]
   ): Promise<ProjectEmployee[]> {
     try {
       // First, remove all existing assignments for this project
@@ -1816,7 +2053,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in assignEmployeesToProject:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in assignEmployeesToProject (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in assignEmployeesToProject (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "assignEmployeesToProject",
         severity: "error",
@@ -1830,14 +2069,14 @@ class Storage {
       const project = await this.getProject(projectId);
       if (!project) {
         console.log(
-          `Project ${projectId} not found, skipping cost calculation`,
+          `Project ${projectId} not found, skipping cost calculation`
         );
         return;
       }
 
       const projectEmployeesList = await this.getProjectEmployees(projectId);
       console.log(
-        `Recalculating cost for project ${projectId} with ${projectEmployeesList.length} employees`,
+        `Recalculating cost for project ${projectId} with ${projectEmployeesList.length} employees`
       );
 
       // Calculate labor costs
@@ -1853,7 +2092,7 @@ class Storage {
         const workingDays = this.calculateWorkingDays(startDate, endDate);
 
         console.log(
-          `Project ${projectId}: ${workingDays} working days from ${startDate.toDateString()} to ${endDate.toDateString()}`,
+          `Project ${projectId}: ${workingDays} working days from ${startDate.toDateString()} to ${endDate.toDateString()}`
         );
 
         // Calculate total salary cost
@@ -1866,14 +2105,22 @@ class Storage {
               // For permanent employees, allocate full monthly salary to project
               employeeCost = monthlySalary;
               console.log(
-                `Employee ${employee.firstName} ${employee.lastName} (Permanent): Monthly salary ${monthlySalary}, Total cost ${employeeCost.toFixed(2)}`,
+                `Employee ${employee.firstName} ${
+                  employee.lastName
+                } (Permanent): Monthly salary ${monthlySalary}, Total cost ${employeeCost.toFixed(
+                  2
+                )}`
               );
             } else {
               // For consultants and contract employees, calculate based on actual working days
               const dailyRate = monthlySalary / 22; // More accurate working days per month
               employeeCost = dailyRate * workingDays;
               console.log(
-                `Employee ${employee.firstName} ${employee.lastName} (${employee.category}): Monthly salary ${monthlySalary}, Daily rate ${dailyRate.toFixed(2)}, Total cost ${employeeCost.toFixed(2)}`,
+                `Employee ${employee.firstName} ${employee.lastName} (${
+                  employee.category
+                }): Monthly salary ${monthlySalary}, Daily rate ${dailyRate.toFixed(
+                  2
+                )}, Total cost ${employeeCost.toFixed(2)}`
               );
             }
 
@@ -1902,7 +2149,7 @@ class Storage {
           .from(projectConsumableItems)
           .leftJoin(
             inventoryItems,
-            eq(projectConsumableItems.inventoryItemId, inventoryItems.id),
+            eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
           )
           .where(eq(projectConsumableItems.consumableId, record.id));
 
@@ -1913,7 +2160,9 @@ class Storage {
             totalInventoryCost += itemCost;
 
             console.log(
-              `Consumable item ${item.itemName}: Unit cost ${unitCost.toFixed(4)}, Quantity ${item.quantity}, Total cost ${itemCost.toFixed(2)}`,
+              `Consumable item ${item.itemName}: Unit cost ${unitCost.toFixed(
+                4
+              )}, Quantity ${item.quantity}, Total cost ${itemCost.toFixed(2)}`
             );
           }
         }
@@ -1927,12 +2176,12 @@ class Storage {
         const rentalCost = await this.calculateAssetRentalCost(
           new Date(assignment.startDate),
           new Date(assignment.endDate),
-          assignment.monthlyRate,
+          assignment.monthlyRate
         );
         totalAssetRentalCost += rentalCost;
       }
       console.log(
-        `Total asset rental cost: ${totalAssetRentalCost.toFixed(2)}`,
+        `Total asset rental cost: ${totalAssetRentalCost.toFixed(2)}`
       );
 
       const totalProjectCost =
@@ -1951,7 +2200,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in recalculateProjectCost:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in recalculateProjectCost (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in recalculateProjectCost (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "recalculateProjectCost",
         severity: "error",
@@ -1989,7 +2240,7 @@ class Storage {
 
   async updateProjectEndDateAndRecalculate(
     projectId: number,
-    endDate: Date,
+    endDate: Date
   ): Promise<Project | undefined> {
     try {
       const result = await this.updateProject(projectId, {
@@ -2000,9 +2251,14 @@ class Storage {
       }
       return result;
     } catch (error: any) {
-      console.error("Original error in updateProjectEndDateAndRecalculate:", error); // Keep original console.error
+      console.error(
+        "Original error in updateProjectEndDateAndRecalculate:",
+        error
+      ); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updateProjectEndDateAndRecalculate (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateProjectEndDateAndRecalculate (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateProjectEndDateAndRecalculate",
         severity: "error",
@@ -2013,11 +2269,11 @@ class Storage {
 
   async removeEmployeeFromProject(
     projectId: number,
-    employeeId: number,
+    employeeId: number
   ): Promise<boolean> {
     try {
       console.log(
-        `Attempting to remove employee ${employeeId} from project ${projectId}`,
+        `Attempting to remove employee ${employeeId} from project ${projectId}`
       );
 
       // First, check if the assignment exists
@@ -2027,17 +2283,17 @@ class Storage {
         .where(
           and(
             eq(projectEmployees.projectId, projectId),
-            eq(projectEmployees.employeeId, employeeId),
-          ),
+            eq(projectEmployees.employeeId, employeeId)
+          )
         );
 
       console.log(
-        `Found ${existingAssignments.length} existing assignments for employee ${employeeId} in project ${projectId}`,
+        `Found ${existingAssignments.length} existing assignments for employee ${employeeId} in project ${projectId}`
       );
 
       if (existingAssignments.length === 0) {
         console.log(
-          `No assignment found for employee ${employeeId} in project ${projectId}`,
+          `No assignment found for employee ${employeeId} in project ${projectId}`
         );
         return false;
       }
@@ -2048,8 +2304,8 @@ class Storage {
         .where(
           and(
             eq(projectEmployees.projectId, projectId),
-            eq(projectEmployees.employeeId, employeeId),
-          ),
+            eq(projectEmployees.employeeId, employeeId)
+          )
         )
         .returning();
 
@@ -2058,14 +2314,14 @@ class Storage {
 
       if (deleted) {
         console.log(
-          `Successfully deleted employee ${employeeId} from project ${projectId} - ${result.length} record(s) removed`,
+          `Successfully deleted employee ${employeeId} from project ${projectId} - ${result.length} record(s) removed`
         );
         // Recalculate project cost after removing employee
         await this.recalculateProjectCost(projectId);
         console.log(`Recalculated project cost for project ${projectId}`);
       } else {
         console.log(
-          `No records deleted when trying to remove employee ${employeeId} from project ${projectId}`,
+          `No records deleted when trying to remove employee ${employeeId} from project ${projectId}`
         );
       }
 
@@ -2073,7 +2329,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in removeEmployeeFromProject:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in removeEmployeeFromProject (projectId: ${projectId}, employeeId: ${employeeId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in removeEmployeeFromProject (projectId: ${projectId}, employeeId: ${employeeId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "removeEmployeeFromProject",
         severity: "error",
@@ -2088,7 +2346,8 @@ class Storage {
       return await db.select().from(inventoryItems);
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getInventoryItems: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getInventoryItems: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getInventoryItems",
         severity: "error",
@@ -2102,7 +2361,7 @@ class Storage {
     limit: number,
     search: string,
     category: string,
-    lowStock: boolean,
+    lowStock: boolean
   ): Promise<{
     data: InventoryItem[];
     pagination: {
@@ -2122,13 +2381,20 @@ class Storage {
       }
       if (lowStock) {
         whereClauses.push(
-          lte(inventoryItems.currentStock, inventoryItems.minStockLevel),
+          lte(inventoryItems.currentStock, inventoryItems.minStockLevel)
         );
       }
-      const conditions = whereClauses.length > 0 ? and(...whereClauses) : undefined;
+      const conditions =
+        whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
-      const dataQueryBuilder = db.select().from(inventoryItems).where(conditions);
-      const countQueryBuilder = db.select({ count: sql<number>`count(*)` }).from(inventoryItems).where(conditions);
+      const dataQueryBuilder = db
+        .select()
+        .from(inventoryItems)
+        .where(conditions);
+      const countQueryBuilder = db
+        .select({ count: sql<number>`count(*)` })
+        .from(inventoryItems)
+        .where(conditions);
 
       return this._getPaginatedResults<InventoryItem>(
         dataQueryBuilder,
@@ -2138,7 +2404,9 @@ class Storage {
       );
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getInventoryItemsPaginated: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getInventoryItemsPaginated: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getInventoryItemsPaginated",
         severity: "error",
@@ -2148,7 +2416,7 @@ class Storage {
   }
 
   async createInventoryItem(
-    itemData: InsertInventoryItem,
+    itemData: InsertInventoryItem
   ): Promise<InventoryItem> {
     try {
       const result = await db
@@ -2158,7 +2426,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createInventoryItem: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createInventoryItem: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createInventoryItem",
         severity: "error",
@@ -2169,7 +2439,7 @@ class Storage {
 
   async updateInventoryItem(
     id: number,
-    itemData: Partial<InventoryItem>,
+    itemData: Partial<InventoryItem>
   ): Promise<InventoryItem | undefined> {
     try {
       const result = await db
@@ -2180,7 +2450,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateInventoryItem (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateInventoryItem (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateInventoryItem",
         severity: "error",
@@ -2222,23 +2494,30 @@ class Storage {
         .where(eq(assetInventoryInstances.isActive, true));
 
       // Calculate additional fields for each type
-      const typesWithCalculations = types.map(type => {
-        const typeInstances = instances.filter(instance => instance.assetTypeId === type.id);
+      const typesWithCalculations = types.map((type) => {
+        const typeInstances = instances.filter(
+          (instance) => instance.assetTypeId === type.id
+        );
         const instanceCount = typeInstances.length;
-        const availableCount = typeInstances.filter(instance => instance.status === 'available').length;
-        const totalValue = typeInstances.reduce((sum, instance) => sum + (instance.currentValue || 0), 0);
+        const availableCount = typeInstances.filter(
+          (instance) => instance.status === "available"
+        ).length;
+        const totalValue = typeInstances.reduce(
+          (sum, instance) => sum + (instance.currentValue || 0),
+          0
+        );
 
         return {
           ...type,
           instanceCount,
           availableCount,
-          totalValue
+          totalValue,
         };
       });
 
       return typesWithCalculations;
     } catch (error: any) {
-      console.error('Error in getAssetTypes:', error);
+      console.error("Error in getAssetTypes:", error);
       throw error;
     }
   }
@@ -2259,7 +2538,7 @@ class Storage {
 
       return assetType[0];
     } catch (error: any) {
-      console.error('Error in createAssetType:', error);
+      console.error("Error in createAssetType:", error);
       throw error;
     }
   }
@@ -2274,7 +2553,7 @@ class Storage {
 
       return assetType[0];
     } catch (error: any) {
-      console.error('Error in updateAssetType:', error);
+      console.error("Error in updateAssetType:", error);
       throw error;
     }
   }
@@ -2289,7 +2568,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getInventoryItem (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getInventoryItem (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getInventoryItem",
         severity: "error",
@@ -2321,7 +2602,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createAssetInventoryMaintenanceRecord: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createAssetInventoryMaintenanceRecord: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createAssetInventoryMaintenanceRecord",
         severity: "error",
@@ -2330,7 +2613,9 @@ class Storage {
     }
   }
 
-  async getAssetInventoryMaintenanceRecords(instanceId: number): Promise<any[]> {
+  async getAssetInventoryMaintenanceRecords(
+    instanceId: number
+  ): Promise<any[]> {
     try {
       const records = await db.execute(sql`
         SELECT 
@@ -2350,7 +2635,10 @@ class Storage {
 
       return records;
     } catch (error: any) {
-      console.error(`Error in getAssetInventoryMaintenanceRecords (instanceId: ${instanceId}):`, error);
+      console.error(
+        `Error in getAssetInventoryMaintenanceRecords (instanceId: ${instanceId}):`,
+        error
+      );
       throw error;
     }
   }
@@ -2379,7 +2667,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createAssetInventoryMaintenanceFile: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createAssetInventoryMaintenanceFile: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createAssetInventoryMaintenanceFile",
         severity: "error",
@@ -2388,17 +2678,26 @@ class Storage {
     }
   }
 
-  async getAssetInventoryMaintenanceFiles(maintenanceRecordId: number): Promise<any[]> {
+  async getAssetInventoryMaintenanceFiles(
+    maintenanceRecordId: number
+  ): Promise<any[]> {
     try {
       const files = await db
         .select()
         .from(assetInventoryMaintenanceFiles)
-        .where(eq(assetInventoryMaintenanceFiles.maintenanceRecordId, maintenanceRecordId))
+        .where(
+          eq(
+            assetInventoryMaintenanceFiles.maintenanceRecordId,
+            maintenanceRecordId
+          )
+        )
         .orderBy(assetInventoryMaintenanceFiles.uploadedAt);
       return files;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getAssetInventoryMaintenanceFiles (maintenanceRecordId: ${maintenanceRecordId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getAssetInventoryMaintenanceFiles (maintenanceRecordId: ${maintenanceRecordId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getAssetInventoryMaintenanceFiles",
         severity: "error",
@@ -2414,7 +2713,9 @@ class Storage {
         .where(eq(assetInventoryMaintenanceFiles.id, fileId));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteAssetInventoryMaintenanceFile (fileId: ${fileId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteAssetInventoryMaintenanceFile (fileId: ${fileId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteAssetInventoryMaintenanceFile",
         severity: "error",
@@ -2433,7 +2734,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getAssetInventoryInstance (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getAssetInventoryInstance (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getAssetInventoryInstance",
         severity: "error",
@@ -2452,7 +2755,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateAssetInventoryInstance (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateAssetInventoryInstance (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateAssetInventoryInstance",
         severity: "error",
@@ -2496,13 +2801,16 @@ class Storage {
           updatedAt: assetInventoryInstances.updatedAt,
         })
         .from(assetInventoryInstances)
-        .leftJoin(assetTypes, eq(assetInventoryInstances.assetTypeId, assetTypes.id))
+        .leftJoin(
+          assetTypes,
+          eq(assetInventoryInstances.assetTypeId, assetTypes.id)
+        )
         .where(eq(assetInventoryInstances.isActive, true))
         .orderBy(assetTypes.name, assetInventoryInstances.instanceNumber);
 
       return instances;
     } catch (error: any) {
-      console.error('Error in getAllAssetInventoryInstances:', error);
+      console.error("Error in getAllAssetInventoryInstances:", error);
       throw error;
     }
   }
@@ -2529,20 +2837,24 @@ class Storage {
           createdAt: assetInventoryInstances.createdAt,
         })
         .from(assetInventoryInstances)
-        .where(and(
-          eq(assetInventoryInstances.assetTypeId, assetTypeId),
-          eq(assetInventoryInstances.isActive, true)
-        ))
+        .where(
+          and(
+            eq(assetInventoryInstances.assetTypeId, assetTypeId),
+            eq(assetInventoryInstances.isActive, true)
+          )
+        )
         .orderBy(assetInventoryInstances.instanceNumber);
 
       return instances;
     } catch (error: any) {
-      console.error('Error in getAssetInventoryInstancesByType:', error);
+      console.error("Error in getAssetInventoryInstancesByType:", error);
       throw error;
     }
   }
 
-  async getAvailableInstancesForAssignment(assetTypeId: number): Promise<any[]> {
+  async getAvailableInstancesForAssignment(
+    assetTypeId: number
+  ): Promise<any[]> {
     try {
       const instances = await db
         .select({
@@ -2556,57 +2868,68 @@ class Storage {
           location: assetInventoryInstances.location,
         })
         .from(assetInventoryInstances)
-        .where(and(
-          eq(assetInventoryInstances.assetTypeId, assetTypeId),
-          eq(assetInventoryInstances.status, 'available'),
-          eq(assetInventoryInstances.isActive, true)
-        ))
+        .where(
+          and(
+            eq(assetInventoryInstances.assetTypeId, assetTypeId),
+            eq(assetInventoryInstances.status, "available"),
+            eq(assetInventoryInstances.isActive, true)
+          )
+        )
         .orderBy(assetInventoryInstances.instanceNumber);
 
       return instances;
     } catch (error: any) {
-      console.error('Error in getAvailableInstancesForAssignment:', error);
+      console.error("Error in getAvailableInstancesForAssignment:", error);
       throw error;
     }
   }
 
   async createAssetInventoryInstance(data: any): Promise<any> {
     try {
-      const nextInstanceNumber = await this.getNextInstanceNumber(data.assetTypeId);
-      
+      const nextInstanceNumber = await this.getNextInstanceNumber(
+        data.assetTypeId
+      );
+
       // Clean up data before saving - convert empty strings to null for date fields and numeric values
       const cleanData = { ...data };
-      
+
       // Handle date fields - convert empty strings to null
-      ['acquisitionDate', 'warrantyExpiryDate', 'lastMaintenanceDate', 'nextMaintenanceDate'].forEach(field => {
-        if (cleanData[field] === '') {
+      [
+        "acquisitionDate",
+        "warrantyExpiryDate",
+        "lastMaintenanceDate",
+        "nextMaintenanceDate",
+      ].forEach((field) => {
+        if (cleanData[field] === "") {
           cleanData[field] = null;
-        } else if (cleanData[field] && typeof cleanData[field] === 'string') {
+        } else if (cleanData[field] && typeof cleanData[field] === "string") {
           // Ensure valid date format
           cleanData[field] = new Date(cleanData[field]);
         }
       });
 
       // Handle numeric fields - convert empty strings to null
-      ['acquisitionCost', 'currentValue', 'dailyRentalRate'].forEach(field => {
-        if (cleanData[field] === '') {
-          cleanData[field] = null;
-        } else if (cleanData[field] && typeof cleanData[field] === 'string') {
-          const numValue = parseFloat(cleanData[field]);
-          cleanData[field] = isNaN(numValue) ? null : numValue.toString();
+      ["acquisitionCost", "currentValue", "dailyRentalRate"].forEach(
+        (field) => {
+          if (cleanData[field] === "") {
+            cleanData[field] = null;
+          } else if (cleanData[field] && typeof cleanData[field] === "string") {
+            const numValue = parseFloat(cleanData[field]);
+            cleanData[field] = isNaN(numValue) ? null : numValue.toString();
+          }
         }
-      });
+      );
 
       // Handle assignment fields - convert "unassigned" to null
-      ['assignedProjectId', 'assignedToId'].forEach(field => {
-        if (cleanData[field] === 'unassigned' || cleanData[field] === '') {
+      ["assignedProjectId", "assignedToId"].forEach((field) => {
+        if (cleanData[field] === "unassigned" || cleanData[field] === "") {
           cleanData[field] = null;
-        } else if (cleanData[field] && typeof cleanData[field] === 'string') {
+        } else if (cleanData[field] && typeof cleanData[field] === "string") {
           const numValue = parseInt(cleanData[field]);
           cleanData[field] = isNaN(numValue) ? null : numValue;
         }
       });
-      
+
       const instance = await db
         .insert(assetInventoryInstances)
         .values({
@@ -2620,9 +2943,11 @@ class Storage {
 
       return instance[0];
     } catch (error: any) {
-      console.error('Error in createAssetInventoryInstance:', error);
+      console.error("Error in createAssetInventoryInstance:", error);
       await this.createErrorLog({
-        message: `Error in createAssetInventoryInstance: ` + (error?.message || "Unknown error"),
+        message:
+          `Error in createAssetInventoryInstance: ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createAssetInventoryInstance",
         severity: "error",
@@ -2641,32 +2966,39 @@ class Storage {
 
       // Clean up data before saving - convert empty strings to null for date fields and numeric values
       const cleanData = { ...data };
-      
+
       // Handle date fields - convert empty strings to null
-      ['acquisitionDate', 'warrantyExpiryDate', 'lastMaintenanceDate', 'nextMaintenanceDate'].forEach(field => {
-        if (cleanData[field] === '') {
+      [
+        "acquisitionDate",
+        "warrantyExpiryDate",
+        "lastMaintenanceDate",
+        "nextMaintenanceDate",
+      ].forEach((field) => {
+        if (cleanData[field] === "") {
           cleanData[field] = null;
-        } else if (cleanData[field] && typeof cleanData[field] === 'string') {
+        } else if (cleanData[field] && typeof cleanData[field] === "string") {
           // Ensure valid date format
           cleanData[field] = new Date(cleanData[field]);
         }
       });
 
       // Handle numeric fields - convert empty strings to null
-      ['acquisitionCost', 'currentValue', 'dailyRentalRate'].forEach(field => {
-        if (cleanData[field] === '') {
-          cleanData[field] = null;
-        } else if (cleanData[field] && typeof cleanData[field] === 'string') {
-          const numValue = parseFloat(cleanData[field]);
-          cleanData[field] = isNaN(numValue) ? null : numValue.toString();
+      ["acquisitionCost", "currentValue", "dailyRentalRate"].forEach(
+        (field) => {
+          if (cleanData[field] === "") {
+            cleanData[field] = null;
+          } else if (cleanData[field] && typeof cleanData[field] === "string") {
+            const numValue = parseFloat(cleanData[field]);
+            cleanData[field] = isNaN(numValue) ? null : numValue.toString();
+          }
         }
-      });
+      );
 
       // Handle assignment fields - convert "unassigned" to null
-      ['assignedProjectId', 'assignedToId'].forEach(field => {
-        if (cleanData[field] === 'unassigned' || cleanData[field] === '') {
+      ["assignedProjectId", "assignedToId"].forEach((field) => {
+        if (cleanData[field] === "unassigned" || cleanData[field] === "") {
           cleanData[field] = null;
-        } else if (cleanData[field] && typeof cleanData[field] === 'string') {
+        } else if (cleanData[field] && typeof cleanData[field] === "string") {
           const numValue = parseInt(cleanData[field]);
           cleanData[field] = isNaN(numValue) ? null : numValue;
         }
@@ -2681,16 +3013,21 @@ class Storage {
       // Update quantities for both old and new asset types if changed
       if (oldInstance[0]) {
         await this.updateAssetTypeQuantities(oldInstance[0].assetTypeId);
-        if (cleanData.assetTypeId && cleanData.assetTypeId !== oldInstance[0].assetTypeId) {
+        if (
+          cleanData.assetTypeId &&
+          cleanData.assetTypeId !== oldInstance[0].assetTypeId
+        ) {
           await this.updateAssetTypeQuantities(cleanData.assetTypeId);
         }
       }
 
       return instance[0];
     } catch (error: any) {
-      console.error('Error in updateAssetInventoryInstance:', error);
+      console.error("Error in updateAssetInventoryInstance:", error);
       await this.createErrorLog({
-        message: `Error in updateAssetInventoryInstance (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateAssetInventoryInstance (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateAssetInventoryInstance",
         severity: "error",
@@ -2708,7 +3045,7 @@ class Storage {
 
       return (maxInstance[0]?.count || 0) + 1;
     } catch (error: any) {
-      console.error('Error in getNextInstanceNumber:', error);
+      console.error("Error in getNextInstanceNumber:", error);
       return 1;
     }
   }
@@ -2723,10 +3060,12 @@ class Storage {
           maintenance: sql<number>`COUNT(*) FILTER (WHERE status = 'maintenance')`,
         })
         .from(assetInventoryInstances)
-        .where(and(
-          eq(assetInventoryInstances.assetTypeId, assetTypeId),
-          eq(assetInventoryInstances.isActive, true)
-        ));
+        .where(
+          and(
+            eq(assetInventoryInstances.assetTypeId, assetTypeId),
+            eq(assetInventoryInstances.isActive, true)
+          )
+        );
 
       const count = counts[0];
       await db
@@ -2739,7 +3078,7 @@ class Storage {
         })
         .where(eq(assetTypes.id, assetTypeId));
     } catch (error: any) {
-      console.error('Error in updateAssetTypeQuantities:', error);
+      console.error("Error in updateAssetTypeQuantities:", error);
     }
   }
 
@@ -2773,10 +3112,12 @@ class Storage {
         ORDER BY amr.maintenance_date DESC
       `);
 
-      return Array.isArray(result) ? result : (result.rows || []);
+      return Array.isArray(result) ? result : result.rows || [];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getAllAssetMaintenanceRecords: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getAllAssetMaintenanceRecords: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getAllAssetMaintenanceRecords",
         severity: "error",
@@ -2786,7 +3127,9 @@ class Storage {
   }
 
   // Payment file methods
-  async createPaymentFile(fileData: CreatePaymentFileData): Promise<PaymentFile> {
+  async createPaymentFile(
+    fileData: CreatePaymentFileData
+  ): Promise<PaymentFile> {
     try {
       const result = await db
         .insert(paymentFiles)
@@ -2802,7 +3145,8 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createPaymentFile: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPaymentFile: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPaymentFile",
         severity: "error",
@@ -2822,7 +3166,9 @@ class Storage {
       return files;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPaymentFiles (paymentId: ${paymentId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPaymentFiles (paymentId: ${paymentId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPaymentFiles",
         severity: "error",
@@ -2839,7 +3185,9 @@ class Storage {
       return result.rowCount && result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deletePaymentFile (fileId: ${fileId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deletePaymentFile (fileId: ${fileId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deletePaymentFile",
         severity: "error",
@@ -2857,7 +3205,9 @@ class Storage {
         .where(eq(dailyActivities.projectId, projectId));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getDailyActivities (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getDailyActivities (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getDailyActivities",
         severity: "error",
@@ -2883,14 +3233,16 @@ class Storage {
         db
           .select({ count: sql<number>`count(*)` })
           .from(dailyActivities)
-          .where(eq(dailyActivities.projectId, projectId))
+          .where(eq(dailyActivities.projectId, projectId)),
       ]);
 
       const total = Number(countResult[0]?.count || 0);
       return { data, total };
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getDailyActivitiesPaginated (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getDailyActivitiesPaginated (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getDailyActivitiesPaginated",
         severity: "error",
@@ -2900,7 +3252,7 @@ class Storage {
   }
 
   async createDailyActivity(
-    activityData: InsertDailyActivity,
+    activityData: InsertDailyActivity
   ): Promise<DailyActivity> {
     try {
       const result = await db
@@ -2910,7 +3262,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createDailyActivity: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createDailyActivity: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createDailyActivity",
         severity: "error",
@@ -2920,9 +3274,17 @@ class Storage {
   }
 
   // Planned Activities methods
-  async getPlannedActivities(projectId: number): Promise<PlannedActivityItem[]> {
+  async getPlannedActivities(
+    projectId: number
+  ): Promise<PlannedActivityItem[]> {
     try {
-      const result: Array<{ id: number; location: string | null; tasks: string | null; date: Date; remarks: string | null }> = await db
+      const result: Array<{
+        id: number;
+        location: string | null;
+        tasks: string | null;
+        date: Date;
+        remarks: string | null;
+      }> = await db
         .select({
           id: dailyActivities.id,
           location: dailyActivities.location,
@@ -2935,20 +3297,22 @@ class Storage {
           and(
             eq(dailyActivities.projectId, projectId),
             isNotNull(dailyActivities.plannedTasks),
-            ne(dailyActivities.plannedTasks, '')
+            ne(dailyActivities.plannedTasks, "")
           )
         )
         .orderBy(desc(dailyActivities.date));
 
       return result.map((row) => ({
-        location: row.location || '',
-        tasks: row.tasks || '',
-        date: row.date.toISOString().split('T')[0],
-        remarks: row.remarks || null
+        location: row.location || "",
+        tasks: row.tasks || "",
+        date: row.date.toISOString().split("T")[0],
+        remarks: row.remarks || null,
       }));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPlannedActivities (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPlannedActivities (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPlannedActivities",
         severity: "error",
@@ -2966,7 +3330,7 @@ class Storage {
       const whereCondition = and(
         eq(dailyActivities.projectId, projectId),
         isNotNull(dailyActivities.plannedTasks),
-        ne(dailyActivities.plannedTasks, '')
+        ne(dailyActivities.plannedTasks, "")
       );
 
       const [result, countResult] = await Promise.all([
@@ -2986,21 +3350,23 @@ class Storage {
         db
           .select({ count: sql<number>`count(*)` })
           .from(dailyActivities)
-          .where(whereCondition)
+          .where(whereCondition),
       ]);
 
       const data = result.map((row) => ({
-        location: row.location || '',
-        tasks: row.tasks || '',
-        date: row.date.toISOString().split('T')[0],
-        remarks: row.remarks || null
+        location: row.location || "",
+        tasks: row.tasks || "",
+        date: row.date.toISOString().split("T")[0],
+        remarks: row.remarks || null,
       }));
 
       const total = Number(countResult[0]?.count || 0);
       return { data, total };
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPlannedActivitiesPaginated (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPlannedActivitiesPaginated (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPlannedActivitiesPaginated",
         severity: "error",
@@ -3015,16 +3381,16 @@ class Storage {
   ): Promise<DailyActivity[]> {
     try {
       const results: DailyActivity[] = [];
-      
+
       for (const activity of activities) {
         // Create a daily activity entry with planned tasks
         const activityData: InsertDailyActivity = {
           projectId,
           date: new Date(activity.date),
-          location: activity.location || '',
-          completedTasks: '', // Empty for planned activities
+          location: activity.location || "",
+          completedTasks: "", // Empty for planned activities
           plannedTasks: activity.tasks,
-          remarks: 'Planned activity',
+          remarks: "Planned activity",
           photos: [], // Assuming photos is part of InsertDailyActivity and can be an empty array
         };
 
@@ -3032,16 +3398,18 @@ class Storage {
           .insert(dailyActivities)
           .values(activityData)
           .returning();
-        
+
         if (resultItem[0]) {
           results.push(resultItem[0]);
         }
       }
-      
+
       return results;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in savePlannedActivities (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in savePlannedActivities (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "savePlannedActivities",
         severity: "error",
@@ -3074,8 +3442,14 @@ class Storage {
           `,
         })
         .from(projectConsumables)
-        .leftJoin(projectConsumableItems, eq(projectConsumables.id, projectConsumableItems.consumableId))
-        .leftJoin(inventoryItems, eq(projectConsumableItems.inventoryItemId, inventoryItems.id))
+        .leftJoin(
+          projectConsumableItems,
+          eq(projectConsumables.id, projectConsumableItems.consumableId)
+        )
+        .leftJoin(
+          inventoryItems,
+          eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
+        )
         .where(eq(projectConsumables.projectId, projectId))
         .groupBy(
           projectConsumables.id,
@@ -3126,7 +3500,9 @@ class Storage {
         // Get inventory item details
         const inventoryItem = await this.getInventoryItem(item.inventoryItemId);
         if (!inventoryItem) {
-          throw new Error(`Inventory item with ID ${item.inventoryItemId} not found`);
+          throw new Error(
+            `Inventory item with ID ${item.inventoryItemId} not found`
+          );
         }
 
         // Check if there's enough stock
@@ -3202,7 +3578,7 @@ class Storage {
   // Supplier-Inventory Item mapping methods
   async getSupplierInventoryItems(
     inventoryItemId?: number,
-    supplierId?: number,
+    supplierId?: number
   ): Promise<SupplierInventoryItem[]> {
     try {
       let query = db.select().from(supplierInventoryItems);
@@ -3211,12 +3587,12 @@ class Storage {
         query = query.where(
           and(
             eq(supplierInventoryItems.inventoryItemId, inventoryItemId),
-            eq(supplierInventoryItems.supplierId, supplierId),
-          ),
+            eq(supplierInventoryItems.supplierId, supplierId)
+          )
         );
       } else if (inventoryItemId) {
         query = query.where(
-          eq(supplierInventoryItems.inventoryItemId, inventoryItemId),
+          eq(supplierInventoryItems.inventoryItemId, inventoryItemId)
         );
       } else if (supplierId) {
         query = query.where(eq(supplierInventoryItems.supplierId, supplierId));
@@ -3225,7 +3601,9 @@ class Storage {
       return await query;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getSupplierInventoryItems: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getSupplierInventoryItems: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSupplierInventoryItems",
         severity: "error",
@@ -3235,7 +3613,7 @@ class Storage {
   }
 
   async createSupplierInventoryItem(
-    data: InsertSupplierInventoryItem,
+    data: InsertSupplierInventoryItem
   ): Promise<SupplierInventoryItem> {
     try {
       console.log("Storage: Creating supplier inventory item with data:", data);
@@ -3268,13 +3646,15 @@ class Storage {
         .returning();
       console.log(
         "Storage: Successfully created supplier inventory item:",
-        result[0],
+        result[0]
       );
       return result[0];
     } catch (error: any) {
       console.error("Original error in createSupplierInventoryItem:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createSupplierInventoryItem: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createSupplierInventoryItem: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createSupplierInventoryItem",
         severity: "error",
@@ -3284,7 +3664,7 @@ class Storage {
   }
 
   async deleteSupplierInventoryItemsByInventoryId(
-    inventoryItemId: number,
+    inventoryItemId: number
   ): Promise<boolean> {
     try {
       const result = await db
@@ -3293,7 +3673,9 @@ class Storage {
       return true; // Original method did not check result.rowCount, so preserving that behavior.
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteSupplierInventoryItemsByInventoryId (inventoryItemId: ${inventoryItemId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteSupplierInventoryItemsByInventoryId (inventoryItemId: ${inventoryItemId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteSupplierInventoryItemsByInventoryId",
         severity: "error",
@@ -3304,7 +3686,7 @@ class Storage {
 
   async updateSupplierInventoryItem(
     id: number,
-    data: Partial<InsertSupplierInventoryItem>,
+    data: Partial<InsertSupplierInventoryItem>
   ): Promise<SupplierInventoryItem | undefined> {
     try {
       const result = await db
@@ -3315,7 +3697,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateSupplierInventoryItem (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateSupplierInventoryItem (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateSupplierInventoryItem",
         severity: "error",
@@ -3332,7 +3716,9 @@ class Storage {
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteSupplierInventoryItem (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteSupplierInventoryItem (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteSupplierInventoryItem",
         severity: "error",
@@ -3342,7 +3728,7 @@ class Storage {
   }
 
   async getSupplierInventoryItemsBySupplierId(
-    supplierId: number,
+    supplierId: number
   ): Promise<SupplierInventoryItem[]> {
     try {
       return await db
@@ -3351,7 +3737,9 @@ class Storage {
         .where(eq(supplierInventoryItems.supplierId, supplierId));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getSupplierInventoryItemsBySupplierId (supplierId: ${supplierId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getSupplierInventoryItemsBySupplierId (supplierId: ${supplierId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSupplierInventoryItemsBySupplierId",
         severity: "error",
@@ -3381,14 +3769,16 @@ class Storage {
         .from(inventoryItems)
         .innerJoin(
           supplierInventoryItems,
-          eq(inventoryItems.id, supplierInventoryItems.inventoryItemId),
+          eq(inventoryItems.id, supplierInventoryItems.inventoryItemId)
         )
         .where(eq(supplierInventoryItems.supplierId, supplierId));
 
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProductsBySupplier (supplierId: ${supplierId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProductsBySupplier (supplierId: ${supplierId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProductsBySupplier",
         severity: "error",
@@ -3432,7 +3822,7 @@ class Storage {
         .from(invoicePayments)
         .leftJoin(
           salesInvoices,
-          eq(invoicePayments.invoiceId, salesInvoices.id),
+          eq(invoicePayments.invoiceId, salesInvoices.id)
         )
         .leftJoin(customers, eq(salesInvoices.customerId, customers.id))
         .where(eq(salesInvoices.projectId, projectId))
@@ -3458,7 +3848,9 @@ class Storage {
       };
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProjectRevenue (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProjectRevenue (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectRevenue",
         severity: "error",
@@ -3477,7 +3869,7 @@ class Storage {
         .from(invoicePayments)
         .leftJoin(
           salesInvoices,
-          eq(invoicePayments.invoiceId, salesInvoices.id),
+          eq(invoicePayments.invoiceId, salesInvoices.id)
         )
         .where(eq(salesInvoices.projectId, projectId));
 
@@ -3492,12 +3884,16 @@ class Storage {
       });
 
       console.log(
-        `Updated project ${projectId} total revenue to ${totalRevenue.toFixed(2)}`,
+        `Updated project ${projectId} total revenue to ${totalRevenue.toFixed(
+          2
+        )}`
       );
     } catch (error: any) {
       console.error("Original error in updateProjectRevenue:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updateProjectRevenue (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateProjectRevenue (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateProjectRevenue",
         severity: "error",
@@ -3567,12 +3963,16 @@ class Storage {
       }
 
       console.log(
-        `Updated invoice ${invoiceId} paid amount to ${totalPaid.toFixed(2)} with status ${status}`,
+        `Updated invoice ${invoiceId} paid amount to ${totalPaid.toFixed(
+          2
+        )} with status ${status}`
       );
     } catch (error: any) {
       console.error("Original error in updateInvoicePaidAmount:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updateInvoicePaidAmount (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateInvoicePaidAmount (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateInvoicePaidAmount",
         severity: "error",
@@ -3591,7 +3991,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getCreditNote (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getCreditNote (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getCreditNote",
         severity: "error",
@@ -3600,7 +4002,9 @@ class Storage {
     }
   }
 
-  async createCreditNote(creditNoteData: InsertCreditNote): Promise<CreditNote> {
+  async createCreditNote(
+    creditNoteData: InsertCreditNote
+  ): Promise<CreditNote> {
     try {
       console.log("Creating credit note with data:", creditNoteData);
 
@@ -3615,9 +4019,17 @@ class Storage {
         ...validCreditNoteData,
         creditNoteNumber, // Generated above
         // Ensure date fields are correctly formatted if they are part of InsertCreditNote and are strings
-        creditNoteDate: validCreditNoteData.creditNoteDate ? new Date(validCreditNoteData.creditNoteDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        creditNoteDate: validCreditNoteData.creditNoteDate
+          ? new Date(validCreditNoteData.creditNoteDate)
+              .toISOString()
+              .split("T")[0]
+          : new Date().toISOString().split("T")[0],
         // items should be handled by the schema type (e.g. JSON stringified if needed by Drizzle)
-        items: validCreditNoteData.items ? (typeof validCreditNoteData.items === 'string' ? validCreditNoteData.items : JSON.stringify(validCreditNoteData.items)) : JSON.stringify([]),
+        items: validCreditNoteData.items
+          ? typeof validCreditNoteData.items === "string"
+            ? validCreditNoteData.items
+            : JSON.stringify(validCreditNoteData.items)
+          : JSON.stringify([]),
       };
 
       const result: CreditNote[] = await db
@@ -3630,22 +4042,30 @@ class Storage {
 
       if (!createdCreditNote || !createdCreditNote.id) {
         throw new Error(
-          "Failed to create credit note - no credit note record returned",
+          "Failed to create credit note - no credit note record returned"
         );
       }
 
       // Get related invoice and customer information for GL entries
       // Ensure salesInvoiceId and customerId are numbers if they are not null/undefined
-      const invoice = await this.getSalesInvoice(createdCreditNote.salesInvoiceId as number);
-      const customer = await this.getCustomer(createdCreditNote.customerId as number);
-      
+      const invoice = await this.getSalesInvoice(
+        createdCreditNote.salesInvoiceId as number
+      );
+      const customer = await this.getCustomer(
+        createdCreditNote.customerId as number
+      );
+
       console.log("Retrieved invoice:", invoice);
       console.log("Retrieved customer:", customer);
 
       // Only create GL entries if status is "issued"
       if (createdCreditNote.status === "issued") {
         console.log(
-          `Creating double-entry GL records for credit note ${createdCreditNote.id} - ${createdCreditNote.creditNoteNumber || "N/A"} - Amount: ${createdCreditNote.totalAmount}`,
+          `Creating double-entry GL records for credit note ${
+            createdCreditNote.id
+          } - ${createdCreditNote.creditNoteNumber || "N/A"} - Amount: ${
+            createdCreditNote.totalAmount
+          }`
         );
 
         // Create double-entry accounting records for credit note
@@ -3657,7 +4077,9 @@ class Storage {
             referenceType: "credit_note",
             referenceId: createdCreditNote.id,
             accountName: "Sales Returns and Allowances",
-            description: `Credit Note: ${createdCreditNote.creditNoteNumber || "N/A"} for Invoice: ${invoice?.invoiceNumber || "N/A"}`,
+            description: `Credit Note: ${
+              createdCreditNote.creditNoteNumber || "N/A"
+            } for Invoice: ${invoice?.invoiceNumber || "N/A"}`,
             debitAmount: createdCreditNote.totalAmount as string,
             creditAmount: "0",
             entityId: createdCreditNote.customerId as number,
@@ -3672,12 +4094,16 @@ class Storage {
 
           console.log(
             `Successfully created debit entry (Sales Returns and Allowances):`,
-            debitEntry,
+            debitEntry
           );
         } catch (debitError) {
           console.error("Error creating debit GL entry:", debitError);
           throw new Error(
-            `Failed to create debit GL entry: ${debitError instanceof Error ? debitError.message : String(debitError)}`,
+            `Failed to create debit GL entry: ${
+              debitError instanceof Error
+                ? debitError.message
+                : String(debitError)
+            }`
           );
         }
 
@@ -3688,7 +4114,9 @@ class Storage {
             referenceType: "credit_note",
             referenceId: createdCreditNote.id,
             accountName: "Accounts Receivable",
-            description: `Credit Note: ${createdCreditNote.creditNoteNumber || "N/A"} for Invoice: ${invoice?.invoiceNumber || "N/A"}`,
+            description: `Credit Note: ${
+              createdCreditNote.creditNoteNumber || "N/A"
+            } for Invoice: ${invoice?.invoiceNumber || "N/A"}`,
             debitAmount: "0",
             creditAmount: createdCreditNote.totalAmount as string,
             entityId: createdCreditNote.customerId as number,
@@ -3703,25 +4131,35 @@ class Storage {
 
           console.log(
             `Successfully created credit entry (Accounts Receivable):`,
-            creditEntry,
+            creditEntry
           );
         } catch (creditError) {
           console.error("Error creating credit GL entry:", creditError);
           throw new Error(
-            `Failed to create credit GL entry: ${creditError instanceof Error ? creditError.message : String(creditError)}`,
+            `Failed to create credit GL entry: ${
+              creditError instanceof Error
+                ? creditError.message
+                : String(creditError)
+            }`
           );
         }
 
         console.log(
-          `Successfully created 2 GL entries for credit note ${createdCreditNote.id}`,
+          `Successfully created 2 GL entries for credit note ${createdCreditNote.id}`
         );
 
         // Update the related sales invoice
         if (invoice) {
-          await this.updateSalesInvoiceFromCreditNote(invoice.id, parseFloat(createdCreditNote.totalAmount as string));
-          
+          await this.updateSalesInvoiceFromCreditNote(
+            invoice.id,
+            parseFloat(createdCreditNote.totalAmount as string)
+          );
+
           // Create an invoice payment entry to show credit note application in payment history
-          await this.createInvoicePaymentForCreditNote(invoice.id, createdCreditNote);
+          await this.createInvoicePaymentForCreditNote(
+            invoice.id,
+            createdCreditNote
+          );
         }
       }
 
@@ -3729,9 +4167,12 @@ class Storage {
     } catch (error: any) {
       // Preserve existing console.error and specific error logging structure
       console.error("Error creating credit note:", error);
-      if (!error.isLogged) { // Avoid double logging if error is already from createErrorLog
+      if (!error.isLogged) {
+        // Avoid double logging if error is already from createErrorLog
         await this.createErrorLog({
-          message: `Error in createCreditNote: ${error?.message || String(error)}. Context: ${JSON.stringify(creditNoteData)}`,
+          message: `Error in createCreditNote: ${
+            error?.message || String(error)
+          }. Context: ${JSON.stringify(creditNoteData)}`,
           stack: error?.stack,
           url: "server/storage.ts",
           severity: "error",
@@ -3744,7 +4185,7 @@ class Storage {
 
   async updateCreditNote(
     id: number,
-    creditNoteData: Partial<InsertCreditNote>,
+    creditNoteData: Partial<InsertCreditNote>
   ): Promise<CreditNote | undefined> {
     try {
       // Get the current credit note before update
@@ -3760,10 +4201,15 @@ class Storage {
 
       // Ensure date fields are correctly formatted
       if (validCreditNoteData.creditNoteDate) {
-        updateData.creditNoteDate = new Date(validCreditNoteData.creditNoteDate).toISOString().split("T")[0];
+        updateData.creditNoteDate = new Date(validCreditNoteData.creditNoteDate)
+          .toISOString()
+          .split("T")[0];
       }
       // Handle items: stringify if it's an object and the field expects a string
-      if (validCreditNoteData.items && typeof validCreditNoteData.items !== 'string') {
+      if (
+        validCreditNoteData.items &&
+        typeof validCreditNoteData.items !== "string"
+      ) {
         updateData.items = JSON.stringify(validCreditNoteData.items);
       }
 
@@ -3783,8 +4229,12 @@ class Storage {
       ) {
         try {
           // Get related invoice and customer information
-          const invoice = await this.getSalesInvoice(updatedCreditNote.salesInvoiceId as number);
-          const customer = await this.getCustomer(updatedCreditNote.customerId as number);
+          const invoice = await this.getSalesInvoice(
+            updatedCreditNote.salesInvoiceId as number
+          );
+          const customer = await this.getCustomer(
+            updatedCreditNote.customerId as number
+          );
 
           if (customer) {
             const transactionDate =
@@ -3799,7 +4249,9 @@ class Storage {
               referenceType: "credit_note",
               referenceId: updatedCreditNote.id,
               accountName: "Sales Returns and Allowances",
-              description: `Credit Note: ${updatedCreditNote.creditNoteNumber || "N/A"} for Invoice: ${invoice?.invoiceNumber || "N/A"}`,
+              description: `Credit Note: ${
+                updatedCreditNote.creditNoteNumber || "N/A"
+              } for Invoice: ${invoice?.invoiceNumber || "N/A"}`,
               debitAmount: updatedCreditNote.totalAmount as string,
               creditAmount: "0",
               entityId: customer.id,
@@ -3816,7 +4268,9 @@ class Storage {
               referenceType: "credit_note",
               referenceId: updatedCreditNote.id,
               accountName: "Accounts Receivable",
-              description: `Credit Note: ${updatedCreditNote.creditNoteNumber || "N/A"} for Invoice: ${invoice?.invoiceNumber || "N/A"}`,
+              description: `Credit Note: ${
+                updatedCreditNote.creditNoteNumber || "N/A"
+              } for Invoice: ${invoice?.invoiceNumber || "N/A"}`,
               debitAmount: "0",
               creditAmount: updatedCreditNote.totalAmount as string,
               entityId: customer.id,
@@ -3828,15 +4282,21 @@ class Storage {
             });
 
             console.log(
-              `Created double-entry GL records for credit note ${updatedCreditNote.id}`,
+              `Created double-entry GL records for credit note ${updatedCreditNote.id}`
             );
 
             // Update the related sales invoice
             if (invoice) {
-              await this.updateSalesInvoiceFromCreditNote(invoice.id, parseFloat(updatedCreditNote.totalAmount as string));
-              
+              await this.updateSalesInvoiceFromCreditNote(
+                invoice.id,
+                parseFloat(updatedCreditNote.totalAmount as string)
+              );
+
               // Create an invoice payment entry to show credit note application in payment history
-              await this.createInvoicePaymentForCreditNote(invoice.id, updatedCreditNote);
+              await this.createInvoicePaymentForCreditNote(
+                invoice.id,
+                updatedCreditNote
+              );
             }
           }
         } catch (glError) {
@@ -3849,7 +4309,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updateCreditNote:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updateCreditNote (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateCreditNote (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateCreditNote",
         severity: "error",
@@ -3882,13 +4344,17 @@ class Storage {
         })
         .from(creditNotes)
         .leftJoin(customers, eq(creditNotes.customerId, customers.id))
-        .leftJoin(salesInvoices, eq(creditNotes.salesInvoiceId, salesInvoices.id))
+        .leftJoin(
+          salesInvoices,
+          eq(creditNotes.salesInvoiceId, salesInvoices.id)
+        )
         .orderBy(desc(creditNotes.createdAt));
 
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getCreditNotes: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getCreditNotes: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getCreditNotes",
         severity: "error",
@@ -3897,7 +4363,10 @@ class Storage {
     }
   }
 
-  async createInvoicePaymentForCreditNote(invoiceId: number, creditNote: CreditNote): Promise<InvoicePayment> {
+  async createInvoicePaymentForCreditNote(
+    invoiceId: number,
+    creditNote: CreditNote
+  ): Promise<InvoicePayment> {
     try {
       const paymentData: InsertInvoicePayment = {
         invoiceId: invoiceId,
@@ -3905,7 +4374,7 @@ class Storage {
         paymentDate: creditNote.creditNoteDate,
         paymentMethod: "Credit Note",
         referenceNumber: creditNote.creditNoteNumber,
-        notes: `Credit note applied: ${creditNote.reason || 'N/A'}`,
+        notes: `Credit note applied: ${creditNote.reason || "N/A"}`,
         paymentType: "credit_note",
         creditNoteId: creditNote.id,
         // recordedBy is optional in InsertInvoicePayment based on schema (nullable, no default)
@@ -3916,7 +4385,9 @@ class Storage {
       return payment;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in createInvoicePaymentForCreditNote (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in createInvoicePaymentForCreditNote (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createInvoicePaymentForCreditNote",
         severity: "error",
@@ -3925,7 +4396,10 @@ class Storage {
     }
   }
 
-  async updateSalesInvoiceFromCreditNote(invoiceId: number, creditNoteAmount: number): Promise<SalesInvoice | undefined> {
+  async updateSalesInvoiceFromCreditNote(
+    invoiceId: number,
+    creditNoteAmount: number
+  ): Promise<SalesInvoice | undefined> {
     try {
       const invoice = await this.getSalesInvoice(invoiceId);
       if (!invoice) {
@@ -3942,7 +4416,9 @@ class Storage {
       return this.getSalesInvoice(invoiceId);
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateSalesInvoiceFromCreditNote (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateSalesInvoiceFromCreditNote (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateSalesInvoiceFromCreditNote",
         severity: "error",
@@ -3961,7 +4437,9 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getInvoicePayments (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getInvoicePayments (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getInvoicePayments",
         severity: "error",
@@ -3971,7 +4449,7 @@ class Storage {
   }
 
   async createInvoicePayment(
-    paymentData: InsertInvoicePayment,
+    paymentData: InsertInvoicePayment
   ): Promise<InvoicePayment> {
     try {
       console.log("Creating invoice payment with data:", paymentData);
@@ -3986,7 +4464,7 @@ class Storage {
 
       if (!payment || !payment.id) {
         throw new Error(
-          "Failed to create payment - no payment record returned",
+          "Failed to create payment - no payment record returned"
         );
       }
 
@@ -4002,7 +4480,11 @@ class Storage {
       console.log("Retrieved customer:", customer);
 
       console.log(
-        `Creating double-entry GL records for payment ${payment.id} - Invoice: ${invoice.invoiceNumber || "N/A"} - Amount: ${payment.amount}`,
+        `Creating double-entry GL records for payment ${
+          payment.id
+        } - Invoice: ${invoice.invoiceNumber || "N/A"} - Amount: ${
+          payment.amount
+        }`
       );
 
       // Create double-entry accounting records for payment
@@ -4014,7 +4496,9 @@ class Storage {
           referenceType: "payment",
           referenceId: payment.id,
           accountName: "Cash/Bank",
-          description: `Payment received for Invoice: ${invoice.invoiceNumber || "N/A"}`,
+          description: `Payment received for Invoice: ${
+            invoice.invoiceNumber || "N/A"
+          }`,
           debitAmount: payment.amount,
           creditAmount: "0",
           entityId: invoice.customerId,
@@ -4028,12 +4512,16 @@ class Storage {
 
         console.log(
           `Successfully created debit entry (Cash/Bank):`,
-          debitEntry,
+          debitEntry
         );
       } catch (debitError) {
         console.error("Error creating debit GL entry:", debitError);
         throw new Error(
-          `Failed to create debit GL entry: ${debitError instanceof Error ? debitError.message : String(debitError)}`,
+          `Failed to create debit GL entry: ${
+            debitError instanceof Error
+              ? debitError.message
+              : String(debitError)
+          }`
         );
       }
 
@@ -4044,7 +4532,9 @@ class Storage {
           referenceType: "payment",
           referenceId: payment.id,
           accountName: "Accounts Receivable",
-          description: `Payment received for Invoice: ${invoice.invoiceNumber || "N/A"}`,
+          description: `Payment received for Invoice: ${
+            invoice.invoiceNumber || "N/A"
+          }`,
           debitAmount: "0",
           creditAmount: payment.amount,
           entityId: invoice.customerId,
@@ -4058,17 +4548,21 @@ class Storage {
 
         console.log(
           `Successfully created credit entry (Accounts Receivable):`,
-          creditEntry,
+          creditEntry
         );
       } catch (creditError) {
         console.error("Error creating credit GL entry:", creditError);
         throw new Error(
-          `Failed to create credit GL entry: ${creditError instanceof Error ? creditError.message : String(creditError)}`,
+          `Failed to create credit GL entry: ${
+            creditError instanceof Error
+              ? creditError.message
+              : String(creditError)
+          }`
         );
       }
 
       console.log(
-        `Successfully created 2 GL entries for payment ${payment.id}`,
+        `Successfully created 2 GL entries for payment ${payment.id}`
       );
 
       // Update invoice paid amount and project revenue
@@ -4078,9 +4572,12 @@ class Storage {
     } catch (error: any) {
       // Preserve existing console.error and specific error logging structure
       console.error("Error creating invoice payment:", error);
-      if (!error.isLogged) { // Avoid double logging
+      if (!error.isLogged) {
+        // Avoid double logging
         await this.createErrorLog({
-          message: `Error in createInvoicePayment: ${error?.message || String(error)}. Context: ${JSON.stringify(paymentData)}`,
+          message: `Error in createInvoicePayment: ${
+            error?.message || String(error)
+          }. Context: ${JSON.stringify(paymentData)}`,
           stack: error?.stack,
           url: "server/storage.ts",
           severity: "error",
@@ -4102,7 +4599,7 @@ class Storage {
       archived?: boolean;
       startDate?: string;
       endDate?: string;
-    },
+    }
   ): Promise<PaginatedResponse<SalesQuotationWithCustomerName>> {
     try {
       const queryConditions = [];
@@ -4111,18 +4608,20 @@ class Storage {
         queryConditions.push(
           or(
             like(salesQuotations.quotationNumber, `%${filters.search}%`),
-            like(customers.name, `%${filters.search}%`),
-          ),
+            like(customers.name, `%${filters.search}%`)
+          )
         );
       }
       // Customer filter
       if (filters?.customerId) {
-        queryConditions.push(eq(salesQuotations.customerId, filters.customerId));
+        queryConditions.push(
+          eq(salesQuotations.customerId, filters.customerId)
+        );
       }
       // Date range filters
       if (filters?.startDate) {
         queryConditions.push(
-          gte(salesQuotations.createdDate, new Date(filters.startDate)),
+          gte(salesQuotations.createdDate, new Date(filters.startDate))
         );
       }
       if (filters?.endDate) {
@@ -4139,7 +4638,8 @@ class Storage {
         queryConditions.push(eq(salesQuotations.isArchived, filters.archived));
       }
 
-      const finalConditions = queryConditions.length > 0 ? and(...queryConditions) : undefined;
+      const finalConditions =
+        queryConditions.length > 0 ? and(...queryConditions) : undefined;
 
       const dataQueryBuilder = db
         .select({
@@ -4181,7 +4681,9 @@ class Storage {
       );
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getSalesQuotationsPaginated: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getSalesQuotationsPaginated: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSalesQuotationsPaginated",
         severity: "error",
@@ -4200,7 +4702,7 @@ class Storage {
       endDate?: string;
       customerId?: number;
       projectId?: number;
-    },
+    }
   ): Promise<{
     data: any[];
     pagination: {
@@ -4218,8 +4720,8 @@ class Storage {
             or(
               eq(salesInvoices.status, "unpaid"),
               eq(salesInvoices.status, "partially_paid"),
-              eq(salesInvoices.status, "overdue"),
-            ),
+              eq(salesInvoices.status, "overdue")
+            )
           );
         } else {
           queryConditions.push(eq(salesInvoices.status, filters.status));
@@ -4242,7 +4744,8 @@ class Storage {
         }
       }
 
-      const finalConditions = queryConditions.length > 0 ? and(...queryConditions) : undefined;
+      const finalConditions =
+        queryConditions.length > 0 ? and(...queryConditions) : undefined;
 
       const dataQueryBuilder = db
         .select({
@@ -4287,7 +4790,9 @@ class Storage {
       );
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getSalesInvoicesPaginated: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getSalesInvoicesPaginated: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSalesInvoicesPaginated",
         severity: "error",
@@ -4325,40 +4830,55 @@ class Storage {
       const conditionsArray: SQL[] = [];
 
       if (filters.entryType) {
-        conditionsArray.push(eq(generalLedgerEntries.entryType, filters.entryType));
+        conditionsArray.push(
+          eq(generalLedgerEntries.entryType, filters.entryType)
+        );
       }
       if (filters.referenceType) {
-        conditionsArray.push(eq(generalLedgerEntries.referenceType, filters.referenceType));
+        conditionsArray.push(
+          eq(generalLedgerEntries.referenceType, filters.referenceType)
+        );
       }
       if (filters.entityId) {
-        conditionsArray.push(eq(generalLedgerEntries.entityId, filters.entityId));
+        conditionsArray.push(
+          eq(generalLedgerEntries.entityId, filters.entityId)
+        );
       }
       if (filters.startDate) {
-        conditionsArray.push(gte(generalLedgerEntries.transactionDate, filters.startDate));
+        conditionsArray.push(
+          gte(generalLedgerEntries.transactionDate, filters.startDate)
+        );
       }
       if (filters.endDate) {
-        conditionsArray.push(lte(generalLedgerEntries.transactionDate, filters.endDate));
+        conditionsArray.push(
+          lte(generalLedgerEntries.transactionDate, filters.endDate)
+        );
       }
       if (filters.status) {
         conditionsArray.push(eq(generalLedgerEntries.status, filters.status));
       }
       if (filters.projectId) {
-        conditionsArray.push(eq(generalLedgerEntries.projectId, filters.projectId));
+        conditionsArray.push(
+          eq(generalLedgerEntries.projectId, filters.projectId)
+        );
       }
       if (filters.accountName) {
-        conditionsArray.push(ilike(generalLedgerEntries.accountName, `%${filters.accountName}%`));
+        conditionsArray.push(
+          ilike(generalLedgerEntries.accountName, `%${filters.accountName}%`)
+        );
       }
       if (filters.search) {
         conditionsArray.push(
           or(
             ilike(generalLedgerEntries.description, `%${filters.search}%`),
             ilike(generalLedgerEntries.entityName, `%${filters.search}%`),
-            ilike(generalLedgerEntries.invoiceNumber, `%${filters.search}%`),
-          ),
+            ilike(generalLedgerEntries.invoiceNumber, `%${filters.search}%`)
+          )
         );
       }
 
-      const finalConditions = conditionsArray.length > 0 ? and(...conditionsArray) : undefined;
+      const finalConditions =
+        conditionsArray.length > 0 ? and(...conditionsArray) : undefined;
 
       const dataQueryBuilder = db
         .select({
@@ -4384,9 +4904,12 @@ class Storage {
         .from(generalLedgerEntries)
         .leftJoin(projects, eq(generalLedgerEntries.projectId, projects.id)) // Join with projects
         .where(finalConditions)
-        .orderBy(desc(generalLedgerEntries.transactionDate), desc(generalLedgerEntries.createdAt));
-        // .limit(limit) // Limit and offset will be applied by _getPaginatedResults
-        // .offset(offset);
+        .orderBy(
+          desc(generalLedgerEntries.transactionDate),
+          desc(generalLedgerEntries.createdAt)
+        );
+      // .limit(limit) // Limit and offset will be applied by _getPaginatedResults
+      // .offset(offset);
 
       const countQueryBuilder = db
         .select({ count: sql<number>`count(*)` })
@@ -4402,7 +4925,9 @@ class Storage {
       );
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getGeneralLedgerEntries: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getGeneralLedgerEntries: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getGeneralLedgerEntries",
         severity: "error",
@@ -4438,16 +4963,22 @@ class Storage {
 
       // Ensure exactly one of debit or credit is non-zero (not both)
       if (debitAmount > 0 && creditAmount > 0) {
-        throw new Error("Double-entry violation: Both debit and credit amounts cannot be non-zero in a single entry");
+        throw new Error(
+          "Double-entry violation: Both debit and credit amounts cannot be non-zero in a single entry"
+        );
       }
 
       if (debitAmount === 0 && creditAmount === 0) {
-        throw new Error("Double-entry violation: Either debit or credit amount must be non-zero");
+        throw new Error(
+          "Double-entry violation: Either debit or credit amount must be non-zero"
+        );
       }
 
       // Ensure amounts are positive
       if (debitAmount < 0 || creditAmount < 0) {
-        throw new Error("Double-entry violation: Debit and credit amounts must be positive values");
+        throw new Error(
+          "Double-entry violation: Debit and credit amounts must be positive values"
+        );
       }
 
       // Validate required fields for double-entry accounting
@@ -4460,7 +4991,9 @@ class Storage {
       }
 
       if (!entryData.transactionDate) {
-        throw new Error("Transaction date is required for general ledger entry");
+        throw new Error(
+          "Transaction date is required for general ledger entry"
+        );
       }
 
       // Use the generalLedgerEntries table from schema instead of raw SQL
@@ -4487,7 +5020,11 @@ class Storage {
         .returning();
 
       console.log("GL entry created successfully:", result[0]);
-      console.log(`Double-entry: ${debitAmount > 0 ? 'DEBIT' : 'CREDIT'} ${entryData.accountName} ${debitAmount > 0 ? debitAmount.toFixed(2) : creditAmount.toFixed(2)}`);
+      console.log(
+        `Double-entry: ${debitAmount > 0 ? "DEBIT" : "CREDIT"} ${
+          entryData.accountName
+        } ${debitAmount > 0 ? debitAmount.toFixed(2) : creditAmount.toFixed(2)}`
+      );
 
       // If this is a payable entry linked to a project, add to project costs
       if (entryData.entryType === "payable" && entryData.projectId) {
@@ -4508,7 +5045,9 @@ class Storage {
       console.error("Original error in createGeneralLedgerEntry:", error); // Keep original console.error
       console.error("Entry data that failed:", entryData); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createGeneralLedgerEntry: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createGeneralLedgerEntry: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createGeneralLedgerEntry",
         severity: "error",
@@ -4543,7 +5082,9 @@ class Storage {
 
       // Validate that we have at least 2 entries (minimum for double-entry)
       if (!journalData.entries || journalData.entries.length < 2) {
-        throw new Error("Journal entry must have at least 2 account entries for double-entry accounting");
+        throw new Error(
+          "Journal entry must have at least 2 account entries for double-entry accounting"
+        );
       }
 
       // Validate that debits equal credits
@@ -4556,11 +5097,15 @@ class Storage {
 
         // Ensure only one of debit or credit is set per entry
         if (debitAmount > 0 && creditAmount > 0) {
-          throw new Error(`Account ${entry.accountName}: Cannot have both debit and credit amounts in a single entry`);
+          throw new Error(
+            `Account ${entry.accountName}: Cannot have both debit and credit amounts in a single entry`
+          );
         }
 
         if (debitAmount === 0 && creditAmount === 0) {
-          throw new Error(`Account ${entry.accountName}: Must have either debit or credit amount`);
+          throw new Error(
+            `Account ${entry.accountName}: Must have either debit or credit amount`
+          );
         }
 
         totalDebits += debitAmount;
@@ -4568,11 +5113,20 @@ class Storage {
       }
 
       // Verify accounting equation: Debits = Credits
-      if (Math.abs(totalDebits - totalCredits) > 0.01) { // Allow for small rounding differences
-        throw new Error(`Journal entry is not balanced: Total debits (${totalDebits.toFixed(2)}) must equal total credits (${totalCredits.toFixed(2)})`);
+      if (Math.abs(totalDebits - totalCredits) > 0.01) {
+        // Allow for small rounding differences
+        throw new Error(
+          `Journal entry is not balanced: Total debits (${totalDebits.toFixed(
+            2
+          )}) must equal total credits (${totalCredits.toFixed(2)})`
+        );
       }
 
-      console.log(`Creating balanced journal entry: Debits=${totalDebits.toFixed(2)}, Credits=${totalCredits.toFixed(2)}`);
+      console.log(
+        `Creating balanced journal entry: Debits=${totalDebits.toFixed(
+          2
+        )}, Credits=${totalCredits.toFixed(2)}`
+      );
 
       // Create all entries in the journal
       const createdEntries = [];
@@ -4598,12 +5152,15 @@ class Storage {
         createdEntries.push(glEntry);
       }
 
-      console.log(`Successfully created ${createdEntries.length} balanced journal entries`);
+      console.log(
+        `Successfully created ${createdEntries.length} balanced journal entries`
+      );
       return createdEntries;
     } catch (error: any) {
       console.error("Error in createJournalEntry:", error);
       await this.createErrorLog({
-        message: "Error in createJournalEntry: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createJournalEntry: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createJournalEntry",
         severity: "error",
@@ -4616,23 +5173,38 @@ class Storage {
     try {
       // Build the update object with proper field mapping
       const updateFields: any = {};
-      
-      if (updateData.entryType !== undefined) updateFields.entryType = updateData.entryType;
-      if (updateData.referenceType !== undefined) updateFields.referenceType = updateData.referenceType;
-      if (updateData.referenceId !== undefined) updateFields.referenceId = updateData.referenceId;
-      if (updateData.accountName !== undefined) updateFields.accountName = updateData.accountName;
-      if (updateData.description !== undefined) updateFields.description = updateData.description;
-      if (updateData.debitAmount !== undefined) updateFields.debitAmount = updateData.debitAmount;
-      if (updateData.creditAmount !== undefined) updateFields.creditAmount = updateData.creditAmount;
-      if (updateData.entityId !== undefined) updateFields.entityId = updateData.entityId;
-      if (updateData.entityName !== undefined) updateFields.entityName = updateData.entityName;
-      if (updateData.projectId !== undefined) updateFields.projectId = updateData.projectId;
-      if (updateData.invoiceNumber !== undefined) updateFields.invoiceNumber = updateData.invoiceNumber;
-      if (updateData.transactionDate !== undefined) updateFields.transactionDate = updateData.transactionDate;
-      if (updateData.dueDate !== undefined) updateFields.dueDate = updateData.dueDate;
-      if (updateData.status !== undefined) updateFields.status = updateData.status;
+
+      if (updateData.entryType !== undefined)
+        updateFields.entryType = updateData.entryType;
+      if (updateData.referenceType !== undefined)
+        updateFields.referenceType = updateData.referenceType;
+      if (updateData.referenceId !== undefined)
+        updateFields.referenceId = updateData.referenceId;
+      if (updateData.accountName !== undefined)
+        updateFields.accountName = updateData.accountName;
+      if (updateData.description !== undefined)
+        updateFields.description = updateData.description;
+      if (updateData.debitAmount !== undefined)
+        updateFields.debitAmount = updateData.debitAmount;
+      if (updateData.creditAmount !== undefined)
+        updateFields.creditAmount = updateData.creditAmount;
+      if (updateData.entityId !== undefined)
+        updateFields.entityId = updateData.entityId;
+      if (updateData.entityName !== undefined)
+        updateFields.entityName = updateData.entityName;
+      if (updateData.projectId !== undefined)
+        updateFields.projectId = updateData.projectId;
+      if (updateData.invoiceNumber !== undefined)
+        updateFields.invoiceNumber = updateData.invoiceNumber;
+      if (updateData.transactionDate !== undefined)
+        updateFields.transactionDate = updateData.transactionDate;
+      if (updateData.dueDate !== undefined)
+        updateFields.dueDate = updateData.dueDate;
+      if (updateData.status !== undefined)
+        updateFields.status = updateData.status;
       if (updateData.notes !== undefined) updateFields.notes = updateData.notes;
-      if (updateData.createdBy !== undefined) updateFields.createdBy = updateData.createdBy;
+      if (updateData.createdBy !== undefined)
+        updateFields.createdBy = updateData.createdBy;
 
       if (Object.keys(updateFields).length === 0) {
         throw new Error("No fields to update");
@@ -4647,7 +5219,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateGeneralLedgerEntry (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateGeneralLedgerEntry (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateGeneralLedgerEntry",
         severity: "error",
@@ -4713,7 +5287,8 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getReceivables: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getReceivables: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getReceivables",
         severity: "error",
@@ -4733,7 +5308,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getSalesQuotation (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getSalesQuotation (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSalesQuotation",
         severity: "error",
@@ -4743,7 +5320,7 @@ class Storage {
   }
 
   async createSalesQuotation(
-    quotationData: InsertSalesQuotation,
+    quotationData: InsertSalesQuotation
   ): Promise<SalesQuotation> {
     try {
       const result = await db
@@ -4753,7 +5330,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createSalesQuotation: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createSalesQuotation: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createSalesQuotation",
         severity: "error",
@@ -4764,7 +5343,7 @@ class Storage {
 
   async updateSalesQuotation(
     id: number,
-    quotationData: Partial<InsertSalesQuotation>,
+    quotationData: Partial<InsertSalesQuotation>
   ): Promise<SalesQuotation | undefined> {
     try {
       const result = await db
@@ -4775,7 +5354,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateSalesQuotation (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateSalesQuotation (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateSalesQuotation",
         severity: "error",
@@ -4804,7 +5385,10 @@ class Storage {
         .from(inventoryTransactions)
         .leftJoin(projects, eq(inventoryTransactions.projectId, projects.id))
         .leftJoin(users, eq(inventoryTransactions.createdBy, users.id))
-        .leftJoin(inventoryItems, eq(inventoryTransactions.itemId, inventoryItems.id))
+        .leftJoin(
+          inventoryItems,
+          eq(inventoryTransactions.itemId, inventoryItems.id)
+        )
         .where(eq(inventoryTransactions.type, "outflow"))
         .orderBy(
           inventoryTransactions.reference, // Order to help with grouping
@@ -4822,7 +5406,9 @@ class Storage {
 
       for (const t of flatTransactions) {
         // Create a composite key for grouping, as the original SQL did
-        const groupKey = `${t.reference || 'null'}-${t.projectId || 'null'}-${t.createdByName || 'null'}-${t.projectTitle || 'null'}`;
+        const groupKey = `${t.reference || "null"}-${t.projectId || "null"}-${
+          t.createdByName || "null"
+        }-${t.projectTitle || "null"}`;
 
         if (!groupedByReference.has(groupKey)) {
           groupedByReference.set(groupKey, {
@@ -4851,7 +5437,7 @@ class Storage {
           unit: t.unit,
         });
       }
-      
+
       const result = Array.from(groupedByReference.values());
       // Sort by the group's timestamp (which is MIN(timestamp) due to the update logic)
       result.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -4859,7 +5445,8 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getGoodsIssues: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getGoodsIssues: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getGoodsIssues",
         severity: "error",
@@ -4875,7 +5462,12 @@ class Storage {
     userId?: number
   ): Promise<any> {
     try {
-      console.log("Creating goods issue:", { reference, projectId, items, userId });
+      console.log("Creating goods issue:", {
+        reference,
+        projectId,
+        items,
+        userId,
+      });
 
       const createdTransactions = [];
 
@@ -4883,7 +5475,9 @@ class Storage {
         // Get inventory item details
         const inventoryItem = await this.getInventoryItem(item.inventoryItemId);
         if (!inventoryItem) {
-          throw new Error(`Inventory item with ID ${item.inventoryItemId} not found.`);
+          throw new Error(
+            `Inventory item with ID ${item.inventoryItemId} not found.`
+          );
         }
 
         // Check stock availability
@@ -4935,7 +5529,7 @@ class Storage {
       return {
         reference,
         projectId,
-        items: createdTransactions.map(transaction => ({
+        items: createdTransactions.map((transaction) => ({
           inventoryTransactionId: transaction.id,
           inventoryItemId: transaction.itemId,
           quantity: transaction.quantity,
@@ -4946,7 +5540,8 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in createGoodsIssue:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createGoodsIssue: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createGoodsIssue: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createGoodsIssue",
         severity: "error",
@@ -4965,7 +5560,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getInventoryItem (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getInventoryItem (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getInventoryItem",
         severity: "error",
@@ -5004,7 +5601,8 @@ class Storage {
       return assetTypesWithCounts;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getAssetTypes: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getAssetTypes: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getAssetTypes",
         severity: "error",
@@ -5030,7 +5628,8 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createAssetType: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createAssetType: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createAssetType",
         severity: "error",
@@ -5050,7 +5649,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateAssetType (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateAssetType (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateAssetType",
         severity: "error",
@@ -5089,7 +5690,10 @@ class Storage {
         .from(inventoryTransactions)
         // .leftJoin(projects, eq(inventoryTransactions.projectId, projects.id)) // Not in original
         .leftJoin(users, eq(inventoryTransactions.createdBy, users.id))
-        .leftJoin(inventoryItems, eq(inventoryTransactions.itemId, inventoryItems.id))
+        .leftJoin(
+          inventoryItems,
+          eq(inventoryTransactions.itemId, inventoryItems.id)
+        )
         .where(eq(inventoryTransactions.type, "inflow"))
         .orderBy(
           inventoryTransactions.reference, // Order to help with grouping
@@ -5104,7 +5708,9 @@ class Storage {
       const groupedByRefAndUser = new Map<string, any>();
 
       for (const t of flatTransactions) {
-        const groupKey = `${t.reference || 'null'}-${t.createdByName || 'null'}`;
+        const groupKey = `${t.reference || "null"}-${
+          t.createdByName || "null"
+        }`;
 
         if (!groupedByRefAndUser.has(groupKey)) {
           groupedByRefAndUser.set(groupKey, {
@@ -5119,7 +5725,7 @@ class Storage {
         }
 
         const group = groupedByRefAndUser.get(groupKey)!;
-         // Update timestamp if current transaction's timestamp is earlier
+        // Update timestamp if current transaction's timestamp is earlier
         if (t.timestamp < group.timestamp) {
           group.timestamp = t.timestamp;
           group.id = t.transactionId; // Also update id if timestamp is earlier
@@ -5139,7 +5745,8 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getGoodsReceipts: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getGoodsReceipts: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getGoodsReceipts",
         severity: "error",
@@ -5162,7 +5769,9 @@ class Storage {
         // Get inventory item details
         const inventoryItem = await this.getInventoryItem(item.inventoryItemId);
         if (!inventoryItem) {
-          throw new Error(`Inventory item with ID ${item.inventoryItemId} not found.`);
+          throw new Error(
+            `Inventory item with ID ${item.inventoryItemId} not found.`
+          );
         }
 
         // Create inflow transaction
@@ -5189,9 +5798,11 @@ class Storage {
 
         // Update inventory item stock and average cost
         const newStock = inventoryItem.currentStock + item.quantity;
-        const currentValue = inventoryItem.currentStock * parseFloat(inventoryItem.avgCost || "0");
-        const newValue = currentValue + (item.quantity * item.unitCost);
-        const newAvgCost = newStock > 0 ? (newValue / newStock).toFixed(4) : "0";
+        const currentValue =
+          inventoryItem.currentStock * parseFloat(inventoryItem.avgCost || "0");
+        const newValue = currentValue + item.quantity * item.unitCost;
+        const newAvgCost =
+          newStock > 0 ? (newValue / newStock).toFixed(4) : "0";
 
         await this.updateInventoryItem(item.inventoryItemId, {
           currentStock: newStock,
@@ -5207,7 +5818,7 @@ class Storage {
 
       return {
         reference,
-        items: createdTransactions.map(transaction => ({
+        items: createdTransactions.map((transaction) => ({
           inventoryTransactionId: transaction.id,
           inventoryItemId: transaction.itemId,
           quantity: transaction.quantity,
@@ -5218,7 +5829,8 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in createGoodsReceipt:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createGoodsReceipt: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createGoodsReceipt: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createGoodsReceipt",
         severity: "error",
@@ -5263,7 +5875,7 @@ class Storage {
     page: number = 1,
     limit: number = 20,
     severity?: string,
-    resolved?: string,
+    resolved?: string
   ): Promise<{
     data: any[];
     pagination: {
@@ -5278,11 +5890,13 @@ class Storage {
       if (severity && severity !== "all") {
         queryConditions.push(eq(errorLogs.severity, severity));
       }
-      if (resolved !== undefined && resolved !== "all") { // Check for undefined explicitly
+      if (resolved !== undefined && resolved !== "all") {
+        // Check for undefined explicitly
         queryConditions.push(eq(errorLogs.resolved, resolved === "true"));
       }
 
-      const finalConditions = queryConditions.length > 0 ? and(...queryConditions) : undefined;
+      const finalConditions =
+        queryConditions.length > 0 ? and(...queryConditions) : undefined;
 
       const dataQueryBuilder = db
         .select({
@@ -5360,7 +5974,9 @@ class Storage {
   }
 
   // Project Asset Assignment methods // THIS IS THE SECOND BLOCK OF ASSET ASSIGNMENT METHODS
-  async getProjectAssetAssignments(projectId: number): Promise<ProjectAssetAssignmentWithAssetInfo[]> {
+  async getProjectAssetAssignments(
+    projectId: number
+  ): Promise<ProjectAssetAssignmentWithAssetInfo[]> {
     try {
       const assignments: ProjectAssetAssignmentWithAssetInfo[] = await db
         .select({
@@ -5376,15 +5992,23 @@ class Storage {
           assetCode: assetInventoryInstances.serialNumber,
         })
         .from(projectAssetAssignments)
-        .leftJoin(assetInventoryInstances, eq(projectAssetAssignments.assetId, assetInventoryInstances.id))
-        .leftJoin(assetTypes, eq(assetInventoryInstances.assetTypeId, assetTypes.id))
+        .leftJoin(
+          assetInventoryInstances,
+          eq(projectAssetAssignments.assetId, assetInventoryInstances.id)
+        )
+        .leftJoin(
+          assetTypes,
+          eq(assetInventoryInstances.assetTypeId, assetTypes.id)
+        )
         .where(eq(projectAssetAssignments.projectId, projectId))
         .orderBy(desc(projectAssetAssignments.assignedAt));
 
       return assignments;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProjectAssetAssignments (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProjectAssetAssignments (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectAssetAssignments (second block)",
         severity: "error",
@@ -5394,7 +6018,7 @@ class Storage {
   }
 
   async createProjectAssetAssignment(
-    assignmentData: InsertProjectAssetAssignment,
+    assignmentData: InsertProjectAssetAssignment
   ): Promise<ProjectAssetAssignment> {
     try {
       const result = await db
@@ -5405,14 +6029,20 @@ class Storage {
       const assignment = result[0];
 
       // Update asset status to assigned
-      await this.updateAssetInventoryInstance(assignment.assetId, { status: "in_use" });
+      await this.updateAssetInventoryInstance(assignment.assetId, {
+        status: "in_use",
+      });
 
       // Calculate and update total cost if start and end dates are provided
-      if (assignment.startDate && assignment.endDate && assignment.monthlyRate) {
+      if (
+        assignment.startDate &&
+        assignment.endDate &&
+        assignment.monthlyRate
+      ) {
         const totalCost = await this.calculateAssetRentalCost(
           new Date(assignment.startDate),
           new Date(assignment.endDate),
-          parseFloat(assignment.monthlyRate.toString()),
+          parseFloat(assignment.monthlyRate.toString())
         );
 
         await db
@@ -5426,9 +6056,14 @@ class Storage {
 
       return assignment;
     } catch (error: any) {
-      console.error("Original error in createProjectAssetAssignment (second block):", error); // Keep original console.error
+      console.error(
+        "Original error in createProjectAssetAssignment (second block):",
+        error
+      ); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createProjectAssetAssignment (second block): " + (error?.message || "Unknown error"),
+        message:
+          "Error in createProjectAssetAssignment (second block): " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProjectAssetAssignment (second block)",
         severity: "error",
@@ -5439,7 +6074,7 @@ class Storage {
 
   async updateProjectAssetAssignment(
     id: number,
-    assignmentData: Partial<InsertProjectAssetAssignment>,
+    assignmentData: Partial<InsertProjectAssetAssignment>
   ): Promise<ProjectAssetAssignment | undefined> {
     try {
       const result = await db
@@ -5463,7 +6098,7 @@ class Storage {
           const totalCost = await this.calculateAssetRentalCost(
             new Date(assignment.startDate),
             new Date(assignment.endDate),
-            parseFloat(assignment.monthlyRate.toString()),
+            parseFloat(assignment.monthlyRate.toString())
           );
 
           await db
@@ -5478,9 +6113,14 @@ class Storage {
 
       return assignment;
     } catch (error: any) {
-      console.error("Original error in updateProjectAssetAssignment (second block):", error); // Keep original console.error
+      console.error(
+        "Original error in updateProjectAssetAssignment (second block):",
+        error
+      ); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updateProjectAssetAssignment (second block, id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateProjectAssetAssignment (second block, id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateProjectAssetAssignment (second block)",
         severity: "error",
@@ -5522,9 +6162,14 @@ class Storage {
 
       return false;
     } catch (error: any) {
-      console.error("Original error in deleteProjectAssetAssignment (second block):", error); // Keep original console.error
+      console.error(
+        "Original error in deleteProjectAssetAssignment (second block):",
+        error
+      ); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in deleteProjectAssetAssignment (second block, id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteProjectAssetAssignment (second block, id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteProjectAssetAssignment (second block)",
         severity: "error",
@@ -5533,50 +6178,53 @@ class Storage {
     }
   }
 
-  async calculateAssetRentalCost( // This is the second calculateAssetRentalCost
+  async calculateAssetRentalCost(
+    // This is the second calculateAssetRentalCost
     startDate: Date,
     endDate: Date,
-    monthlyRate: number,
+    monthlyRate: number
   ): Promise<number> {
     try {
       // Calculate pro-rated cost based on days utilized * (Monthly rent / days in that month)
       // If usage spans multiple months, calculate cost for each month separately
-      
+
       let totalCost = 0;
       const currentDate = new Date(startDate);
-      
+
       while (currentDate <= endDate) {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        
+
         // Get the first and last day of the current month
         const firstDayOfMonth = new Date(year, month, 1);
         const lastDayOfMonth = new Date(year, month + 1, 0);
         const daysInMonth = lastDayOfMonth.getDate();
-        
+
         // Determine the start and end of the period within this month
         const periodStart = currentDate >= startDate ? currentDate : startDate;
         const periodEnd = endDate <= lastDayOfMonth ? endDate : lastDayOfMonth;
-        
+
         // Calculate days used in this month (inclusive of both start and end dates)
         const diffTime = periodEnd.getTime() - periodStart.getTime();
         const daysUsedInMonth = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        
+
         // Calculate pro-rated cost for this month
         const dailyRateForMonth = monthlyRate / daysInMonth;
         const costForMonth = daysUsedInMonth * dailyRateForMonth;
-        
+
         totalCost += costForMonth;
-        
+
         // Move to the first day of the next month
         currentDate.setMonth(currentDate.getMonth() + 1);
         currentDate.setDate(1);
       }
-      
+
       return totalCost;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in calculateAssetRentalCost (second block): " + (error?.message || "Unknown error"),
+        message:
+          "Error in calculateAssetRentalCost (second block): " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "calculateAssetRentalCost (second block)",
         severity: "error",
@@ -5606,7 +6254,9 @@ class Storage {
       return history;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getAssetAssignmentHistory (second block, assetId: ${assetId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getAssetAssignmentHistory (second block, assetId: ${assetId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getAssetAssignmentHistory (second block)",
         severity: "error",
@@ -5655,23 +6305,29 @@ class Storage {
             eq(projectAssetAssignments.assetId, assetId),
             or(
               isNull(projectAssetAssignments.endDate),
-              gte(projectAssetAssignments.endDate, new Date()),
-            ),
-          ),
+              gte(projectAssetAssignments.endDate, new Date())
+            )
+          )
         );
 
       // Update asset status based on assignments
-      const newStatus = currentAssignments.length > 0 ? "assigned" : "available";
+      const newStatus =
+        currentAssignments.length > 0 ? "assigned" : "available";
 
       await this.updateAsset(assetId, { status: newStatus });
 
       console.log(
-        `Updated asset ${assetId} status to ${newStatus} based on ${currentAssignments.length} active assignments`,
+        `Updated asset ${assetId} status to ${newStatus} based on ${currentAssignments.length} active assignments`
       );
     } catch (error: any) {
-      console.error("Original error in updateAssetStatusBasedOnAssignments (second block):", error); // Keep original console.error
+      console.error(
+        "Original error in updateAssetStatusBasedOnAssignments (second block):",
+        error
+      ); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updateAssetStatusBasedOnAssignments (second block, assetId: ${assetId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateAssetStatusBasedOnAssignments (second block, assetId: ${assetId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateAssetStatusBasedOnAssignments (second block)",
         severity: "error",
@@ -5693,7 +6349,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updateAllAssetStatuses:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in updateAllAssetStatuses: " + (error?.message || "Unknown error"),
+        message:
+          "Error in updateAllAssetStatuses: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateAllAssetStatuses",
         severity: "error",
@@ -5732,7 +6390,9 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getProformaInvoices: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getProformaInvoices: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProformaInvoices",
         severity: "error",
@@ -5771,7 +6431,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProformaInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProformaInvoice (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProformaInvoice",
         severity: "error",
@@ -5784,7 +6446,7 @@ class Storage {
     try {
       console.log(
         "Storage: Creating proforma invoice with data:",
-        proformaData,
+        proformaData
       );
 
       // Generate proforma number
@@ -5823,7 +6485,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in createProformaInvoice:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createProformaInvoice: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createProformaInvoice: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProformaInvoice",
         severity: "error",
@@ -5834,14 +6498,14 @@ class Storage {
 
   async updateProformaInvoice(
     id: number,
-    proformaData: any,
+    proformaData: any
   ): Promise<any | undefined> {
     try {
       console.log(
         "Storage: Updating proforma invoice",
         id,
         "with data:",
-        proformaData,
+        proformaData
       );
 
       // Get existing proforma to preserve data that's not being updated
@@ -5900,7 +6564,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updateProformaInvoice:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updateProformaInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateProformaInvoice (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateProformaInvoice",
         severity: "error",
@@ -5914,7 +6580,9 @@ class Storage {
       await db.delete(proformaInvoices).where(eq(proformaInvoices.id, id));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteProformaInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteProformaInvoice (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteProformaInvoice",
         severity: "error",
@@ -5923,13 +6591,16 @@ class Storage {
     }
   }
 
-  async deleteCreditNote(id: number): Promise<boolean> { // This is for sales credit notes
+  async deleteCreditNote(id: number): Promise<boolean> {
+    // This is for sales credit notes
     try {
       const result = await db.delete(creditNotes).where(eq(creditNotes.id, id));
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteCreditNote (sales, id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteCreditNote (sales, id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteCreditNote",
         severity: "error",
@@ -5949,7 +6620,9 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getCreditNotesByInvoice (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getCreditNotesByInvoice (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getCreditNotesByInvoice",
         severity: "error",
@@ -5958,7 +6631,10 @@ class Storage {
     }
   }
 
-  async createInvoicePaymentForCreditNote(invoiceId: number, creditNote: CreditNote): Promise<InvoicePayment> {
+  async createInvoicePaymentForCreditNote(
+    invoiceId: number,
+    creditNote: CreditNote
+  ): Promise<InvoicePayment> {
     try {
       const paymentData: InsertInvoicePayment = {
         invoiceId: invoiceId,
@@ -5966,7 +6642,7 @@ class Storage {
         paymentDate: creditNote.creditNoteDate,
         paymentMethod: "Credit Note",
         referenceNumber: creditNote.creditNoteNumber,
-        notes: `Credit note applied: ${creditNote.reason || 'N/A'}`,
+        notes: `Credit note applied: ${creditNote.reason || "N/A"}`,
         paymentType: "credit_note",
         creditNoteId: creditNote.id,
         // recordedBy is optional in InsertInvoicePayment based on schema (nullable, no default)
@@ -5977,7 +6653,9 @@ class Storage {
       return payment;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in createInvoicePaymentForCreditNote (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in createInvoicePaymentForCreditNote (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createInvoicePaymentForCreditNote",
         severity: "error",
@@ -5986,7 +6664,10 @@ class Storage {
     }
   }
 
-  async updateSalesInvoiceFromCreditNote(invoiceId: number, creditNoteAmount: number): Promise<SalesInvoice | undefined> {
+  async updateSalesInvoiceFromCreditNote(
+    invoiceId: number,
+    creditNoteAmount: number
+  ): Promise<SalesInvoice | undefined> {
     try {
       const invoice = await this.getSalesInvoice(invoiceId);
       if (!invoice) {
@@ -6003,7 +6684,9 @@ class Storage {
       return this.getSalesInvoice(invoiceId);
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateSalesInvoiceFromCreditNote (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateSalesInvoiceFromCreditNote (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateSalesInvoiceFromCreditNote",
         severity: "error",
@@ -6011,7 +6694,6 @@ class Storage {
       throw error;
     }
   }
-
 
   // Purchase Request methods
   async getPurchaseRequests(): Promise<any[]> {
@@ -6052,7 +6734,7 @@ class Storage {
             .from(purchaseRequestItems)
             .leftJoin(
               inventoryItems,
-              eq(purchaseRequestItems.inventoryItemId, inventoryItems.id),
+              eq(purchaseRequestItems.inventoryItemId, inventoryItems.id)
             )
             .where(eq(purchaseRequestItems.requestId, request.id));
 
@@ -6060,13 +6742,15 @@ class Storage {
             ...request,
             items,
           };
-        }),
+        })
       );
 
       return requestsWithItems;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getPurchaseRequests: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getPurchaseRequests: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseRequests",
         severity: "error",
@@ -6095,7 +6779,7 @@ class Storage {
         })
         .from(purchaseRequests)
         .leftJoin(emp, eq(purchaseRequests.requestedBy, emp.id))
-        .leftJoin(approver,eq(purchaseRequests.approvedBy, emp.id))
+        .leftJoin(approver, eq(purchaseRequests.approvedBy, emp.id))
         .where(eq(purchaseRequests.id, id));
 
       if (!request) return null;
@@ -6113,14 +6797,16 @@ class Storage {
         .from(purchaseRequestItems)
         .leftJoin(
           inventoryItems,
-          eq(purchaseRequestItems.inventoryItemId, inventoryItems.id),
+          eq(purchaseRequestItems.inventoryItemId, inventoryItems.id)
         )
         .where(eq(purchaseRequestItems.requestId, id));
 
       return { ...request, items };
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPurchaseRequest (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPurchaseRequest (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseRequest",
         severity: "error",
@@ -6154,14 +6840,16 @@ class Storage {
             quantity: item.quantity,
             unitPrice: item.unitPrice || null,
             notes: item.notes,
-          })),
+          }))
         );
       }
 
       return this.getPurchaseRequest(request.id);
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createPurchaseRequest: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPurchaseRequest: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseRequest",
         severity: "error",
@@ -6180,7 +6868,9 @@ class Storage {
       return this.getPurchaseRequest(id);
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updatePurchaseRequest (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updatePurchaseRequest (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePurchaseRequest",
         severity: "error",
@@ -6198,7 +6888,9 @@ class Storage {
       return result.length > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deletePurchaseRequest (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deletePurchaseRequest (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deletePurchaseRequest",
         severity: "error",
@@ -6240,13 +6932,14 @@ class Storage {
             ...order,
             items,
           };
-        }),
+        })
       );
 
       return ordersWithItems;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getPurchaseOrders: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getPurchaseOrders: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseOrders",
         severity: "error",
@@ -6283,7 +6976,9 @@ class Storage {
       return { ...order, items };
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPurchaseOrder (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPurchaseOrder (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseOrder",
         severity: "error",
@@ -6310,14 +7005,16 @@ class Storage {
         .from(purchaseOrderItems)
         .leftJoin(
           inventoryItems,
-          eq(purchaseOrderItems.inventoryItemId, inventoryItems.id),
+          eq(purchaseOrderItems.inventoryItemId, inventoryItems.id)
         )
         .where(eq(purchaseOrderItems.poId, poId));
 
       return items;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPurchaseOrderItems (poId: ${poId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPurchaseOrderItems (poId: ${poId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseOrderItems",
         severity: "error",
@@ -6337,7 +7034,9 @@ class Storage {
           poNumber,
           supplierId: orderData.supplierId,
           status: orderData.status || "draft",
-          orderDate: orderData.orderDate ? new Date(orderData.orderDate) : new Date(),
+          orderDate: orderData.orderDate
+            ? new Date(orderData.orderDate)
+            : new Date(),
           expectedDeliveryDate: orderData.expectedDeliveryDate
             ? new Date(orderData.expectedDeliveryDate)
             : null,
@@ -6359,10 +7058,13 @@ class Storage {
           inventoryItemId: item.inventoryItemId || null,
           description: item.description || null,
           quantity: item.quantity,
-          unitPrice: item.unitPrice.toFixed(2) ,
+          unitPrice: item.unitPrice.toFixed(2),
           taxRate: item.taxRate ? item.taxRate.toFixed(2) : "0.00",
           taxAmount: item.taxAmount ? item.taxAmount.toFixed(2) : "0.00",
-          lineTotal: (item.quantity * parseFloat(item.unitPrice) + (item.taxAmount || 0)).toFixed(2),
+          lineTotal: (
+            item.quantity * parseFloat(item.unitPrice) +
+            (item.taxAmount || 0)
+          ).toFixed(2),
         }));
 
         await db.insert(purchaseOrderItems).values(itemsToInsert);
@@ -6371,7 +7073,9 @@ class Storage {
       return this.getPurchaseOrder(order.id);
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createPurchaseOrder: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPurchaseOrder: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseOrder",
         severity: "error",
@@ -6393,7 +7097,8 @@ class Storage {
       if (data.notes !== undefined) updateData.notes = data.notes;
       if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
       if (data.taxAmount !== undefined) updateData.taxAmount = data.taxAmount;
-      if (data.totalAmount !== undefined) updateData.totalAmount = data.totalAmount;
+      if (data.totalAmount !== undefined)
+        updateData.totalAmount = data.totalAmount;
 
       await db
         .update(purchaseOrders)
@@ -6403,7 +7108,9 @@ class Storage {
       return this.getPurchaseOrder(id);
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updatePurchaseOrder (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updatePurchaseOrder (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePurchaseOrder",
         severity: "error",
@@ -6415,17 +7122,21 @@ class Storage {
   async deletePurchaseOrder(id: number): Promise<boolean> {
     try {
       // Delete order items first
-      await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.poId, id));
-      
+      await db
+        .delete(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.poId, id));
+
       // Delete the order
       const result = await db
         .delete(purchaseOrders)
         .where(eq(purchaseOrders.id, id));
-        
+
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deletePurchaseOrder (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deletePurchaseOrder (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deletePurchaseOrder",
         severity: "error",
@@ -6463,7 +7174,9 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getPurchaseInvoices: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getPurchaseInvoices: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseInvoices",
         severity: "error",
@@ -6505,10 +7218,14 @@ class Storage {
       const conditions = [];
 
       if (filters.startDate) {
-        conditions.push(gte(purchaseInvoices.invoiceDate, new Date(filters.startDate)));
+        conditions.push(
+          gte(purchaseInvoices.invoiceDate, new Date(filters.startDate))
+        );
       }
       if (filters.endDate) {
-        conditions.push(lte(purchaseInvoices.invoiceDate, new Date(filters.endDate)));
+        conditions.push(
+          lte(purchaseInvoices.invoiceDate, new Date(filters.endDate))
+        );
       }
       if (filters.supplierId) {
         conditions.push(eq(purchaseInvoices.supplierId, filters.supplierId));
@@ -6525,7 +7242,9 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getPurchaseInvoicesFiltered: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getPurchaseInvoicesFiltered: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseInvoicesFiltered",
         severity: "error",
@@ -6583,14 +7302,16 @@ class Storage {
         .from(purchaseInvoiceItems)
         .leftJoin(
           inventoryItems,
-          eq(purchaseInvoiceItems.inventoryItemId, inventoryItems.id),
+          eq(purchaseInvoiceItems.inventoryItemId, inventoryItems.id)
         )
         .where(eq(purchaseInvoiceItems.invoiceId, id));
 
       return { ...invoice, items };
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPurchaseInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPurchaseInvoice (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseInvoice",
         severity: "error",
@@ -6610,7 +7331,8 @@ class Storage {
           supplierId: invoiceData.supplierId,
           poId: invoiceData.poId || null,
           projectId: invoiceData.projectId || null,
-          assetInventoryInstanceId: invoiceData.assetInventoryInstanceId || null,
+          assetInventoryInstanceId:
+            invoiceData.assetInventoryInstanceId || null,
           status: invoiceData.status || "pending",
           invoiceDate: new Date(invoiceData.invoiceDate),
           dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : null,
@@ -6645,7 +7367,9 @@ class Storage {
       return this.getPurchaseInvoice(invoice.id);
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createPurchaseInvoiceStandalone: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPurchaseInvoiceStandalone: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseInvoiceStandalone",
         severity: "error",
@@ -6656,7 +7380,7 @@ class Storage {
 
   async createPurchaseInvoiceFromPO(
     poId: number,
-    invoiceData: any,
+    invoiceData: any
   ): Promise<any> {
     try {
       // Get the purchase order
@@ -6706,7 +7430,10 @@ class Storage {
 
         // Update inventory for received items (only for products)
         for (const item of po.items) {
-          if (item.inventoryItemId && (item.itemType === "product" || !item.itemType)) {
+          if (
+            item.inventoryItemId &&
+            (item.itemType === "product" || !item.itemType)
+          ) {
             // Update inventory stock
             const currentItem = await db
               .select()
@@ -6742,7 +7469,9 @@ class Storage {
       return this.getPurchaseInvoice(invoice.id);
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in createPurchaseInvoiceFromPO (poId: ${poId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in createPurchaseInvoiceFromPO (poId: ${poId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseInvoiceFromPO",
         severity: "error",
@@ -6794,13 +7523,17 @@ class Storage {
           instanceId: invoice.assetInventoryInstanceId,
           maintenanceCost: invoice.totalAmount,
           maintenanceDate: new Date(),
-          description: `Purchase Invoice: ${invoice.invoiceNumber} - ${invoice.notes || 'Maintenance cost'}`,
+          description: `Purchase Invoice: ${invoice.invoiceNumber} - ${
+            invoice.notes || "Maintenance cost"
+          }`,
           performedBy: userId,
         });
       }
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in approvePurchaseInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in approvePurchaseInvoice (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "approvePurchaseInvoice",
         severity: "error",
@@ -6831,7 +7564,8 @@ class Storage {
         throw new Error("Invoice not found");
       }
 
-      const newPaidAmount = parseFloat(invoice.paidAmount || "0") + parseFloat(paymentData.amount);
+      const newPaidAmount =
+        parseFloat(invoice.paidAmount || "0") + parseFloat(paymentData.amount);
       const totalAmount = parseFloat(invoice.totalAmount);
 
       // Determine new status
@@ -6854,7 +7588,9 @@ class Storage {
       return payment;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createPurchaseInvoicePayment: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPurchaseInvoicePayment: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseInvoicePayment",
         severity: "error",
@@ -6882,7 +7618,9 @@ class Storage {
       return payments;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPurchaseInvoicePayments (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPurchaseInvoicePayments (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseInvoicePayments",
         severity: "error",
@@ -6895,7 +7633,8 @@ class Storage {
     try {
       // This would be implemented similar to sales payment files
       // For now, return a basic structure
-      const newFile = { // Added variable to hold the created file data
+      const newFile = {
+        // Added variable to hold the created file data
         id: Date.now(),
         ...fileData,
         uploadedAt: new Date(),
@@ -6903,7 +7642,9 @@ class Storage {
       return newFile; // Return the created file data
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createPurchasePaymentFile: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPurchasePaymentFile: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchasePaymentFile",
         severity: "error",
@@ -6913,55 +7654,61 @@ class Storage {
   }
 
   // Project Consumables methods
-  async getProjectConsumables(projectId: number): Promise<ProjectConsumableWithItems[]> {
+  async getProjectConsumables(
+    projectId: number
+  ): Promise<ProjectConsumableWithItems[]> {
     try {
-      const consumables: Array<Omit<ProjectConsumableWithItems, 'items'>> = await db
-        .select({
-          id: projectConsumables.id,
-          projectId: projectConsumables.projectId,
-          date: projectConsumables.date,
-          createdBy: projectConsumables.createdBy,
-          createdAt: projectConsumables.createdAt,
-          createdByName: users.username,
-        })
-        .from(projectConsumables)
-        .leftJoin(users, eq(projectConsumables.createdBy, users.id))
-        .where(eq(projectConsumables.projectId, projectId))
-        .orderBy(desc(projectConsumables.date));
+      const consumables: Array<Omit<ProjectConsumableWithItems, "items">> =
+        await db
+          .select({
+            id: projectConsumables.id,
+            projectId: projectConsumables.projectId,
+            date: projectConsumables.date,
+            createdBy: projectConsumables.createdBy,
+            createdAt: projectConsumables.createdAt,
+            createdByName: users.username,
+          })
+          .from(projectConsumables)
+          .leftJoin(users, eq(projectConsumables.createdBy, users.id))
+          .where(eq(projectConsumables.projectId, projectId))
+          .orderBy(desc(projectConsumables.date));
 
       // Get items for each consumable record
-      const consumablesWithItems: ProjectConsumableWithItems[] = await Promise.all(
-        consumables.map(async (consumable) => {
-          const items: ProjectConsumableItemWithDetails[] = await db
-            .select({
-              id: projectConsumableItems.id,
-              consumableId: projectConsumableItems.consumableId, // Ensure all fields from ProjectConsumableItem are present
-              inventoryItemId: projectConsumableItems.inventoryItemId,
-              quantity: projectConsumableItems.quantity,
-              unitCost: projectConsumableItems.unitCost,
-              createdAt: projectConsumableItems.createdAt, // Ensure all fields from ProjectConsumableItem
-              updatedAt: projectConsumableItems.updatedAt, // Ensure all fields from ProjectConsumableItem
-              itemName: inventoryItems.name,
-              itemUnit: inventoryItems.unit,
-            })
-            .from(projectConsumableItems)
-            .leftJoin(
-              inventoryItems,
-              eq(projectConsumableItems.inventoryItemId, inventoryItems.id),
-            )
-            .where(eq(projectConsumableItems.consumableId, consumable.id));
+      const consumablesWithItems: ProjectConsumableWithItems[] =
+        await Promise.all(
+          consumables.map(async (consumable) => {
+            const items: ProjectConsumableItemWithDetails[] = await db
+              .select({
+                id: projectConsumableItems.id,
+                consumableId: projectConsumableItems.consumableId, // Ensure all fields from ProjectConsumableItem are present
+                inventoryItemId: projectConsumableItems.inventoryItemId,
+                quantity: projectConsumableItems.quantity,
+                unitCost: projectConsumableItems.unitCost,
+                createdAt: projectConsumableItems.createdAt, // Ensure all fields from ProjectConsumableItem
+                updatedAt: projectConsumableItems.updatedAt, // Ensure all fields from ProjectConsumableItem
+                itemName: inventoryItems.name,
+                itemUnit: inventoryItems.unit,
+              })
+              .from(projectConsumableItems)
+              .leftJoin(
+                inventoryItems,
+                eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
+              )
+              .where(eq(projectConsumableItems.consumableId, consumable.id));
 
-          return {
-            ...consumable,
-            items,
-          };
-        }),
-      );
+            return {
+              ...consumable,
+              items,
+            };
+          })
+        );
 
       return consumablesWithItems;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProjectConsumables (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProjectConsumables (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectConsumables",
         severity: "error",
@@ -6974,10 +7721,15 @@ class Storage {
     projectId: number,
     date: string,
     items: CreateProjectConsumableItemInput[],
-    userId?: number,
+    userId?: number
   ): Promise<CreatedProjectConsumable> {
     try {
-      console.log("Creating project consumables:", { projectId, date, items, userId });
+      console.log("Creating project consumables:", {
+        projectId,
+        date,
+        items,
+        userId,
+      });
 
       // Create the consumable record
       const [consumable] = await db
@@ -6997,13 +7749,15 @@ class Storage {
         // Get inventory item details
         const inventoryItem = await this.getInventoryItem(item.inventoryItemId);
         if (!inventoryItem) {
-          throw new Error(`Inventory item with ID ${item.inventoryItemId} not found`);
+          throw new Error(
+            `Inventory item with ID ${item.inventoryItemId} not found`
+          );
         }
 
         // Check stock availability
         if (inventoryItem.currentStock < item.quantity) {
           throw new Error(
-            `Insufficient stock for item ${inventoryItem.name}. Available: ${inventoryItem.currentStock}, Requested: ${item.quantity}`,
+            `Insufficient stock for item ${inventoryItem.name}. Available: ${inventoryItem.currentStock}, Requested: ${item.quantity}`
           );
         }
 
@@ -7042,7 +7796,7 @@ class Storage {
         });
 
         console.log(
-          `Updated inventory item ${item.inventoryItemId} stock from ${inventoryItem.currentStock} to ${newStock}`,
+          `Updated inventory item ${item.inventoryItemId} stock from ${inventoryItem.currentStock} to ${newStock}`
         );
       }
 
@@ -7056,7 +7810,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in createProjectConsumables:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createProjectConsumables: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createProjectConsumables: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProjectConsumables",
         severity: "error",
@@ -7075,7 +7831,9 @@ class Storage {
         .orderBy(desc(projectPhotoGroups.createdAt));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProjectPhotoGroups (projectId: ${projectId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProjectPhotoGroups (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectPhotoGroups",
         severity: "error",
@@ -7085,7 +7843,7 @@ class Storage {
   }
 
   async createProjectPhotoGroup(
-    groupData: InsertProjectPhotoGroup,
+    groupData: InsertProjectPhotoGroup
   ): Promise<ProjectPhotoGroup> {
     try {
       const result = await db
@@ -7095,7 +7853,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createProjectPhotoGroup: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createProjectPhotoGroup: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProjectPhotoGroup",
         severity: "error",
@@ -7106,7 +7866,7 @@ class Storage {
 
   async updateProjectPhotoGroup(
     id: number,
-    groupData: Partial<InsertProjectPhotoGroup>,
+    groupData: Partial<InsertProjectPhotoGroup>
   ): Promise<ProjectPhotoGroup | undefined> {
     try {
       const result = await db
@@ -7117,7 +7877,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateProjectPhotoGroup (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateProjectPhotoGroup (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateProjectPhotoGroup",
         severity: "error",
@@ -7134,7 +7896,9 @@ class Storage {
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteProjectPhotoGroup (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteProjectPhotoGroup (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteProjectPhotoGroup",
         severity: "error",
@@ -7153,7 +7917,9 @@ class Storage {
         .orderBy(desc(projectPhotos.createdAt));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProjectPhotos (groupId: ${groupId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProjectPhotos (groupId: ${groupId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectPhotos",
         severity: "error",
@@ -7162,7 +7928,9 @@ class Storage {
     }
   }
 
-  async createProjectPhoto(photoData: InsertProjectPhoto): Promise<ProjectPhoto> {
+  async createProjectPhoto(
+    photoData: InsertProjectPhoto
+  ): Promise<ProjectPhoto> {
     try {
       const result = await db
         .insert(projectPhotos)
@@ -7171,7 +7939,8 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createProjectPhoto: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createProjectPhoto: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProjectPhoto",
         severity: "error",
@@ -7188,7 +7957,9 @@ class Storage {
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in deleteProjectPhoto (photoId: ${photoId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteProjectPhoto (photoId: ${photoId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteProjectPhoto",
         severity: "error",
@@ -7220,14 +7991,19 @@ class Storage {
         })
         .from(purchaseCreditNotes)
         .leftJoin(suppliers, eq(purchaseCreditNotes.supplierId, suppliers.id))
-        .leftJoin(purchaseInvoices, eq(purchaseCreditNotes.purchaseInvoiceId, purchaseInvoices.id))
+        .leftJoin(
+          purchaseInvoices,
+          eq(purchaseCreditNotes.purchaseInvoiceId, purchaseInvoices.id)
+        )
         .orderBy(desc(purchaseCreditNotes.createdAt));
 
       return result;
     } catch (error: any) {
       // console.error("Error getting purchase credit notes:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: "Error in getPurchaseCreditNotes: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getPurchaseCreditNotes: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseCreditNotes",
         severity: "error",
@@ -7241,7 +8017,7 @@ class Storage {
     month?: number,
     year?: number,
     employeeId?: number,
-    projectId?: number,
+    projectId?: number
   ): Promise<PayrollEntryWithEmployeeDetails[]> {
     try {
       // Build the base query
@@ -7252,10 +8028,14 @@ class Storage {
 
       // Add conditions if provided
       const conditions = [];
-      if (month !== undefined && month !== null) conditions.push(eq(payrollEntries.month, month));
-      if (year !== undefined && year !== null) conditions.push(eq(payrollEntries.year, year));
-      if (employeeId !== undefined && employeeId !== null) conditions.push(eq(payrollEntries.employeeId, employeeId));
-      if (projectId !== undefined && projectId !== null) conditions.push(eq(payrollEntries.projectId, projectId));
+      if (month !== undefined && month !== null)
+        conditions.push(eq(payrollEntries.month, month));
+      if (year !== undefined && year !== null)
+        conditions.push(eq(payrollEntries.year, year));
+      if (employeeId !== undefined && employeeId !== null)
+        conditions.push(eq(payrollEntries.employeeId, employeeId));
+      if (projectId !== undefined && projectId !== null)
+        conditions.push(eq(payrollEntries.projectId, projectId));
 
       if (conditions.length > 0) {
         if (conditions.length === 1) {
@@ -7265,15 +8045,18 @@ class Storage {
         }
       }
 
-      const result = await baseQuery.orderBy(desc(payrollEntries.generatedDate));
-      
+      const result = await baseQuery.orderBy(
+        desc(payrollEntries.generatedDate)
+      );
+
       return result.map((row) => {
-        let employeeDetails: PayrollEntryEmployeeDetails | undefined = undefined;
-        
+        let employeeDetails: PayrollEntryEmployeeDetails | undefined =
+          undefined;
+
         // Access the payroll entry data (table name becomes the key)
         const payrollData = row.payroll_entries;
         const employeeData = row.employees;
-        
+
         if (payrollData && payrollData.employeeId && employeeData) {
           employeeDetails = {
             id: payrollData.employeeId,
@@ -7301,7 +8084,8 @@ class Storage {
       }) as PayrollEntryWithEmployeeDetails[];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getPayrollEntries: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getPayrollEntries: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPayrollEntries",
         severity: "error",
@@ -7320,7 +8104,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getPayrollEntry (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPayrollEntry (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPayrollEntry",
         severity: "error",
@@ -7329,9 +8115,15 @@ class Storage {
     }
   }
 
-  async generateMonthlyPayroll(month: number, year: number, userId?: number): Promise<PayrollEntryWithEmployeeDetails[]> {
+  async generateMonthlyPayroll(
+    month: number,
+    year: number,
+    userId?: number
+  ): Promise<PayrollEntryWithEmployeeDetails[]> {
     try {
-      console.log(`[Payroll] Starting generateMonthlyPayroll for month: ${month}, year: ${year}, userId: ${userId}`);
+      console.log(
+        `[Payroll] Starting generateMonthlyPayroll for month: ${month}, year: ${year}, userId: ${userId}`
+      );
 
       // Validate required parameters
       if (!userId) {
@@ -7349,7 +8141,11 @@ class Storage {
       // Check if payroll already exists for this period
       const existingPayroll = await this.getPayrollEntries(month, year);
       if (existingPayroll.length > 0) {
-        throw new Error(`Payroll for ${this.getMonthName(month)} ${year} already exists. Please clear it first if you want to regenerate.`);
+        throw new Error(
+          `Payroll for ${this.getMonthName(
+            month
+          )} ${year} already exists. Please clear it first if you want to regenerate.`
+        );
       }
 
       // Get all active employees
@@ -7368,10 +8164,14 @@ class Storage {
         .where(eq(employees.isActive, true));
 
       if (activeEmployees.length === 0) {
-        throw new Error("No active employees found. Please add employees before generating payroll.");
+        throw new Error(
+          "No active employees found. Please add employees before generating payroll."
+        );
       }
 
-      console.log(`[Payroll] Found ${activeEmployees.length} active employees.`);
+      console.log(
+        `[Payroll] Found ${activeEmployees.length} active employees.`
+      );
       if (activeEmployees.length === 0) {
         throw new Error("No active employees found.");
       }
@@ -7400,7 +8200,9 @@ class Storage {
 
       for (const employee of activeEmployees) {
         if (!employee) {
-          console.error(`Skipping null employee object during payroll generation for ${month}/${year}.`);
+          console.error(
+            `Skipping null employee object during payroll generation for ${month}/${year}.`
+          );
           continue;
         }
 
@@ -7409,11 +8211,17 @@ class Storage {
         const logLastName = employee.lastName || "Employee";
 
         if (!employee.category) {
-          console.error(`Skipping employee ID ${employee.id || 'N/A'} due to missing category during payroll generation for ${month}/${year}.`);
+          console.error(
+            `Skipping employee ID ${
+              employee.id || "N/A"
+            } due to missing category during payroll generation for ${month}/${year}.`
+          );
           continue;
         }
 
-        console.log(`Processing payroll for employee: ${logFirstName} ${logLastName} (${employee.category})`);
+        console.log(
+          `Processing payroll for employee: ${logFirstName} ${logLastName} (${employee.category})`
+        );
 
         let basicSalary = parseFloat(employee.salary || "0").toString(); // Ensure consistent use of "0" default for salary
         let workingDays = this.getCalendarDaysInMonth(month, year);
@@ -7423,18 +8231,29 @@ class Storage {
 
         if (employee.category === "permanent") {
           // For permanent employees, use full monthly salary - already handled by initialization of basicSalary
-        } else if (employee.category === "consultant" || employee.category === "contract") {
+        } else if (
+          employee.category === "consultant" ||
+          employee.category === "contract"
+        ) {
           // For consultants/contractors, check project assignments
           let totalEarnings = 0;
 
           for (const project of activeProjects) {
             if (!project || project.id == null) {
-              console.error(`Skipping null project or project with null ID during payroll calculation for employee ID ${employee.id}. Project data: ${JSON.stringify(project)}`);
+              console.error(
+                `Skipping null project or project with null ID during payroll calculation for employee ID ${
+                  employee.id
+                }. Project data: ${JSON.stringify(project)}`
+              );
               continue;
             }
-            console.log(`[Payroll] Getting project assignments for employee ID: ${employee.id} (${employee.firstName} ${employee.lastName}) for project ID: ${project.id}`);
+            console.log(
+              `[Payroll] Getting project assignments for employee ID: ${employee.id} (${employee.firstName} ${employee.lastName}) for project ID: ${project.id}`
+            );
             const projectEmployees = await this.getProjectEmployees(project.id);
-            const isAssigned = projectEmployees.some((pe) => pe && pe.id != null && pe.id === employee.id);
+            const isAssigned = projectEmployees.some(
+              (pe) => pe && pe.id != null && pe.id === employee.id
+            );
 
             if (isAssigned) {
               let projectStartDate;
@@ -7442,7 +8261,13 @@ class Storage {
                 projectStartDate = new Date(project.startDate);
               } else {
                 projectStartDate = new Date(year, month - 1, 1);
-                console.warn(`Project ID ${project.id} has null startDate. Defaulting to ${projectStartDate.toDateString()} for payroll calculation for employee ID ${employee.id}.`);
+                console.warn(
+                  `Project ID ${
+                    project.id
+                  } has null startDate. Defaulting to ${projectStartDate.toDateString()} for payroll calculation for employee ID ${
+                    employee.id
+                  }.`
+                );
               }
 
               let projectEndDate;
@@ -7450,21 +8275,38 @@ class Storage {
                 projectEndDate = new Date(project.actualEndDate);
               } else if (project.plannedEndDate) {
                 projectEndDate = new Date(project.plannedEndDate);
-                console.warn(`Project ID ${project.id} has null actualEndDate, using plannedEndDate ${projectEndDate.toDateString()} for payroll calculation for employee ID ${employee.id}.`);
+                console.warn(
+                  `Project ID ${
+                    project.id
+                  } has null actualEndDate, using plannedEndDate ${projectEndDate.toDateString()} for payroll calculation for employee ID ${
+                    employee.id
+                  }.`
+                );
               } else {
                 projectEndDate = new Date(year, month, 0); // Last day of current payroll month
-                console.warn(`Project ID ${project.id} has null actualEndDate and plannedEndDate. Defaulting to ${projectEndDate.toDateString()} for payroll calculation for employee ID ${employee.id}.`);
+                console.warn(
+                  `Project ID ${
+                    project.id
+                  } has null actualEndDate and plannedEndDate. Defaulting to ${projectEndDate.toDateString()} for payroll calculation for employee ID ${
+                    employee.id
+                  }.`
+                );
               }
 
               // Calculate working days in the month for this project
               const monthStart = new Date(year, month - 1, 1);
               const monthEnd = new Date(year, month, 0); // Corrected to last day of current month
 
-              const effectiveStart = projectStartDate > monthStart ? projectStartDate : monthStart;
-              const effectiveEnd = projectEndDate < monthEnd ? projectEndDate : monthEnd;
+              const effectiveStart =
+                projectStartDate > monthStart ? projectStartDate : monthStart;
+              const effectiveEnd =
+                projectEndDate < monthEnd ? projectEndDate : monthEnd;
 
               if (effectiveStart <= effectiveEnd) {
-                const projectWorkingDays = this.calculateWorkingDays(effectiveStart, effectiveEnd);
+                const projectWorkingDays = this.calculateWorkingDays(
+                  effectiveStart,
+                  effectiveEnd
+                );
                 const dailyRate = parseFloat(employee.salary || "0") / 22; // Assuming 22 working days per month
                 totalEarnings += dailyRate * projectWorkingDays;
                 projectId = project.id; // Assign to the last project for GL tracking
@@ -7508,7 +8350,11 @@ class Storage {
         }
 
         // Create consultant project addition if applicable
-        if ((employee.category === "consultant" || employee.category === "contract") && parseFloat(basicSalary) > 0) {
+        if (
+          (employee.category === "consultant" ||
+            employee.category === "contract") &&
+          parseFloat(basicSalary) > 0
+        ) {
           await db.insert(payrollAdditions).values({
             payrollEntryId: payrollEntry.id,
             description: "Project Consultant Fee",
@@ -7525,13 +8371,17 @@ class Storage {
 
         // Create double-entry GL records for salary expense only if amount > 0
         if (calculatedTotalEarnings > 0) {
-          const transactionDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+          const transactionDate = `${year}-${month
+            .toString()
+            .padStart(2, "0")}-01`;
 
           let glEmployeeFirstName = employee.firstName;
           let glEmployeeLastName = employee.lastName;
 
           if (!glEmployeeFirstName && !glEmployeeLastName) {
-            console.warn(`Employee ID ${employee.id} has null first and last names. Using defaults for GL employee name.`);
+            console.warn(
+              `Employee ID ${employee.id} has null first and last names. Using defaults for GL employee name.`
+            );
             glEmployeeFirstName = "Unknown";
             glEmployeeLastName = "Employee";
           } else if (!glEmployeeFirstName) {
@@ -7542,7 +8392,11 @@ class Storage {
           const employeeName = `${glEmployeeFirstName} ${glEmployeeLastName}`;
           const monthName = this.getMonthName(month);
 
-          console.log(`Creating GL entries for ${employeeName} - ${monthName} ${year} - Amount: ${calculatedTotalEarnings.toFixed(2)}`);
+          console.log(
+            `Creating GL entries for ${employeeName} - ${monthName} ${year} - Amount: ${calculatedTotalEarnings.toFixed(
+              2
+            )}`
+          );
 
           // 1. Debit: Salary Expense (increase expense)
           await this.createGeneralLedgerEntry({
@@ -7578,9 +8432,15 @@ class Storage {
             createdBy: userId,
           });
 
-          console.log(`Successfully created payroll entry and GL records for ${employeeName}`);
+          console.log(
+            `Successfully created payroll entry and GL records for ${employeeName}`
+          );
         } else {
-          console.log(`Skipping GL entries for employee ${employee.firstName} ${employee.lastName} - no earnings for ${this.getMonthName(month)} ${year}`);
+          console.log(
+            `Skipping GL entries for employee ${employee.firstName} ${
+              employee.lastName
+            } - no earnings for ${this.getMonthName(month)} ${year}`
+          );
         }
 
         generatedPayroll.push({
@@ -7599,21 +8459,26 @@ class Storage {
           status: payrollEntry.status,
           generatedDate: payrollEntry.generatedDate,
           projectId: payrollEntry.projectId,
-          employee: { // Use potentially defaulted names for the final returned object as well
+          employee: {
+            // Use potentially defaulted names for the final returned object as well
             id: employee.id,
             firstName: employee.firstName || "Unknown",
-            lastName: employee.lastName || "Employee", 
+            lastName: employee.lastName || "Employee",
             employeeCode: employee.employeeCode,
           },
         });
       }
 
-      console.log(`Successfully generated payroll for ${generatedPayroll.length} employees`);
+      console.log(
+        `Successfully generated payroll for ${generatedPayroll.length} employees`
+      );
       return generatedPayroll;
     } catch (error: any) {
       console.error("Original error in generateMonthlyPayroll:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in generateMonthlyPayroll (month: ${month}, year: ${year}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in generateMonthlyPayroll (month: ${month}, year: ${year}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "generateMonthlyPayroll",
         severity: "error",
@@ -7622,7 +8487,11 @@ class Storage {
     }
   }
 
-  async updatePayrollEntry(id: number, data: Partial<InsertPayrollEntry>, userId?: number): Promise<PayrollEntry | undefined> {
+  async updatePayrollEntry(
+    id: number,
+    data: Partial<InsertPayrollEntry>,
+    userId?: number
+  ): Promise<PayrollEntry | undefined> {
     try {
       // Get current payroll entry to check old status
       const currentPayrollEntry = await this.getPayrollEntry(id);
@@ -7656,19 +8525,25 @@ class Storage {
             let glEmployeeFirstName = employee.firstName || "Unknown";
             let glEmployeeLastName = employee.lastName || "Employee";
             if (employee.firstName === null && employee.lastName === null) {
-                // Already handled by initialization, but explicit log for clarity if both were null
-                console.warn(`Employee ID ${employee.id} has null first and last names. Using defaults "Unknown Employee" for GL payment entries.`);
+              // Already handled by initialization, but explicit log for clarity if both were null
+              console.warn(
+                `Employee ID ${employee.id} has null first and last names. Using defaults "Unknown Employee" for GL payment entries.`
+              );
             } else if (employee.firstName === null) {
-                glEmployeeFirstName = "Unknown";
+              glEmployeeFirstName = "Unknown";
             } else if (employee.lastName === null) {
-                glEmployeeLastName = "Employee";
+              glEmployeeLastName = "Employee";
             }
             const employeeName = `${glEmployeeFirstName} ${glEmployeeLastName}`;
             const monthName = this.getMonthName(updatedEntry.month);
             const transactionDate = new Date().toISOString().split("T")[0];
-            const totalAmountStr = updatedEntry.totalAmount ? parseFloat(updatedEntry.totalAmount).toFixed(2) : "0.00";
+            const totalAmountStr = updatedEntry.totalAmount
+              ? parseFloat(updatedEntry.totalAmount).toFixed(2)
+              : "0.00";
 
-            console.log(`Processing 'paid' status update for payroll entry ID ${updatedEntry.id}. Employee: ${employeeName}, Amount: ${totalAmountStr}`);
+            console.log(
+              `Processing 'paid' status update for payroll entry ID ${updatedEntry.id}. Employee: ${employeeName}, Amount: ${totalAmountStr}`
+            );
 
             // 1. Debit: Salary Payable (decrease liability)
             await this.createGeneralLedgerEntry({
@@ -7703,9 +8578,13 @@ class Storage {
               status: "paid",
               createdBy: userId,
             });
-            console.log(`Created GL payment entries for payroll ID ${updatedEntry.id}`);
+            console.log(
+              `Created GL payment entries for payroll ID ${updatedEntry.id}`
+            );
           } else {
-            console.error(`Failed to retrieve employee details for employee ID ${updatedEntry.employeeId} during GL payment entry creation.`);
+            console.error(
+              `Failed to retrieve employee details for employee ID ${updatedEntry.employeeId} during GL payment entry creation.`
+            );
           }
         }
         return updatedEntry; // Return the updated entry from the result array
@@ -7714,7 +8593,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updatePayrollEntry:", error);
       await this.createErrorLog({
-        message: `Error in updatePayrollEntry (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updatePayrollEntry (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePayrollEntry",
         severity: "error",
@@ -7729,8 +8610,14 @@ class Storage {
       const additions = await this.getPayrollAdditions(payrollEntryId);
       const deductions = await this.getPayrollDeductions(payrollEntryId);
 
-      const totalAdditions = additions.reduce((sum, addition) => sum + parseFloat(addition.amount || "0"), 0);
-      const totalDeductions = deductions.reduce((sum, deduction) => sum + parseFloat(deduction.amount || "0"), 0);
+      const totalAdditions = additions.reduce(
+        (sum, addition) => sum + parseFloat(addition.amount || "0"),
+        0
+      );
+      const totalDeductions = deductions.reduce(
+        (sum, deduction) => sum + parseFloat(deduction.amount || "0"),
+        0
+      );
 
       // Get the basic salary
       const payrollEntry = await db
@@ -7771,7 +8658,7 @@ class Storage {
         // Update GL entries with new amounts
         const salaryDescription = `Salary for ${employeeName} - ${monthName} ${payrollEntry[0].year}`;
         const payableDescription = `Salary payable to ${employeeName} - ${monthName} ${payrollEntry[0].year}`;
-        
+
         await db.execute(sql`
           UPDATE general_ledger_entries 
           SET debit_amount = ${totalEarnings.toString()},
@@ -7791,11 +8678,19 @@ class Storage {
         `);
       }
 
-      console.log(`Updated payroll entry ${payrollEntryId} totals: additions=${totalAdditions.toFixed(2)}, deductions=${totalDeductions.toFixed(2)}, total=${totalAmount.toFixed(2)}`);
+      console.log(
+        `Updated payroll entry ${payrollEntryId} totals: additions=${totalAdditions.toFixed(
+          2
+        )}, deductions=${totalDeductions.toFixed(
+          2
+        )}, total=${totalAmount.toFixed(2)}`
+      );
     } catch (error: any) {
       console.error("Original error in updatePayrollEntryTotals:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updatePayrollEntryTotals (payrollEntryId: ${payrollEntryId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updatePayrollEntryTotals (payrollEntryId: ${payrollEntryId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePayrollEntryTotals",
         severity: "error",
@@ -7804,16 +8699,22 @@ class Storage {
     }
   }
 
-  async clearPayrollPeriod(month: number, year: number): Promise<{ deletedPayrollEntries: number; deletedGeneralLedgerEntries: number }> {
+  async clearPayrollPeriod(
+    month: number,
+    year: number
+  ): Promise<{
+    deletedPayrollEntries: number;
+    deletedGeneralLedgerEntries: number;
+  }> {
     try {
       // Get payroll entries for this period first
       const payrollEntriesToDelete = await this.getPayrollEntries(month, year);
-      
+
       if (payrollEntriesToDelete.length === 0) {
         return { deletedPayrollEntries: 0, deletedGeneralLedgerEntries: 0 };
       }
 
-      const payrollIds = payrollEntriesToDelete.map(entry => entry.id);
+      const payrollIds = payrollEntriesToDelete.map((entry) => entry.id);
 
       // Delete related general ledger entries by iterating through each payroll ID
       let deletedGLCount = 0;
@@ -7834,7 +8735,10 @@ class Storage {
       }
 
       // Delete payroll entries (this will cascade to delete additions and deductions)
-      const payrollDeleteCount = await this.clearPayrollEntriesByPeriod(month, year);
+      const payrollDeleteCount = await this.clearPayrollEntriesByPeriod(
+        month,
+        year
+      );
 
       return {
         deletedPayrollEntries: payrollDeleteCount,
@@ -7843,7 +8747,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in clearPayrollPeriod:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in clearPayrollPeriod (month: ${month}, year: ${year}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in clearPayrollPeriod (month: ${month}, year: ${year}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "clearPayrollPeriod",
         severity: "error",
@@ -7852,16 +8758,23 @@ class Storage {
     }
   }
 
-  async clearPayrollEntriesByPeriod(month: number, year: number): Promise<number> {
+  async clearPayrollEntriesByPeriod(
+    month: number,
+    year: number
+  ): Promise<number> {
     try {
       const result = await db
         .delete(payrollEntries)
-        .where(and(eq(payrollEntries.month, month), eq(payrollEntries.year, year)));
+        .where(
+          and(eq(payrollEntries.month, month), eq(payrollEntries.year, year))
+        );
       return result.rowCount || 0;
     } catch (error: any) {
       console.error("Original error in clearPayrollEntriesByPeriod:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in clearPayrollEntriesByPeriod (month: ${month}, year: ${year}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in clearPayrollEntriesByPeriod (month: ${month}, year: ${year}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "clearPayrollEntriesByPeriod",
         severity: "error",
@@ -7877,7 +8790,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in clearAllPayrollEntries:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in clearAllPayrollEntries: " + (error?.message || "Unknown error"),
+        message:
+          "Error in clearAllPayrollEntries: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "clearAllPayrollEntries",
         severity: "error",
@@ -7887,7 +8802,9 @@ class Storage {
   }
 
   // Payroll Additions methods
-  async getPayrollAdditions(payrollEntryId: number): Promise<PayrollAddition[]> {
+  async getPayrollAdditions(
+    payrollEntryId: number
+  ): Promise<PayrollAddition[]> {
     try {
       return await db
         .select()
@@ -7896,7 +8813,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in getPayrollAdditions:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in getPayrollAdditions (payrollEntryId: ${payrollEntryId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPayrollAdditions (payrollEntryId: ${payrollEntryId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPayrollAdditions",
         severity: "error",
@@ -7916,7 +8835,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in getPayrollAddition:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in getPayrollAddition (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPayrollAddition (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPayrollAddition",
         severity: "error",
@@ -7925,7 +8846,9 @@ class Storage {
     }
   }
 
-  async createPayrollAddition(additionData: InsertPayrollAddition): Promise<PayrollAddition> {
+  async createPayrollAddition(
+    additionData: InsertPayrollAddition
+  ): Promise<PayrollAddition> {
     try {
       const [addition] = await db
         .insert(payrollAdditions)
@@ -7939,7 +8862,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in createPayrollAddition:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createPayrollAddition: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPayrollAddition: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPayrollAddition",
         severity: "error",
@@ -7948,7 +8873,10 @@ class Storage {
     }
   }
 
-  async updatePayrollAddition(id: number, data: Partial<InsertPayrollAddition>): Promise<PayrollAddition | undefined> {
+  async updatePayrollAddition(
+    id: number,
+    data: Partial<InsertPayrollAddition>
+  ): Promise<PayrollAddition | undefined> {
     try {
       const result = await db
         .update(payrollAdditions)
@@ -7968,7 +8896,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updatePayrollAddition:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updatePayrollAddition (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updatePayrollAddition (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePayrollAddition",
         severity: "error",
@@ -7999,7 +8929,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in deletePayrollAddition:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in deletePayrollAddition (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deletePayrollAddition (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deletePayrollAddition",
         severity: "error",
@@ -8009,7 +8941,9 @@ class Storage {
   }
 
   // Payroll Deductions methods
-  async getPayrollDeductions(payrollEntryId: number): Promise<PayrollDeduction[]> {
+  async getPayrollDeductions(
+    payrollEntryId: number
+  ): Promise<PayrollDeduction[]> {
     try {
       return await db
         .select()
@@ -8018,7 +8952,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in getPayrollDeductions:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in getPayrollDeductions (payrollEntryId: ${payrollEntryId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPayrollDeductions (payrollEntryId: ${payrollEntryId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPayrollDeductions",
         severity: "error",
@@ -8038,7 +8974,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in getPayrollDeduction:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in getPayrollDeduction (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPayrollDeduction (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPayrollDeduction",
         severity: "error",
@@ -8047,7 +8985,9 @@ class Storage {
     }
   }
 
-  async createPayrollDeduction(deductionData: InsertPayrollDeduction): Promise<PayrollDeduction> {
+  async createPayrollDeduction(
+    deductionData: InsertPayrollDeduction
+  ): Promise<PayrollDeduction> {
     try {
       const [deduction] = await db
         .insert(payrollDeductions)
@@ -8061,7 +9001,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in createPayrollDeduction:", error); // Keep original console.error
       await this.createErrorLog({
-        message: "Error in createPayrollDeduction: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPayrollDeduction: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPayrollDeduction",
         severity: "error",
@@ -8070,7 +9012,10 @@ class Storage {
     }
   }
 
-  async updatePayrollDeduction(id: number, data: Partial<InsertPayrollDeduction>): Promise<PayrollDeduction | undefined> {
+  async updatePayrollDeduction(
+    id: number,
+    data: Partial<InsertPayrollDeduction>
+  ): Promise<PayrollDeduction | undefined> {
     try {
       const result = await db
         .update(payrollDeductions)
@@ -8090,7 +9035,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updatePayrollDeduction:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in updatePayrollDeduction (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updatePayrollDeduction (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePayrollDeduction",
         severity: "error",
@@ -8121,7 +9068,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in deletePayrollDeduction:", error); // Keep original console.error
       await this.createErrorLog({
-        message: `Error in deletePayrollDeduction (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deletePayrollDeduction (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deletePayrollDeduction",
         severity: "error",
@@ -8133,8 +9082,18 @@ class Storage {
   // Helper methods for payroll
   private getMonthName(month: number): string {
     const months = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ];
     return months[month - 1] || "Unknown";
   }
@@ -8154,7 +9113,9 @@ class Storage {
     } catch (error: any) {
       // console.error("Error getting purchase credit note:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: `Error in getPurchaseCreditNote (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPurchaseCreditNote (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseCreditNote",
         severity: "error",
@@ -8194,20 +9155,24 @@ class Storage {
           paymentDate: creditNote.creditNoteDate,
           paymentMethod: "Credit Note",
           referenceNumber: creditNote.creditNoteNumber,
-          notes: `Credit note applied: ${creditNote.reason || 'N/A'}`,
+          notes: `Credit note applied: ${creditNote.reason || "N/A"}`,
           creditNoteId: creditNote.id,
           paymentType: "credit_note",
         });
 
         // Update purchase invoice paid amount
-        await this.updatePurchaseInvoicePaidAmount(creditNote.purchaseInvoiceId);
+        await this.updatePurchaseInvoicePaidAmount(
+          creditNote.purchaseInvoiceId
+        );
       }
 
       return creditNote;
     } catch (error: any) {
       // console.error("Error creating purchase credit note:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: "Error in createPurchaseCreditNote: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createPurchaseCreditNote: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseCreditNote",
         severity: "error",
@@ -8218,7 +9183,7 @@ class Storage {
 
   async updatePurchaseCreditNote(
     id: number,
-    creditNoteData: any,
+    creditNoteData: any
   ): Promise<any | undefined> {
     try {
       const currentCreditNote = await this.getPurchaseCreditNote(id);
@@ -8254,20 +9219,24 @@ class Storage {
           paymentDate: updatedCreditNote.creditNoteDate,
           paymentMethod: "Credit Note",
           referenceNumber: updatedCreditNote.creditNoteNumber,
-          notes: `Credit note applied: ${updatedCreditNote.reason || 'N/A'}`,
+          notes: `Credit note applied: ${updatedCreditNote.reason || "N/A"}`,
           creditNoteId: updatedCreditNote.id,
           paymentType: "credit_note",
         });
 
         // Update purchase invoice paid amount
-        await this.updatePurchaseInvoicePaidAmount(updatedCreditNote.purchaseInvoiceId);
+        await this.updatePurchaseInvoicePaidAmount(
+          updatedCreditNote.purchaseInvoiceId
+        );
       }
 
       return updatedCreditNote;
     } catch (error: any) {
       // console.error("Error updating purchase credit note:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: `Error in updatePurchaseCreditNote (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updatePurchaseCreditNote (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePurchaseCreditNote",
         severity: "error",
@@ -8278,12 +9247,16 @@ class Storage {
 
   async deletePurchaseCreditNote(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(purchaseCreditNotes).where(eq(purchaseCreditNotes.id, id));
+      const result = await db
+        .delete(purchaseCreditNotes)
+        .where(eq(purchaseCreditNotes.id, id));
       return result.rowCount > 0;
     } catch (error: any) {
       // console.error("Error deleting purchase credit note:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: `Error in deletePurchaseCreditNote (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deletePurchaseCreditNote (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deletePurchaseCreditNote",
         severity: "error",
@@ -8304,7 +9277,9 @@ class Storage {
     } catch (error: any) {
       // console.error("Error getting purchase credit notes by invoice:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: `Error in getPurchaseCreditNotesByInvoice (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getPurchaseCreditNotesByInvoice (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseCreditNotesByInvoice",
         severity: "error",
@@ -8360,12 +9335,19 @@ class Storage {
         .where(eq(purchaseInvoices.id, invoiceId));
 
       console.log(
-        `Updated purchase invoice ${invoiceId} paid amount to ${totalPaid.toFixed(2)} with status ${status}`,
+        `Updated purchase invoice ${invoiceId} paid amount to ${totalPaid.toFixed(
+          2
+        )} with status ${status}`
       );
     } catch (error: any) {
-      console.error("Original error in updatePurchaseInvoicePaidAmount:", error); // Original console.error kept
+      console.error(
+        "Original error in updatePurchaseInvoicePaidAmount:",
+        error
+      ); // Original console.error kept
       await this.createErrorLog({
-        message: `Error in updatePurchaseInvoicePaidAmount (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updatePurchaseInvoicePaidAmount (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePurchaseInvoicePaidAmount",
         severity: "error",
@@ -8380,7 +9362,8 @@ class Storage {
     } catch (error: any) {
       // console.error("Error getting sales quotations:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: "Error in getSalesQuotations: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getSalesQuotations: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSalesQuotations",
         severity: "error",
@@ -8395,7 +9378,9 @@ class Storage {
     } catch (error: any) {
       // console.error("Error deleting sales quotation:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: `Error in deleteSalesQuotation (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteSalesQuotation (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteSalesQuotation",
         severity: "error",
@@ -8410,7 +9395,8 @@ class Storage {
     } catch (error: any) {
       // console.error("Error getting sales invoices:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: "Error in getSalesInvoices: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getSalesInvoices: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSalesInvoices",
         severity: "error",
@@ -8429,7 +9415,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getSalesInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getSalesInvoice (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSalesInvoice",
         severity: "error",
@@ -8439,7 +9427,7 @@ class Storage {
   }
 
   async createSalesInvoice(
-    invoiceData: InsertSalesInvoice,
+    invoiceData: InsertSalesInvoice
   ): Promise<SalesInvoice> {
     try {
       const result = await db
@@ -8449,7 +9437,8 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createSalesInvoice: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createSalesInvoice: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createSalesInvoice",
         severity: "error",
@@ -8460,7 +9449,7 @@ class Storage {
 
   async updateSalesInvoice(
     id: number,
-    invoiceData: Partial<InsertSalesInvoice>,
+    invoiceData: Partial<InsertSalesInvoice>
   ): Promise<SalesInvoice | undefined> {
     try {
       const result = await db
@@ -8471,7 +9460,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in updateSalesInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateSalesInvoice (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateSalesInvoice",
         severity: "error",
@@ -8486,7 +9477,9 @@ class Storage {
     } catch (error: any) {
       // console.error("Error deleting sales invoice:", error); // Original console.error commented out
       await this.createErrorLog({
-        message: `Error in deleteSalesInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in deleteSalesInvoice (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteSalesInvoice",
         severity: "error",
@@ -8518,7 +9511,9 @@ class Storage {
         referenceType: "sales_invoice",
         referenceId: invoiceId,
         accountName: "Accounts Receivable",
-        description: `Sales Invoice ${invoiceData.invoiceNumber} - ${customerData?.name || 'Unknown Customer'}`,
+        description: `Sales Invoice ${invoiceData.invoiceNumber} - ${
+          customerData?.name || "Unknown Customer"
+        }`,
         debitAmount: invoiceData.totalAmount || "0",
         creditAmount: "0",
         entityId: invoiceData.customerId,
@@ -8536,7 +9531,9 @@ class Storage {
         referenceType: "sales_invoice",
         referenceId: invoiceId,
         accountName: "Sales Revenue",
-        description: `Sales Invoice ${invoiceData.invoiceNumber} - ${customerData?.name || 'Unknown Customer'}`,
+        description: `Sales Invoice ${invoiceData.invoiceNumber} - ${
+          customerData?.name || "Unknown Customer"
+        }`,
         debitAmount: "0",
         creditAmount: invoiceData.totalAmount || "0",
         entityId: invoiceData.customerId,
@@ -8548,10 +9545,14 @@ class Storage {
         status: "pending",
       });
 
-      console.log(`GL entries created for invoice ${invoiceData.invoiceNumber}`);
+      console.log(
+        `GL entries created for invoice ${invoiceData.invoiceNumber}`
+      );
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in createInvoiceGLEntries (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in createInvoiceGLEntries (invoiceId: ${invoiceId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createInvoiceGLEntries",
         severity: "error",
@@ -8569,7 +9570,7 @@ export interface IStorage {
   createUser(userData: InsertUser): Promise<User>;
   updateUser(
     id: number,
-    userData: Partial<InsertUser>,
+    userData: Partial<InsertUser>
   ): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
 
@@ -8583,13 +9584,13 @@ export interface IStorage {
     page: number,
     limit: number,
     search: string,
-    showArchived: boolean,
+    showArchived: boolean
   ): Promise<PaginatedResponse<Customer>>;
   getCustomer(id: number): Promise<Customer | undefined>;
   createCustomer(customerData: InsertCustomer): Promise<Customer>;
   updateCustomer(
     id: number,
-    customerData: Partial<InsertCustomer>,
+    customerData: Partial<InsertCustomer>
   ): Promise<Customer | undefined>;
   deleteCustomer(id: number): Promise<boolean>;
 
@@ -8599,13 +9600,13 @@ export interface IStorage {
     page: number,
     limit: number,
     search: string,
-    showArchived: boolean,
+    showArchived: boolean
   ): Promise<PaginatedResponse<Supplier>>;
   getSupplier(id: number): Promise<Supplier | undefined>;
   createSupplier(supplierData: InsertSupplier): Promise<Supplier>;
   updateSupplier(
     id: number,
-    supplierData: Partial<InsertSupplier>,
+    supplierData: Partial<InsertSupplier>
   ): Promise<Supplier | undefined>;
   deleteSupplier(id: number): Promise<boolean>;
 
@@ -8614,7 +9615,7 @@ export interface IStorage {
   createEmployee(employeeData: InsertEmployee): Promise<Employee>;
   updateEmployee(
     id: number,
-    employeeData: Partial<InsertEmployee>,
+    employeeData: Partial<InsertEmployee>
   ): Promise<Employee | undefined>;
 
   // Project methods
@@ -8624,30 +9625,33 @@ export interface IStorage {
   createProject(projectData: InsertProject): Promise<Project>;
   updateProject(
     id: number,
-    data: Partial<Project>,
+    data: Partial<Project>
   ): Promise<Project | undefined>;
 
   // Project Employee methods
   getProjectEmployees(
-    projectId: number,
+    projectId: number
   ): Promise<
     Array<
       Employee & { startDate?: string; endDate?: string; assignedAt?: string }
     >
   >;
-  assignEmployeeToProject(projectId: number, employeeId: number): Promise<ProjectEmployee | undefined>;
+  assignEmployeeToProject(
+    projectId: number,
+    employeeId: number
+  ): Promise<ProjectEmployee | undefined>;
   assignEmployeesToProject(
     projectId: number,
-    assignments: AssignEmployeeData[],
+    assignments: AssignEmployeeData[]
   ): Promise<ProjectEmployee[]>;
   recalculateProjectCost(projectId: number): Promise<void>;
   updateProjectEndDateAndRecalculate(
     projectId: number,
-    endDate: Date,
+    endDate: Date
   ): Promise<Project | undefined>;
   removeEmployeeFromProject(
     projectId: number,
-    employeeId: number,
+    employeeId: number
   ): Promise<boolean>;
 
   // Inventory methods
@@ -8657,13 +9661,13 @@ export interface IStorage {
     limit: number,
     search: string,
     category: string,
-    lowStock: boolean,
+    lowStock: boolean
   ): Promise<PaginatedResponse<InventoryItem>>;
   getInventoryItem(id: number): Promise<InventoryItem | undefined>; // This line should remain as is
   createInventoryItem(itemData: InsertInventoryItem): Promise<InventoryItem>;
   updateInventoryItem(
     id: number,
-    itemData: Partial<InventoryItem>,
+    itemData: Partial<InventoryItem>
   ): Promise<InventoryItem | undefined>;
 
   // Asset methods
@@ -8672,7 +9676,7 @@ export interface IStorage {
   createAsset(assetData: InsertAsset): Promise<Asset>;
   updateAsset(
     id: number,
-    assetData: Partial<InsertAsset>,
+    assetData: Partial<InsertAsset>
   ): Promise<Asset | undefined>;
   createAssetMaintenanceRecord(maintenanceData: {
     assetId: number;
@@ -8681,50 +9685,63 @@ export interface IStorage {
     maintenanceDate?: Date;
     performedBy?: number | null;
   }): Promise<AssetMaintenanceRecord>; // Changed from Promise<any>
-  getAssetMaintenanceRecords(assetId: number): Promise<AssetMaintenanceRecordWithUser[]>; // Changed from Promise<any[]>
+  getAssetMaintenanceRecords(
+    assetId: number
+  ): Promise<AssetMaintenanceRecordWithUser[]>; // Changed from Promise<any[]>
   getAllAssetMaintenanceRecords(): Promise<AssetMaintenanceRecordWithUser[]>; // Changed from Promise<any[]>
 
   // Daily Activity methods
   getDailyActivities(projectId: number): Promise<DailyActivity[]>;
-  getDailyActivitiesPaginated(projectId: number, limit: number, offset: number): Promise<{ data: DailyActivity[]; total: number }>;
+  getDailyActivitiesPaginated(
+    projectId: number,
+    limit: number,
+    offset: number
+  ): Promise<{ data: DailyActivity[]; total: number }>;
   createDailyActivity(
-    activityData: InsertDailyActivity,
+    activityData: InsertDailyActivity
   ): Promise<DailyActivity>;
 
   // Planned Activities methods (added to interface)
   getPlannedActivities(projectId: number): Promise<PlannedActivityItem[]>;
-  getPlannedActivitiesPaginated(projectId: number, limit: number, offset: number): Promise<{ data: PlannedActivityItem[]; total: number }>;
-  savePlannedActivities(projectId: number, activities: PlannedActivityItem[]): Promise<DailyActivity[]>;
+  getPlannedActivitiesPaginated(
+    projectId: number,
+    limit: number,
+    offset: number
+  ): Promise<{ data: PlannedActivityItem[]; total: number }>;
+  savePlannedActivities(
+    projectId: number,
+    activities: PlannedActivityItem[]
+  ): Promise<DailyActivity[]>;
 
   // Supplier-Inventory Item mapping methods
   getSupplierInventoryItems(
     inventoryItemId?: number,
-    supplierId?: number,
+    supplierId?: number
   ): Promise<SupplierInventoryItem[]>;
   createSupplierInventoryItem(
-    data: InsertSupplierInventoryItem,
+    data: InsertSupplierInventoryItem
   ): Promise<SupplierInventoryItem>;
   deleteSupplierInventoryItemsByInventoryId(
-    inventoryItemId: number,
+    inventoryItemId: number
   ): Promise<boolean>;
   updateSupplierInventoryItem(
     id: number,
-    data: Partial<InsertSupplierInventoryItem>,
+    data: Partial<InsertSupplierInventoryItem>
   ): Promise<SupplierInventoryItem | undefined>;
   deleteSupplierInventoryItem(id: number): Promise<boolean>;
   getSupplierInventoryItemsBySupplierId(
-    supplierId: number,
+    supplierId: number
   ): Promise<SupplierInventoryItem[]>;
   getProductsBySupplier(supplierId: number): Promise<any[]>;
 
   // Project Photo Group methods
   getProjectPhotoGroups(projectId: number): Promise<ProjectPhotoGroup[]>;
   createProjectPhotoGroup(
-    groupData: InsertProjectPhotoGroup,
+    groupData: InsertProjectPhotoGroup
   ): Promise<ProjectPhotoGroup>;
   updateProjectPhotoGroup(
     id: number,
-    groupData: Partial<InsertProjectPhotoGroup>,
+    groupData: Partial<InsertProjectPhotoGroup>
   ): Promise<ProjectPhotoGroup | undefined>;
   deleteProjectPhotoGroup(id: number): Promise<boolean>;
 
@@ -8734,12 +9751,14 @@ export interface IStorage {
   deleteProjectPhoto(photoId: number): Promise<boolean>;
 
   // Project Consumables methods
-  getProjectConsumables(projectId: number): Promise<ProjectConsumableWithItems[]>;
+  getProjectConsumables(
+    projectId: number
+  ): Promise<ProjectConsumableWithItems[]>;
   createProjectConsumables(
     projectId: number,
     date: string,
     items: CreateProjectConsumableItemInput[],
-    userId?: number,
+    userId?: number
   ): Promise<CreatedProjectConsumable>;
 
   // Payroll methods
@@ -8747,19 +9766,23 @@ export interface IStorage {
     month?: number,
     year?: number,
     employeeId?: number,
-    projectId?: number,
+    projectId?: number
   ): Promise<PayrollEntryWithEmployeeDetails[]>;
-  generateMonthlyPayroll(month: number, year: number, userId?: number): Promise<PayrollEntryWithEmployeeDetails[]>;
+  generateMonthlyPayroll(
+    month: number,
+    year: number,
+    userId?: number
+  ): Promise<PayrollEntryWithEmployeeDetails[]>;
   updatePayrollEntry(
     id: number,
     payrollData: Partial<InsertPayrollEntry>,
-    userId?: number,
+    userId?: number
   ): Promise<PayrollEntry | undefined>;
   clearAllPayrollEntries(): Promise<number>;
   clearPayrollEntriesByPeriod(month: number, year: number): Promise<number>;
   clearPayrollPeriod(
     month: number,
-    year: number,
+    year: number
   ): Promise<{
     deletedPayrollEntries: number;
     deletedGeneralLedgerEntries: number;
@@ -8768,11 +9791,11 @@ export interface IStorage {
   // Payroll Additions methods
   getPayrollAdditions(payrollEntryId: number): Promise<PayrollAddition[]>;
   createPayrollAddition( // Parameter type already InsertPayrollAddition in IStorage, class was Omit<>
-    additionData: InsertPayrollAddition,
+    additionData: InsertPayrollAddition
   ): Promise<PayrollAddition>;
   updatePayrollAddition( // Parameter type already Partial<InsertPayrollAddition> in IStorage, class was Partial<PayrollAddition>
     id: number,
-    additionData: Partial<InsertPayrollAddition>,
+    additionData: Partial<InsertPayrollAddition>
   ): Promise<PayrollAddition | undefined>;
   deletePayrollAddition(id: number): Promise<boolean>;
   getPayrollAddition(id: number): Promise<PayrollAddition | undefined>;
@@ -8780,11 +9803,11 @@ export interface IStorage {
   // Payroll Deductions methods
   getPayrollDeductions(payrollEntryId: number): Promise<PayrollDeduction[]>;
   createPayrollDeduction( // Parameter type already InsertPayrollDeduction in IStorage, class was Omit<>
-    deductionData: InsertPayrollDeduction,
+    deductionData: InsertPayrollDeduction
   ): Promise<PayrollDeduction>;
   updatePayrollDeduction( // Parameter type already Partial<InsertPayrollDeduction> in IStorage, class was Partial<PayrollDeduction>
     id: number,
-    deductionData: Partial<InsertPayrollDeduction>,
+    deductionData: Partial<InsertPayrollDeduction>
   ): Promise<PayrollDeduction | undefined>;
   deletePayrollDeduction(id: number): Promise<boolean>;
   getPayrollDeduction(id: number): Promise<PayrollDeduction | undefined>;
@@ -8795,11 +9818,11 @@ export interface IStorage {
   // Sales Quotation methods
   getSalesQuotations(): Promise<SalesQuotation[]>;
   createSalesQuotation(
-    quotationData: InsertSalesQuotation,
+    quotationData: InsertSalesQuotation
   ): Promise<SalesQuotation>;
   updateSalesQuotation(
     id: number,
-    quotationData: Partial<InsertSalesQuotation>,
+    quotationData: Partial<InsertSalesQuotation>
   ): Promise<SalesQuotation | undefined>;
   getSalesQuotation(id: number): Promise<SalesQuotation | undefined>;
   deleteSalesQuotation(id: number): Promise<void>;
@@ -8813,7 +9836,7 @@ export interface IStorage {
       archived?: boolean;
       startDate?: string;
       endDate?: string;
-    },
+    }
   ): Promise<PaginatedResponse<SalesQuotationWithCustomerName>>;
 
   // Sales Invoice methods
@@ -8822,14 +9845,14 @@ export interface IStorage {
   createSalesInvoice(invoiceData: InsertSalesInvoice): Promise<SalesInvoice>;
   updateSalesInvoice(
     id: number,
-    invoiceData: Partial<InsertSalesInvoice>,
+    invoiceData: Partial<InsertSalesInvoice>
   ): Promise<SalesInvoice | undefined>;
   deleteSalesInvoice(id: number): Promise<void>;
 
   // Invoice Payments methods
   getInvoicePayments(invoiceId: number): Promise<InvoicePayment[]>;
   createInvoicePayment(
-    paymentData: InsertInvoicePayment,
+    paymentData: InsertInvoicePayment
   ): Promise<InvoicePayment>;
   updateInvoicePaidAmount(invoiceId: number): Promise<void>;
   getReceivables(): Promise<any[]>;
@@ -8846,18 +9869,26 @@ export interface IStorage {
   // updateInvoicePaidAmount(invoiceId: number): Promise<void>; // Already listed under Invoice Payments
   getCreditNote(id: number): Promise<CreditNote | undefined>;
   createCreditNote(creditNoteData: InsertCreditNote): Promise<CreditNote>;
-  updateCreditNote(id: number, creditNoteData: Partial<InsertCreditNote>): Promise<CreditNote | undefined>;
+  updateCreditNote(
+    id: number,
+    creditNoteData: Partial<InsertCreditNote>
+  ): Promise<CreditNote | undefined>;
   getCreditNotes(): Promise<CreditNoteWithDetails[]>;
-  createInvoicePaymentForCreditNote(invoiceId: number, creditNote: CreditNote): Promise<InvoicePayment>;
-  updateSalesInvoiceFromCreditNote(invoiceId: number, creditNoteAmount: number): Promise<SalesInvoice | undefined>;
-
+  createInvoicePaymentForCreditNote(
+    invoiceId: number,
+    creditNote: CreditNote
+  ): Promise<InvoicePayment>;
+  updateSalesInvoiceFromCreditNote(
+    invoiceId: number,
+    creditNoteAmount: number
+  ): Promise<SalesInvoice | undefined>;
 
   // Goods Receipt and Issue methods
   getGoodsReceipts(): Promise<GoodsReceiptDetails[]>;
   createGoodsReceipt(
     reference: string,
     items: GoodsReceiptItemInput[],
-    userId?: number,
+    userId?: number
   ): Promise<CreatedGoodsReceipt>;
   getGoodsIssues(): Promise<any[]>;
 
@@ -8865,25 +9896,29 @@ export interface IStorage {
     reference: string,
     projectId: number | undefined,
     items: Array<{ inventoryItemId: number; quantity: number }>,
-    userId?: number,
+    userId?: number
   ): Promise<any>;
 
   // Project Asset Assignment methods
-  getProjectAssetAssignments(projectId: number): Promise<ProjectAssetAssignmentWithAssetInfo[]>;
+  getProjectAssetAssignments(
+    projectId: number
+  ): Promise<ProjectAssetAssignmentWithAssetInfo[]>;
   createProjectAssetAssignment(
-    assignmentData: InsertProjectAssetAssignment,
+    assignmentData: InsertProjectAssetAssignment
   ): Promise<ProjectAssetAssignment>;
   updateProjectAssetAssignment(
     id: number,
-    assignmentData: Partial<InsertProjectAssetAssignment>,
+    assignmentData: Partial<InsertProjectAssetAssignment>
   ): Promise<ProjectAssetAssignment | undefined>;
   deleteProjectAssetAssignment(id: number): Promise<boolean>;
   calculateAssetRentalCost(
     startDate: Date,
     endDate: Date,
-    monthlyRate: number,
+    monthlyRate: number
   ): Promise<number>;
-  getAssetAssignmentHistory(assetId: number): Promise<AssetAssignmentHistoryEntry[]>;
+  getAssetAssignmentHistory(
+    assetId: number
+  ): Promise<AssetAssignmentHistoryEntry[]>;
   getAllAssetAssignments(): Promise<AllAssetAssignmentsEntry[]>;
   updateAssetStatusBasedOnAssignments(assetId: number): Promise<void>;
   updateAllAssetStatuses(): Promise<void>;
@@ -8919,7 +9954,7 @@ export interface IStorage {
     page?: number,
     limit?: number,
     severity?: string,
-    resolved?: boolean,
+    resolved?: boolean
   ): Promise<any>;
   updateErrorLog(id: number, updateData: { resolved?: boolean }): Promise<any>;
   clearErrorLogs(): Promise<number>;
