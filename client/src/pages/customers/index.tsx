@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Users, Plus, Mail, Phone, MapPin, FileText, Ship, Archive, ArchiveRestore, Filter, Files } from "lucide-react";
 import { z } from "zod";
+import { insertCustomerSchema as createCustomerSchema } from "@shared/schema";
 import { DocumentManager } from "@/components/documents/DocumentManager";
 import { CurrencySelector } from "@/components/currency/CurrencySelector";
 import { CurrencyDisplay } from "@/components/currency/CurrencyDisplay";
@@ -45,30 +46,7 @@ const customerSchema = z.object({
   updatedAt: z.string(),
 });
 
-const createCustomerSchema = z.object({
-  name: z.string().min(1, "Company name is required"),
-  contactPerson: z.string().optional(),
-  email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal("")),
-  phone: z.string().min(1, "Phone number is required"),
-  address: z.string().optional(),
-  taxId: z.string().optional(),
-  userId: z.number().nullable().optional(),
-  // UAE VAT Compliance Fields
-  vatNumber: z.string().optional(),
-  vatRegistrationStatus: z.enum(["not_registered", "registered", "exempt", "suspended"]).default("not_registered"),
-  vatTreatment: z.enum(["standard", "zero_rated", "exempt", "out_of_scope"]).default("standard"),
-  customerType: z.enum(["business", "individual", "government", "non_profit"]).default("business"),
-  taxCategory: z.enum(["standard", "export", "gcc_customer", "free_zone"]).default("standard"),
-  paymentTerms: z.enum(["30_days", "15_days", "7_days", "immediate", "net_30", "net_60", "net_90"]).default("30_days"),
-  currency: z.enum(["AED", "USD", "EUR", "GBP", "SAR"]).default("AED"),
-  creditLimit: z.string().optional(),
-  isVatApplicable: z.boolean().default(true),
-  notes: z.string().optional(),
-});
-
-
 type Customer = z.infer<typeof customerSchema>;
-type CreateCustomerData = z.infer<typeof createCustomerSchema>;
 
 export default function CustomersIndex() {
   const [, setLocation] = useLocation();
