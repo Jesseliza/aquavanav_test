@@ -819,6 +819,7 @@ export const insertCustomerSchema = createInsertSchema(customers, {
   name: z.string().min(1, { message: "Name is required" }),
   phone: z.string().min(1, { message: "Phone is required" }),
   email: z.string().email({ message: "Invalid email address" }).or(z.literal("")).nullable().optional(),
+  vatNumber: z.string().min(1, { message: "VAT number is required" }),
 }).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   vatRegistrationStatus: z.enum(["not_registered", "registered", "exempt", "suspended"]).default("not_registered"),
   vatTreatment: z.enum(["standard", "zero_rated", "exempt", "out_of_scope"]).default("standard"),

@@ -490,12 +490,13 @@ export default function CustomersIndex() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="vatNumber">VAT Number</Label>
+                    <Label htmlFor="vatNumber">VAT Number *</Label>
                     <Input
                       id="vatNumber"
                       value={formData.vatNumber}
                       onChange={(e) => handleChange("vatNumber", e.target.value)}
                       placeholder="100123456700003"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -724,12 +725,13 @@ export default function CustomersIndex() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-vatNumber">VAT Number</Label>
+                    <Label htmlFor="edit-vatNumber">VAT Number *</Label>
                     <Input
                       id="edit-vatNumber"
                       value={formData.vatNumber}
                       onChange={(e) => handleChange("vatNumber", e.target.value)}
                       placeholder="100123456700003"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
