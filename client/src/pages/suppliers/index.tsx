@@ -304,7 +304,9 @@ export default function SuppliersIndex() {
         taxCategory: editingSupplier.taxCategory || "standard",
         paymentTerms: editingSupplier.paymentTerms || "30_days",
         currency: editingSupplier.currency || "AED",
-        creditLimit: editingSupplier.creditLimit || "",
+        creditLimit: editingSupplier.creditLimit && Number(editingSupplier.creditLimit) > 0
+        ? editingSupplier.creditLimit
+        : "",
         isVatApplicable: editingSupplier.isVatApplicable ?? true,
         notes: editingSupplier.notes || "",
       });
@@ -313,10 +315,17 @@ export default function SuppliersIndex() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+     const payload = {
+      ...formData,
+      creditLimit:
+        formData.creditLimit && Number(formData.creditLimit) > 0
+          ? formData.creditLimit
+          : "0.00",
+    };
     if (editingSupplier) {
-      updateSupplierMutation.mutate({ id: editingSupplier.id, data: formData });
+      updateSupplierMutation.mutate({ id: editingSupplier.id, data: payload });
     } else {
-      createSupplierMutation.mutate(formData);
+      createSupplierMutation.mutate(payload);
     }
   };
 
@@ -631,7 +640,7 @@ export default function SuppliersIndex() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center">
@@ -680,7 +689,7 @@ export default function SuppliersIndex() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* <Card>
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center">
               <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
@@ -698,7 +707,7 @@ export default function SuppliersIndex() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {isLoading ? (
@@ -883,7 +892,7 @@ export default function SuppliersIndex() {
                 </div>
 
                 <div className="mt-4 md:mt-6 flex flex-col sm:flex-row sm:justify-end gap-2">
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => {
+                  {/* <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => {
                     setLocation(`/suppliers/${supplier.id}/orders`);
                   }}>
                     View Orders
@@ -892,7 +901,7 @@ export default function SuppliersIndex() {
                     setLocation(`/suppliers/${supplier.id}/products`);
                   }}>
                     View Products
-                  </Button>
+                  </Button> */}
                   <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleManageDocuments(supplier)}>
                     <Files className="h-4 w-4 mr-2" />
                     Documents

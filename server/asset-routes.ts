@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { assetInventoryStorage } from "./asset-storage";
+import { storage } from "./storage";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -21,7 +22,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
+const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
@@ -32,7 +33,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ 
-  storage: storage,
+  storage: multerStorage ,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB limit
   },
@@ -285,35 +286,147 @@ assetRoutes.get('/api/maintenance/upcoming', requireAuth, (req, res) => {
   }
 });
 
-assetRoutes.post('/api/maintenance-records', requireAuth, (req, res) => {
-  try {
-    const record = assetInventoryStorage.createMaintenanceRecord({
-      ...req.body,
-      createdBy: req.user.id,
-      partsUsed: req.body.partsUsed || [],
-      attachments: req.body.attachments || [],
-    });
-    res.status(201).json(record);
-  } catch (error) {
-    console.error('Error creating maintenance record:', error);
-    res.status(500).json({ message: 'Failed to create maintenance record' });
+assetRoutes.post(
+  "/api/maintenance-records",
+  requireAuth,
+  upload.none(),
+  async (req, res) => {
+    try {
+      const { assetId, maintenanceCost, description, maintenanceDate,startDate,completedDate,maintenanceType } = req.body;
+      console.log(assetId, maintenanceCost, description, maintenanceDate,startDate,completedDate,maintenanceType,"assetId, maintenanceCost, description, maintenanceDate,startDate,completedDate,maintenanceType")
+      if (!assetId || !maintenanceCost) {
+        return res.status(400).json({
+          message: "assetId and maintenanceCost are required",
+        });
+      }
+
+      const record = await storage.createAssetInventoryMaintenanceRecord({
+        instanceId: Number(assetId),
+        maintenanceCost: maintenanceCost.toString(),
+        description: description || null,
+        maintenanceDate: maintenanceDate ? new Date(maintenanceDate) : undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
+        completedDate: completedDate ? new Date(completedDate) : undefined,
+        maintenanceType:maintenanceType || null,
+        performedBy: req.user.id,
+      });
+
+      // ✅ IMPORTANT
+      return res.status(201).json(record);
+
+    } catch (error) {
+      console.error("Error creating maintenance record:", error);
+
+      // ✅ IMPORTANT
+      return res.status(500).json({
+        message: "Failed to create maintenance record",
+      });
+    }
   }
-});
+);
+
+//Maintenance update
+assetRoutes.put(
+  "/api/maintenance-records/:id",
+  requireAuth,
+  upload.none(),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const {
+        maintenanceType,
+        description,
+        maintenanceDate,
+        startDate,
+        completedDate,
+        maintenanceCost,
+      } = req.body;
+
+      const record = await storage.updateAssetInventoryMaintenanceRecord(
+        id,
+        {
+          maintenanceType,
+          description,
+          maintenanceDate: maintenanceDate ? new Date(maintenanceDate) : undefined,
+          startDate: startDate ? new Date(startDate) : undefined,
+          completedDate: completedDate ? new Date(completedDate) : undefined,
+          maintenanceCost,
+        }
+      );
+
+      res.json(record);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to update record" });
+    }
+  }
+);
+
+//Maintenance archive
+assetRoutes.put(
+  "/api/maintenance-record/:id/archive",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      const record = await storage.updateAssetInventoryMaintenanceRecord(
+        id,
+        { isArchived: true }
+      );
+      if (!record) {
+          return res.status(404).json({ message: "Maintenance record not found" });
+        }
+      res.json({ message: "Maintenance record archived successfully", record });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to update record" });
+    }
+  }
+);
+
+//Maintenance unarchive
+assetRoutes.put(
+  "/api/maintenance-record/:id/unarchive",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      const record = await storage.updateAssetInventoryMaintenanceRecord(
+        id,
+        { isArchived: false }
+      );
+      if (!record) {
+          return res.status(404).json({ message: "Maintenance record not found" });
+        }
+      res.json({ message: "Maintenance record unarchived successfully", record });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to update record" });
+    }
+  }
+);
 
 // Maintenance File Upload Routes
 assetRoutes.post('/api/maintenance-records/:id/files', requireAuth, upload.single('file'), (req, res) => {
+  console.log('Headers:', req.headers['content-type']);
   try {
     const maintenanceRecordId = parseInt(req.params.id);
     
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
+
+    const relativePath = req.file.path
+  .replace(/\\/g, "/")                 // Windows → URL-safe
+  .split("uploads/")[1]; 
     
-    const fileRecord = assetInventoryStorage.createAssetInventoryMaintenanceFile({
+    const fileRecord = storage.createAssetInventoryMaintenanceFile({
       maintenanceRecordId,
       fileName: req.file.filename,
       originalName: req.file.originalname,
-      filePath: req.file.path,
+      filePath: `uploads/${relativePath}`,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
       uploadedBy: req.user.id,
@@ -326,16 +439,29 @@ assetRoutes.post('/api/maintenance-records/:id/files', requireAuth, upload.singl
   }
 });
 
-assetRoutes.get('/api/maintenance-records/:id/files', requireAuth, (req, res) => {
-  try {
-    const maintenanceRecordId = parseInt(req.params.id);
-    const files = assetInventoryStorage.getAssetInventoryMaintenanceFiles(maintenanceRecordId);
-    res.json(files);
-  } catch (error) {
-    console.error('Error fetching maintenance files:', error);
-    res.status(500).json({ message: 'Failed to fetch maintenance files' });
-  }
-});
+  assetRoutes.get(
+    '/api/maintenance-records/:id/files',
+    requireAuth,
+    async (req, res) => {
+      try {
+        const maintenanceRecordId = parseInt(req.params.id, 10);
+
+        if (isNaN(maintenanceRecordId)) {
+          return res.status(400).json({ message: 'Invalid maintenance record id' });
+        }
+
+        const files = await storage.getAssetInventoryMaintenanceFiles(
+          maintenanceRecordId
+        );
+
+        res.json(files);
+      } catch (error) {
+        console.error('Error fetching maintenance files:', error);
+        res.status(500).json({ message: 'Failed to fetch maintenance files' });
+      }
+    }
+  );
+
 
 assetRoutes.delete('/api/maintenance-records/:recordId/files/:fileId', requireAuth, (req, res) => {
   try {

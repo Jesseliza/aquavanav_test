@@ -290,7 +290,7 @@ export default function ProjectCreate() {
                     toolbar: [
                       [{ 'header': [1, 2, 3, false] }],
                       ['bold', 'italic', 'underline', 'strike'],
-                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                       [{ 'color': [] }, { 'background': [] }],
                       ['link'],
                       ['clean']
@@ -411,7 +411,8 @@ export default function ProjectCreate() {
                     <DialogHeader>
                       <DialogTitle>Add New Location</DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); addLocation(); }} className="space-y-4">
+                    {/* <form onSubmit={(e) => { e.preventDefault(); addLocation(); }} className="space-y-4"> */}
+                    <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="newLocation">Location Name</Label>
                         <Input
@@ -427,11 +428,15 @@ export default function ProjectCreate() {
                         <Button type="button" variant="outline" onClick={() => setIsLocationDialogOpen(false)}>
                           Cancel
                         </Button>
-                        <Button type="submit">
+                        <Button
+                          type="button"
+                          onClick={addLocation}
+                        >
                           Add Location
                         </Button>
                       </div>
-                    </form>
+                    </div>
+                    {/* </form> */}
                   </DialogContent>
                 </Dialog>
               </div>
@@ -460,7 +465,7 @@ export default function ProjectCreate() {
             {/* New Fields Section */}
             <div className="space-y-6 pt-6 border-t border-slate-200 dark:border-slate-700">
               <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Additional Project Details</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="ridgingCrewNos">Ridging Crew Numbers</Label>
@@ -530,7 +535,7 @@ export default function ProjectCreate() {
               {/* Additional Custom Fields */}
               <div className="space-y-6">
                 <h4 className="text-md font-medium text-slate-900 dark:text-slate-100">Custom Fields (Optional)</h4>
-                
+
                 {/* Additional Field 1 */}
                 <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                   <div className="space-y-2">
@@ -554,7 +559,7 @@ export default function ProjectCreate() {
                           toolbar: [
                             [{ 'header': [1, 2, 3, false] }],
                             ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                             [{ 'color': [] }, { 'background': [] }],
                             ['link'],
                             ['clean']
@@ -598,7 +603,7 @@ export default function ProjectCreate() {
                           toolbar: [
                             [{ 'header': [1, 2, 3, false] }],
                             ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                             [{ 'color': [] }, { 'background': [] }],
                             ['link'],
                             ['clean']
@@ -642,7 +647,7 @@ export default function ProjectCreate() {
                           toolbar: [
                             [{ 'header': [1, 2, 3, false] }],
                             ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                             [{ 'color': [] }, { 'background': [] }],
                             ['link'],
                             ['clean']

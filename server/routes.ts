@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import express from "express";
 import { storage } from "./storage";
 import { assetRoutes } from "./asset-routes";
 import bcrypt from "bcrypt";
@@ -12,6 +13,7 @@ import {
   insertProjectSchema,
   insertCustomerSchema,
   insertEmployeeSchema,
+  updateEmployeeSchema,
   insertEmployeeNextOfKinSchema,
   insertEmployeeTrainingRecordSchema,
   insertEmployeeDocumentSchema,
@@ -501,10 +503,12 @@ const storage_multer = multer.diskStorage({
   destination: function (req, file, cb) {
     // Determine directory based on route
     let uploadDir = "uploads/payment-files";
-    if (req.route?.path?.includes('customer-documents')) {
+    if (req.route?.path?.includes('customers')) {
       uploadDir = "uploads/customer-documents";
-    } else if (req.route?.path?.includes('supplier-documents')) {
+    } else if (req.route?.path?.includes('suppliers')) {
       uploadDir = "uploads/supplier-documents";
+    } else if (req.route?.path?.includes('documents')) {
+      uploadDir = "uploads/employee-documents";
     }
     
     if (!fs.existsSync(uploadDir)) {
@@ -920,7 +924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const id = parseInt(req.params.id);
-        const customerData = insertCustomerSchema.parse(req.body);
+        const customerData = req.body;
         const customer = await storage.updateCustomer(id, customerData);
 
         if (!customer) {
@@ -928,14 +932,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         res.json(customer);
-      } catch (error) {
-        if (error instanceof ZodError) {
-          return res
-            .status(400)
-            .json({ message: "Invalid data", errors: error.errors });
+      } catch (error: any) {
+         if (error.message?.includes("already exists")) {
+          return res.status(409).json({
+            message: error.message,
+          });
         }
-        console.log(error);
-        
         res.status(500).json({ message: "Failed to update customer" });
       }
     },
@@ -1247,43 +1249,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Update employee
-  app.put(
-    "/api/employees/:id",
-    requireAuth,
-    requireRole(["admin", "project_manager"]),
-    async (req, res) => {
-      try {
-        const employeeId = parseInt(req.params.id);
-        const updateData = req.body;
 
-        // Convert hireDate string to Date object if provided
-        if (updateData.hireDate && typeof updateData.hireDate === "string") {
-          updateData.hireDate = new Date(updateData.hireDate);
-        }
+app.patch(
+  "/api/employees/:id",
+  requireAuth,
+  requireRole(["admin", "project_manager"]),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const raw = { ...req.body };
 
-        // Remove undefined/null values to avoid overwriting with nulls
-        const cleanedData = Object.fromEntries(
-          Object.entries(updateData).filter(
-            ([_, value]) => value !== undefined,
-          ),
-        );
+      // First parse/coerce with Zod (this converts strings to Date for date fields)
+      const parsed = updateEmployeeSchema.parse(raw);
 
-        const updatedEmployee = await storage.updateEmployee(
-          employeeId,
-          cleanedData,
-        );
-        res.json(updatedEmployee);
-      } catch (error) {
-        console.error("Employee update error:", error);
-        if (error instanceof ZodError) {
-          return res
-            .status(400)
-            .json({ message: "Invalid data", errors: error.errors });
-        }
-        res.status(500).json({ message: "Failed to update employee" });
+      // Now format fields for DB:
+      // - For timestamp columns (hireDate) keep JS Date objects (drizzle accepts Date for timestamp)
+      // - For date-only columns (dateOfBirth) convert to "YYYY-MM-DD" string
+      const prepared: any = { ...parsed };
+
+      if (prepared.hireDate) {
+        // ensure it's a Date (z.coerce.date already made it Date) — keep as Date
+        // optionally: prepared.hireDate = new Date(prepared.hireDate);
       }
-    },
-  );
+
+      if (prepared.dateOfBirth) {
+        const d = new Date(prepared.dateOfBirth);
+        prepared.dateOfBirth = d.toISOString().split("T")[0]; // YYYY-MM-DD
+      }
+
+      // Remove undefined values to avoid accidental NULLs
+      Object.keys(prepared).forEach(
+        (k) => prepared[k] === undefined && delete prepared[k]
+      );
+
+      const result = await storage.updateEmployee(id, prepared);
+      if (!result) return res.status(404).json({ message: "Employee not found" });
+
+      res.json(result);
+    } catch (err) {
+      console.error("Update employee error:", err);
+      if (err instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: err.errors });
+      }
+      res.status(500).json({ message: "Failed to update employee" });
+    }
+  }
+);
+
 
   // Get single employee with full details
   app.get("/api/employees/:id", requireAuth, async (req, res) => {
@@ -1354,13 +1366,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/employees/next-of-kin/:id", requireAuth, requireRole(["admin", "project_manager"]), async (req, res) => {
+     console.log("DELETE NOK API HIT"); // 👈 add this
     try {
       const id = parseInt(req.params.id);
       const success = await storage.deleteEmployeeNextOfKin(id);
       
-      if (!success) {
-        return res.status(404).json({ message: "Next of kin record not found" });
-      }
       res.json({ message: "Next of kin record deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete next of kin record" });
@@ -1384,14 +1394,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const trainingData = { ...req.body, employeeId };
       
       // Convert date strings to Date objects and format them properly
-      if (trainingData.trainingDate) {
-        const date = new Date(trainingData.trainingDate);
-        trainingData.trainingDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-      }
-      if (trainingData.expiryDate) {
-        const date = new Date(trainingData.expiryDate);
-        trainingData.expiryDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-      }
+      // if (trainingData.trainingDate) {
+      //   const date = new Date(trainingData.trainingDate);
+      //   trainingData.trainingDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      // }
+      // if (trainingData.expiryDate) {
+      //   const date = new Date(trainingData.expiryDate);
+      //   trainingData.expiryDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      // }
       
       const parsedData = insertEmployeeTrainingRecordSchema.parse(trainingData);
       const result = await storage.createEmployeeTrainingRecord(parsedData);
@@ -1411,12 +1421,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = req.body;
       
       // Convert date strings to Date objects
-      if (updateData.trainingDate) {
-        updateData.trainingDate = new Date(updateData.trainingDate);
-      }
-      if (updateData.expiryDate) {
-        updateData.expiryDate = new Date(updateData.expiryDate);
-      }
+      // if (updateData.trainingDate) {
+      //   updateData.trainingDate = new Date(updateData.trainingDate);
+      // }
+      // if (updateData.expiryDate) {
+      //   updateData.expiryDate = new Date(updateData.expiryDate);
+      // }
       
       const result = await storage.updateEmployeeTrainingRecord(id, updateData);
       if (!result) {
@@ -1432,10 +1442,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.deleteEmployeeTrainingRecord(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: "Training record not found" });
-      }
       res.json({ message: "Training record deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete training record" });
@@ -1453,22 +1459,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/employees/:id/documents", requireAuth, requireRole(["admin", "project_manager"]), async (req, res) => {
+  app.post("/api/employees/:id/documents", requireAuth, requireRole(["admin", "project_manager"]),
+    upload.array("files", 1), async (req, res) => {
     try {
-      const employeeId = parseInt(req.params.id);
-      const documentData = { ...req.body, employeeId };
-      
-      // Convert date strings to Date objects
-      if (documentData.dateOfIssue) {
-        documentData.dateOfIssue = new Date(documentData.dateOfIssue);
-      }
-      if (documentData.expiryDate) {
-        documentData.expiryDate = new Date(documentData.expiryDate);
-      }
-      if (documentData.validTill) {
-        documentData.validTill = new Date(documentData.validTill);
-      }
-      
+      const employeeId = req.params.id;
+      const documentData = { ...req.body, employeeId:Number(employeeId) };
+      var f=[];
+        if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+          for (const file of req.files) {            
+            f.push({
+              fileName: file.filename,
+              originalName: file.originalname,
+              filePath: file.path,
+              fileSize: file.size,
+              mimeType: file.mimetype,
+            });
+          }
+          documentData.attachmentPaths = f;
+        }
       const parsedData = insertEmployeeDocumentSchema.parse(documentData);
       const result = await storage.createEmployeeDocument(parsedData);
       res.status(201).json(result);
@@ -1476,26 +1484,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create employee document" });
+      res.status(500).json({ message: "Failed to create employee document" ,error});
     }
   });
 
-  app.put("/api/employees/documents/:id", requireAuth, requireRole(["admin", "project_manager"]), async (req, res) => {
+  app.put("/api/employees/documents/:id", requireAuth, requireRole(["admin", "project_manager"]),upload.array("files", 10), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
-      
-      // Convert date strings to Date objects
-      if (updateData.dateOfIssue) {
-        updateData.dateOfIssue = new Date(updateData.dateOfIssue);
-      }
-      if (updateData.expiryDate) {
-        updateData.expiryDate = new Date(updateData.expiryDate);
-      }
-      if (updateData.validTill) {
-        updateData.validTill = new Date(updateData.validTill);
-      }
-      
+        if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+          var f = [];
+          for (const file of req.files) {            
+            f.push({
+              fileName: file.filename,
+              originalName: file.originalname,
+              filePath: file.path,
+              fileSize: file.size,
+              mimeType: file.mimetype,
+            });
+          }
+          updateData.attachmentPaths = f;
+        }      
       const result = await storage.updateEmployeeDocument(id, updateData);
       if (!result) {
         return res.status(404).json({ message: "Employee document not found" });
@@ -1510,10 +1519,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.deleteEmployeeDocument(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: "Employee document not found" });
-      }
       res.json({ message: "Employee document deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete employee document" });
@@ -1558,19 +1563,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Project routes
+    // Project routes
   app.get("/api/projects", requireAuth, async (req, res) => {
     try {
-      const customerId = req.query.customer as string | undefined;
-      let projects;
-
-      // Case 1: Frontend requested /api/projects?customer=12
-      if (customerId) {
-        projects = await storage.getProjectsByCustomer(Number(customerId));
-        return res.json(projects);
-      }
-      
-      // let projects = await storage.getProjects();
+      let projects = await storage.getProjects();
 
       // Filter by customer for customer role
       if (req.session.userRole === "customer") {
@@ -1584,7 +1580,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      projects = await storage.getProjects();
       res.json(projects);
     } catch (error) {
       res.status(500).json({ message: "Failed to get projects" });
@@ -5366,6 +5361,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete supplier document" });
     }
   });
+
+  app.use(
+    "/uploads",
+    express.static(path.join(process.cwd(), "uploads"))
+  );
 
   // Asset routes
   app.use(assetRoutes);

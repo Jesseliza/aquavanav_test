@@ -68,6 +68,7 @@ import {
   type InsertCustomer,
   type Employee,
   type InsertEmployee,
+  type insertAssetInventoryMaintenanceRecords,
   type EmployeeNextOfKin,
   type InsertEmployeeNextOfKin,
   type EmployeeTrainingRecord,
@@ -111,6 +112,7 @@ import {
   type PayrollDeduction,
   type InsertPayrollDeduction,
   type InvoicePayment,
+  type insertAssetInventoryMaintenanceRecord,
   type InsertInvoicePayment,
   type PaymentFile, // Ensure PaymentFile is imported
   type ErrorLog, // Will be used later
@@ -140,6 +142,9 @@ export interface AssetMaintenanceRecordWithUser {
   instanceId: number;
   maintenanceCost: string;
   maintenanceDate: Date;
+  startDate: Date;
+  completedDate: Date;
+  maintenanceType: string | null;
   description: string | null;
   performedBy: number | null;
   createdAt: Date;
@@ -147,13 +152,13 @@ export interface AssetMaintenanceRecordWithUser {
 }
 
 // For createAssetMaintenanceRecord data parameter
-export interface CreateAssetMaintenanceRecordData {
-  assetId: number;
-  maintenanceCost: string;
-  description?: string | null;
-  maintenanceDate?: Date;
-  performedBy?: number | null;
-}
+// export interface CreateAssetMaintenanceRecordData {
+//   assetId: number;
+//   maintenanceCost: string;
+//   description?: string | null;
+//   maintenanceDate?: Date;
+//   performedBy?: number | null;
+// }
 
 // For createPaymentFile data parameter
 export interface CreatePaymentFileData {
@@ -443,8 +448,8 @@ class Storage {
 
   async deleteUser(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(users).where(eq(users.id, id));
-      return result.rowCount > 0;
+      const result = await db.delete(users).where(eq(users.id, id)).returning();
+      return result.length > 0;
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -535,7 +540,7 @@ class Storage {
       const conditions =
         whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
-      const dataQueryBuilder = db.select().from(customers).where(conditions);
+      const dataQueryBuilder = db.select().from(customers).where(conditions).orderBy(customers.id);
       // Note: original count query had a simpler where clause `eq(customers.isArchived, showArchived)`
       // This should ideally be consistent. For now, using the combined `conditions` for count.
       const countQueryBuilder = db
@@ -585,15 +590,17 @@ class Storage {
 
   async createCustomer(customerData: InsertCustomer): Promise<Customer> {
     try {
-      const existing = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.phone, customerData.phone));
+      if (customerData.phone && customerData.phone.trim() !== "") {
+        const existing = await db
+          .select()
+          .from(customers)
+          .where(eq(customers.phone, customerData.phone));
 
-      if (existing.length > 0) {
-        throw new Error(
-          `Customer with phone ${customerData.phone} already exists`
-        );
+        if (existing.length > 0) {
+          throw new Error(
+            `Customer with phone ${customerData.phone} already exists`
+          );
+        }
       }
 
       const result = await db
@@ -635,13 +642,29 @@ class Storage {
     customerData: Partial<InsertCustomer>
   ): Promise<Customer | undefined> {
     try {
+
+        if (customerData.phone && customerData.phone.trim() !== "") {
+        const existing = await db
+          .select()
+          .from(customers)
+          .where(
+            and(
+              eq(customers.phone, customerData.phone),
+              ne(customers.id, id)
+            )
+          );
+
+        if (existing.length > 0) {
+          throw new Error(
+            `Customer with phone ${customerData.phone} already exists`
+          );
+        }
+      }
       const result = await db
         .update(customers)
         .set(customerData)
         .where(eq(customers.id, id))
         .returning();
-        console.log(result);
-        
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
@@ -705,7 +728,7 @@ class Storage {
       const conditions =
         whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
-      const dataQueryBuilder = db.select().from(suppliers).where(conditions);
+      const dataQueryBuilder = db.select().from(suppliers).where(conditions).orderBy(suppliers.id);;
       // Original count query for suppliers also only filtered by showArchived.
       // Sticking to applying all conditions for count for consistency in the helper.
       const countQueryBuilder = db
@@ -987,8 +1010,8 @@ class Storage {
     try {
       const result = await db
         .delete(supplierDocuments)
-        .where(eq(supplierDocuments.id, id));
-      return result.rowCount > 0;
+        .where(eq(supplierDocuments.id, id)).returning();
+      return result.length > 0;
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -1192,10 +1215,23 @@ class Storage {
   async createEmployeeTrainingRecord(
     data: InsertEmployeeTrainingRecord
   ): Promise<EmployeeTrainingRecord> {
+    console.log(data);
     try {
+      const normalizedData = {
+        ...data,
+        trainingDate:
+          data.trainingDate instanceof Date
+            ? data.trainingDate.toISOString().split("T")[0]
+            : data.trainingDate,
+
+        expiryDate:
+          data.expiryDate instanceof Date
+            ? data.expiryDate.toISOString().split("T")[0]
+            : data.expiryDate ?? null,
+      };
       const result = await db
         .insert(employeeTrainingRecords)
-        .values(data)
+        .values(normalizedData)
         .returning();
       return result[0];
     } catch (error: any) {
@@ -1739,9 +1775,7 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in getProject (id: ${id}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in getProject (id: ${id}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProject",
         severity: "error",
@@ -1758,9 +1792,7 @@ class Storage {
         .where(eq(projects.customerId, customerId));
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in getProjectsByCustomer (customerId: ${customerId}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in getProjectsByCustomer (customerId: ${customerId}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectsByCustomer",
         severity: "error",
@@ -1775,8 +1807,7 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          "Error in createProject: " + (error?.message || "Unknown error"),
+        message: "Error in createProject: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProject",
         severity: "error",
@@ -1787,7 +1818,7 @@ class Storage {
 
   async updateProject(
     id: number,
-    data: Partial<Project>
+    data: Partial<Project>,
   ): Promise<Project | undefined> {
     try {
       const updatePayload: Partial<Project> = {};
@@ -1796,45 +1827,31 @@ class Storage {
       for (const key in data) {
         if (Object.prototype.hasOwnProperty.call(data, key)) {
           const value = (data as any)[key];
-          if (
-            key === "startDate" ||
-            key === "plannedEndDate" ||
-            key === "actualEndDate"
-          ) {
+          if (key === "startDate" || key === "plannedEndDate" || key === "actualEndDate") {
             const cleanedDate = this._cleanDateValue(value);
             if (cleanedDate !== undefined) {
               (updatePayload as any)[key] = cleanedDate;
-            } else if (value !== undefined) {
-              // If _cleanDateValue returns undefined, but original value was present, it means invalid date to be ignored.
-              console.warn(
-                `Invalid date value for ${key} will be ignored:`,
-                value
-              );
+            } else if (value !== undefined) { // If _cleanDateValue returns undefined, but original value was present, it means invalid date to be ignored.
+              console.warn(`Invalid date value for ${key} will be ignored:`, value);
             }
           } else if (key === "locations") {
-            if (value !== undefined) {
-              // Ensure it's an array, don't modify if already valid JSON or array
-              if (Array.isArray(value)) {
-                (updatePayload as any)[key] = value;
-              } else {
-                // Attempt to parse if it's a string, otherwise default to empty array or handle error
-                try {
-                  const parsedLocations =
-                    typeof value === "string" ? JSON.parse(value) : value;
-                  (updatePayload as any)[key] = Array.isArray(parsedLocations)
-                    ? parsedLocations
-                    : [];
-                } catch (e) {
-                  console.warn(
-                    `Invalid JSON for locations, defaulting to empty array:`,
-                    value
-                  );
-                  (updatePayload as any)[key] = [];
+             if (value !== undefined) {
+                // Ensure it's an array, don't modify if already valid JSON or array
+                if (Array.isArray(value)) {
+                    (updatePayload as any)[key] = value;
+                } else {
+                    // Attempt to parse if it's a string, otherwise default to empty array or handle error
+                    try {
+                        const parsedLocations = typeof value === 'string' ? JSON.parse(value) : value;
+                        (updatePayload as any)[key] = Array.isArray(parsedLocations) ? parsedLocations : [];
+                    } catch (e) {
+                        console.warn(`Invalid JSON for locations, defaulting to empty array:`, value);
+                        (updatePayload as any)[key] = [];
+                    }
                 }
-              }
             } else {
-              // if locations is explicitly undefined in payload, we might want to skip update or set to null
-              // For now, let's skip if undefined. If it needs to be settable to null, adjust logic.
+                // if locations is explicitly undefined in payload, we might want to skip update or set to null
+                // For now, let's skip if undefined. If it needs to be settable to null, adjust logic.
             }
           } else if (value !== undefined) {
             // For other fields, directly assign if the value is not undefined
@@ -1863,9 +1880,7 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updateProject:", error); // Keep original console.error for context if needed
       await this.createErrorLog({
-        message:
-          `Error in updateProject (id: ${id}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in updateProject (id: ${id}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateProject",
         severity: "error",
@@ -2370,6 +2385,8 @@ class Storage {
       total: number;
       totalPages: number;
     };
+  lowStockTotal: number;
+  totalInventoryValue: number;
   }> {
     try {
       const whereClauses = [];
@@ -2390,18 +2407,47 @@ class Storage {
       const dataQueryBuilder = db
         .select()
         .from(inventoryItems)
-        .where(conditions);
+        .where(conditions).orderBy(inventoryItems.id);
       const countQueryBuilder = db
         .select({ count: sql<number>`count(*)` })
         .from(inventoryItems)
         .where(conditions);
 
-      return this._getPaginatedResults<InventoryItem>(
-        dataQueryBuilder,
-        countQueryBuilder,
-        page,
-        limit
+      const lowStockCountQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(inventoryItems)
+      .where(
+        and(
+          conditions,
+          lte(inventoryItems.currentStock, inventoryItems.minStockLevel)
+        )
       );
+
+      const totalValueQuery = db
+      .select({
+        total: sql<number>`
+          COALESCE(SUM(${inventoryItems.currentStock} * ${inventoryItems.avgCost}), 0)
+        `,
+      })
+      .from(inventoryItems)
+      .where(conditions);
+
+    const paginatedResult = await this._getPaginatedResults<InventoryItem>(
+      dataQueryBuilder,
+      countQueryBuilder,
+      page,
+      limit
+    );
+
+    const [lowStockResult] = await lowStockCountQuery;
+    const [valueResult] = await totalValueQuery;
+
+    return {
+      ...paginatedResult,
+      lowStockTotal: lowStockResult?.count ?? 0,
+      totalInventoryValue: valueResult?.total ?? 0,
+    };
+
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -2461,129 +2507,14 @@ class Storage {
     }
   }
 
-  // Asset Types methods for Enhanced Asset Inventory
-  async getAssetTypes(): Promise<any[]> {
-    try {
-      const types = await db
-        .select({
-          id: assetTypes.id,
-          name: assetTypes.name,
-          category: assetTypes.category,
-          manufacturer: assetTypes.manufacturer,
-          model: assetTypes.model,
-          description: assetTypes.description,
-          defaultDailyRentalRate: assetTypes.defaultDailyRentalRate,
-          currency: assetTypes.currency,
-          warrantyPeriodMonths: assetTypes.warrantyPeriodMonths,
-          maintenanceIntervalDays: assetTypes.maintenanceIntervalDays,
-          totalQuantity: assetTypes.totalQuantity,
-          availableQuantity: assetTypes.availableQuantity,
-          assignedQuantity: assetTypes.assignedQuantity,
-          maintenanceQuantity: assetTypes.maintenanceQuantity,
-          isActive: assetTypes.isActive,
-          createdAt: assetTypes.createdAt,
-        })
-        .from(assetTypes)
-        .where(eq(assetTypes.isActive, true))
-        .orderBy(assetTypes.name);
-
-      // Get all asset instances to calculate counts and values
-      const instances = await db
-        .select()
-        .from(assetInventoryInstances)
-        .where(eq(assetInventoryInstances.isActive, true));
-
-      // Calculate additional fields for each type
-      const typesWithCalculations = types.map((type) => {
-        const typeInstances = instances.filter(
-          (instance) => instance.assetTypeId === type.id
-        );
-        const instanceCount = typeInstances.length;
-        const availableCount = typeInstances.filter(
-          (instance) => instance.status === "available"
-        ).length;
-        const totalValue = typeInstances.reduce(
-          (sum, instance) => sum + (instance.currentValue || 0),
-          0
-        );
-
-        return {
-          ...type,
-          instanceCount,
-          availableCount,
-          totalValue,
-        };
-      });
-
-      return typesWithCalculations;
-    } catch (error: any) {
-      console.error("Error in getAssetTypes:", error);
-      throw error;
-    }
-  }
-
-  async createAssetType(data: any): Promise<any> {
-    try {
-      const assetType = await db
-        .insert(assetTypes)
-        .values({
-          ...data,
-          totalQuantity: 0,
-          availableQuantity: 0,
-          assignedQuantity: 0,
-          maintenanceQuantity: 0,
-          isActive: true,
-        })
-        .returning();
-
-      return assetType[0];
-    } catch (error: any) {
-      console.error("Error in createAssetType:", error);
-      throw error;
-    }
-  }
-
-  async updateAssetType(id: number, data: any): Promise<any> {
-    try {
-      const assetType = await db
-        .update(assetTypes)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(assetTypes.id, id))
-        .returning();
-
-      return assetType[0];
-    } catch (error: any) {
-      console.error("Error in updateAssetType:", error);
-      throw error;
-    }
-  }
-
-  async getInventoryItem(id: number): Promise<InventoryItem | undefined> {
-    try {
-      const result = await db
-        .select()
-        .from(inventoryItems)
-        .where(eq(inventoryItems.id, id))
-        .limit(1);
-      return result[0];
-    } catch (error: any) {
-      await this.createErrorLog({
-        message:
-          `Error in getInventoryItem (id: ${id}): ` +
-          (error?.message || "Unknown error"),
-        stack: error?.stack,
-        component: "getInventoryItem",
-        severity: "error",
-      });
-      throw error;
-    }
-  }
-
-  // Asset Inventory Maintenance Records
+  // Create Asset Inventory Maintenance Records
   async createAssetInventoryMaintenanceRecord(maintenanceData: {
     instanceId: number;
     maintenanceCost: string;
+    maintenanceType: string;
     description?: string | null;
+    startDate?: Date;
+    completedDate?: Date;
     maintenanceDate?: Date;
     performedBy?: number | null;
   }): Promise<any> {
@@ -2594,7 +2525,10 @@ class Storage {
           instanceId: maintenanceData.instanceId,
           maintenanceCost: maintenanceData.maintenanceCost,
           description: maintenanceData.description || null,
+          startDate: maintenanceData.startDate || null,
+          completedDate: maintenanceData.completedDate || null,
           maintenanceDate: maintenanceData.maintenanceDate || new Date(),
+          maintenanceType: maintenanceData.maintenanceType || null,
           performedBy: maintenanceData.performedBy || null,
           createdAt: new Date(),
         })
@@ -2612,6 +2546,33 @@ class Storage {
       throw error;
     }
   }
+
+  //Update Maintenance record
+  async updateAssetInventoryMaintenanceRecord(
+    id: number,
+    maintenanceData: Partial<insertAssetInventoryMaintenanceRecords>
+  ): Promise<any> {
+    try {
+      const result = await db
+        .update(assetInventoryMaintenanceRecords)
+        .set(maintenanceData)
+        .where(eq(assetInventoryMaintenanceRecords.id, id))
+        .returning();
+
+      return result[0];
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in updateAssetInventoryMaintenanceRecord (id: ${id}): ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "updateAssetInventoryMaintenanceRecord",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
 
   async getAssetInventoryMaintenanceRecords(
     instanceId: number
@@ -2692,6 +2653,7 @@ class Storage {
           )
         )
         .orderBy(assetInventoryMaintenanceFiles.uploadedAt);
+        console.log(files,"files")
       return files;
     } catch (error: any) {
       await this.createErrorLog({
@@ -3088,6 +3050,9 @@ class Storage {
         SELECT 
           amr.id,
           amr.instance_id as "instanceId",
+          amr.maintenance_type as "maintenanceType",
+          amr.start_date as "startDate",
+          amr.completed_date as "completedDate",
           amr.maintenance_cost as "maintenanceCost",
           amr.description,
           amr.performed_by as "performedBy",
@@ -3419,161 +3384,161 @@ class Storage {
   }
 
   // Project Consumables methods
-  async getProjectConsumables(projectId: number): Promise<any[]> {
-    try {
-      const result = await db
-        .select({
-          id: projectConsumables.id,
-          projectId: projectConsumables.projectId,
-          date: projectConsumables.date,
-          recordedBy: projectConsumables.recordedBy,
-          recordedAt: projectConsumables.recordedAt,
-          items: sql<any>`
-            json_agg(
-              json_build_object(
-                'id', pci.id,
-                'inventoryItemId', pci.inventory_item_id,
-                'inventoryItemName', ii.name,
-                'quantity', pci.quantity,
-                'unitCost', pci.unit_cost,
-                'unit', ii.unit
-              )
-            )
-          `,
-        })
-        .from(projectConsumables)
-        .leftJoin(
-          projectConsumableItems,
-          eq(projectConsumables.id, projectConsumableItems.consumableId)
-        )
-        .leftJoin(
-          inventoryItems,
-          eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
-        )
-        .where(eq(projectConsumables.projectId, projectId))
-        .groupBy(
-          projectConsumables.id,
-          projectConsumables.projectId,
-          projectConsumables.date,
-          projectConsumables.recordedBy,
-          projectConsumables.recordedAt
-        )
-        .orderBy(desc(projectConsumables.date));
+  // async getProjectConsumables(projectId: number): Promise<any[]> {
+  //   try {
+  //     const result = await db
+  //       .select({
+  //         id: projectConsumables.id,
+  //         projectId: projectConsumables.projectId,
+  //         date: projectConsumables.date,
+  //         recordedBy: projectConsumables.recordedBy,
+  //         recordedAt: projectConsumables.recordedAt,
+  //         items: sql<any>`
+  //           json_agg(
+  //             json_build_object(
+  //               'id', pci.id,
+  //               'inventoryItemId', pci.inventory_item_id,
+  //               'inventoryItemName', ii.name,
+  //               'quantity', pci.quantity,
+  //               'unitCost', pci.unit_cost,
+  //               'unit', ii.unit
+  //             )
+  //           )
+  //         `,
+  //       })
+  //       .from(projectConsumables)
+  //       .leftJoin(
+  //         projectConsumableItems,
+  //         eq(projectConsumables.id, projectConsumableItems.consumableId)
+  //       )
+  //       .leftJoin(
+  //         inventoryItems,
+  //         eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
+  //       )
+  //       .where(eq(projectConsumables.projectId, projectId))
+  //       .groupBy(
+  //         projectConsumables.id,
+  //         projectConsumables.projectId,
+  //         projectConsumables.date,
+  //         projectConsumables.recordedBy,
+  //         projectConsumables.recordedAt
+  //       )
+  //       .orderBy(desc(projectConsumables.date));
 
-      return result;
-    } catch (error) {
-      console.error("Error getting project consumables:", error);
-      throw error;
-    }
-  }
+  //     return result;
+  //   } catch (error) {
+  //     console.error("Error getting project consumables:", error);
+  //     throw error;
+  //   }
+  // }
 
-  async createProjectConsumables(
-    projectId: number,
-    date: string,
-    items: Array<{ inventoryItemId: number; quantity: number }>,
-    userId?: number
-  ): Promise<any> {
-    try {
-      // Validate project exists
-      const project = await this.getProject(projectId);
-      if (!project) {
-        throw new Error(`Project with ID ${projectId} not found`);
-      }
+  // async createProjectConsumables(
+  //   projectId: number,
+  //   date: string,
+  //   items: Array<{ inventoryItemId: number; quantity: number }>,
+  //   userId?: number
+  // ): Promise<any> {
+  //   try {
+  //     // Validate project exists
+  //     const project = await this.getProject(projectId);
+  //     if (!project) {
+  //       throw new Error(`Project with ID ${projectId} not found`);
+  //     }
 
-      // Create the project consumables record
-      const consumableRecord = await db
-        .insert(projectConsumables)
-        .values({
-          projectId,
-          date: new Date(date),
-          recordedBy: userId || null,
-        })
-        .returning();
+  //     // Create the project consumables record
+  //     const consumableRecord = await db
+  //       .insert(projectConsumables)
+  //       .values({
+  //         projectId,
+  //         date: new Date(date),
+  //         recordedBy: userId || null,
+  //       })
+  //       .returning();
 
-      const consumableId = consumableRecord[0].id;
+  //     const consumableId = consumableRecord[0].id;
 
-      // Create inventory transactions and consumable items
-      const createdItems = [];
-      let totalCost = 0;
+  //     // Create inventory transactions and consumable items
+  //     const createdItems = [];
+  //     let totalCost = 0;
 
-      for (const item of items) {
-        // Get inventory item details
-        const inventoryItem = await this.getInventoryItem(item.inventoryItemId);
-        if (!inventoryItem) {
-          throw new Error(
-            `Inventory item with ID ${item.inventoryItemId} not found`
-          );
-        }
+  //     for (const item of items) {
+  //       // Get inventory item details
+  //       const inventoryItem = await this.getInventoryItem(item.inventoryItemId);
+  //       if (!inventoryItem) {
+  //         throw new Error(
+  //           `Inventory item with ID ${item.inventoryItemId} not found`
+  //         );
+  //       }
 
-        // Check if there's enough stock
-        if (inventoryItem.currentStock < item.quantity) {
-          throw new Error(
-            `Insufficient stock for ${inventoryItem.name}. Available: ${inventoryItem.currentStock}, Required: ${item.quantity}`
-          );
-        }
+  //       // Check if there's enough stock
+  //       if (inventoryItem.currentStock < item.quantity) {
+  //         throw new Error(
+  //           `Insufficient stock for ${inventoryItem.name}. Available: ${inventoryItem.currentStock}, Required: ${item.quantity}`
+  //         );
+  //       }
 
-        // Use average cost as unit cost
-        const unitCost = parseFloat(inventoryItem.avgCost || "0");
-        const itemTotalCost = unitCost * item.quantity;
-        totalCost += itemTotalCost;
+  //       // Use average cost as unit cost
+  //       const unitCost = parseFloat(inventoryItem.avgCost || "0");
+  //       const itemTotalCost = unitCost * item.quantity;
+  //       totalCost += itemTotalCost;
 
-        // Create inventory transaction (outflow)
-        await db.insert(inventoryTransactions).values({
-          itemId: item.inventoryItemId,
-          type: "outflow",
-          quantity: item.quantity,
-          unitCost: unitCost.toString(),
-          remainingQuantity: 0, // For outflow, remaining is 0
-          projectId: projectId,
-          reference: `CONSUMABLES-${consumableId}`,
-          createdBy: userId || null,
-        });
+  //       // Create inventory transaction (outflow)
+  //       await db.insert(inventoryTransactions).values({
+  //         itemId: item.inventoryItemId,
+  //         type: "outflow",
+  //         quantity: item.quantity,
+  //         unitCost: unitCost.toString(),
+  //         remainingQuantity: 0, // For outflow, remaining is 0
+  //         projectId: projectId,
+  //         reference: `CONSUMABLES-${consumableId}`,
+  //         createdBy: userId || null,
+  //       });
 
-        // Update inventory stock
-        await this.updateInventoryItem(item.inventoryItemId, {
-          currentStock: inventoryItem.currentStock - item.quantity,
-        });
+  //       // Update inventory stock
+  //       await this.updateInventoryItem(item.inventoryItemId, {
+  //         currentStock: inventoryItem.currentStock - item.quantity,
+  //       });
 
-        // Create project consumable item record
-        const consumableItem = await db
-          .insert(projectConsumableItems)
-          .values({
-            consumableId: consumableId,
-            inventoryItemId: item.inventoryItemId,
-            quantity: item.quantity,
-            unitCost: unitCost.toString(),
-          })
-          .returning();
+  //       // Create project consumable item record
+  //       const consumableItem = await db
+  //         .insert(projectConsumableItems)
+  //         .values({
+  //           consumableId: consumableId,
+  //           inventoryItemId: item.inventoryItemId,
+  //           quantity: item.quantity,
+  //           unitCost: unitCost.toString(),
+  //         })
+  //         .returning();
 
-        createdItems.push({
-          ...consumableItem[0],
-          inventoryItemName: inventoryItem.name,
-          unit: inventoryItem.unit,
-        });
-      }
+  //       createdItems.push({
+  //         ...consumableItem[0],
+  //         inventoryItemName: inventoryItem.name,
+  //         unit: inventoryItem.unit,
+  //       });
+  //     }
 
-      // Update project cost
-      if (totalCost > 0) {
-        const currentCost = parseFloat(project.actualCost || "0");
-        const newCost = currentCost + totalCost;
-        await this.updateProject(projectId, {
-          actualCost: newCost.toFixed(2),
-        });
-      }
+  //     // Update project cost
+  //     if (totalCost > 0) {
+  //       const currentCost = parseFloat(project.actualCost || "0");
+  //       const newCost = currentCost + totalCost;
+  //       await this.updateProject(projectId, {
+  //         actualCost: newCost.toFixed(2),
+  //       });
+  //     }
 
-      return {
-        id: consumableId,
-        projectId,
-        date,
-        items: createdItems,
-        totalCost: totalCost.toFixed(2),
-        recordedBy: userId,
-      };
-    } catch (error) {
-      console.error("Error creating project consumables:", error);
-      throw error;
-    }
-  }
+  //     return {
+  //       id: consumableId,
+  //       projectId,
+  //       date,
+  //       items: createdItems,
+  //       totalCost: totalCost.toFixed(2),
+  //       recordedBy: userId,
+  //     };
+  //   } catch (error) {
+  //     console.error("Error creating project consumables:", error);
+  //     throw error;
+  //   }
+  // }
 
   // Supplier-Inventory Item mapping methods
   async getSupplierInventoryItems(

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, json, numeric, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp,varchar, decimal, json, numeric, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -456,10 +456,17 @@ export const assetInventoryMaintenanceRecords = pgTable("asset_inventory_mainten
   instanceId: integer("instance_id").references(() => assetInventoryInstances.id).notNull(),
   maintenanceCost: decimal("maintenance_cost", { precision: 10, scale: 2 }).notNull(),
   maintenanceDate: timestamp("maintenance_date").defaultNow().notNull(),
+  maintenanceType: varchar("maintenance_type", { length: 255 }),
+  startDate: timestamp("start_date", { withTimezone: false }),
+  completedDate: timestamp("completed_date", { withTimezone: false }),
   description: text("description"),
   performedBy: integer("performed_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  isArchived: boolean("is_archived").notNull().default(false),
 });
+
+export const insertAssetInventoryMaintenanceRecords = createInsertSchema(assetInventoryMaintenanceRecords).omit({ id: true });
+export const updateAssetInventoryMaintenanceRecord = insertAssetInventoryMaintenanceRecords.partial();
 
 // Asset Inventory Maintenance Files
 export const assetInventoryMaintenanceFiles = pgTable("asset_inventory_maintenance_files", {
@@ -815,12 +822,7 @@ export const supplierDocuments = pgTable("supplier_documents", {
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCompanySchema = createInsertSchema(companies).omit({ id: true });
-export const insertCustomerSchema = createInsertSchema(customers, {
-  name: z.string().min(1, { message: "Name is required" }),
-  phone: z.string().min(1, { message: "Phone is required" }),
-  email: z.string().email({ message: "Invalid email address" }).or(z.literal("")).nullable().optional(),
-  vatNumber: z.string().min(1, { message: "VAT number is required" }),
-}).omit({ id: true, createdAt: true, updatedAt: true, userId: true }).extend({
+export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   vatRegistrationStatus: z.enum(["not_registered", "registered", "exempt", "suspended"]).default("not_registered"),
   vatTreatment: z.enum(["standard", "zero_rated", "exempt", "out_of_scope"]).default("standard"),
   customerType: z.enum(["business", "individual", "government", "non_profit"]).default("business"),
@@ -841,7 +843,7 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: tru
   isVatApplicable: z.boolean().default(true),
 });
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true }).extend({
-  hireDate: z.date().nullable().optional(),
+  hireDate: z.coerce.date().nullable().optional(),
   salary: z.string().nullable().optional(),
   category: z.enum(["permanent", "consultant", "contract"]).default("permanent"),
   grade: z.enum(["Grade 1", "Grade 2", "Grade 3", "Grade 4"]).nullable().optional(),
@@ -852,7 +854,7 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: tru
   userId: z.number().nullable().optional(),
   
   // Personal Particulars
-  dateOfBirth: z.date().nullable().optional(),
+  dateOfBirth: z.coerce.date().nullable().optional(),
   height: z.string().nullable().optional(),
   weight: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
@@ -872,6 +874,8 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: tru
   safetyShoeSize: z.string().nullable().optional(),
 });
 
+export const updateEmployeeSchema = insertEmployeeSchema.partial();
+
 export const insertEmployeeNextOfKinSchema = createInsertSchema(employeeNextOfKin).omit({ id: true });
 export const insertEmployeeTrainingRecordSchema = createInsertSchema(employeeTrainingRecords).omit({ id: true }).extend({
   trainingDate: z.coerce.date(),
@@ -881,9 +885,24 @@ export const insertEmployeeTrainingRecordSchema = createInsertSchema(employeeTra
 
 export const insertEmployeeDocumentSchema = createInsertSchema(employeeDocuments).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   documentType: z.enum(["passport", "cdc", "covid_vaccination", "stcw_course", "sid", "ilo_medical", "us_visa", "schengen_visa", "uk_visa", "canada_visa", "australia_visa", "uae_visa", "saudi_visa", "singapore_visa", "work_permit", "residence_permit"]),
-  dateOfIssue: z.coerce.date().nullable().optional(),
-  expiryDate: z.coerce.date().nullable().optional(),
-  validTill: z.coerce.date().nullable().optional(),
+  dateOfIssue: z
+        .coerce
+        .date()
+        .nullable()
+        .optional()
+        .transform(d => d ? d.toISOString().slice(0, 10) : null),
+  expiryDate: z
+        .coerce
+        .date()
+        .nullable()
+        .optional()
+        .transform(d => d ? d.toISOString().slice(0, 10) : null),
+  validTill: z
+        .coerce
+        .date()
+        .nullable()
+        .optional()
+        .transform(d => d ? d.toISOString().slice(0, 10) : null),
   status: z.enum(["active", "expired", "pending_renewal"]).default("active"),
 });
 export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, actualCost: true }).extend({

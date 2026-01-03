@@ -73,12 +73,12 @@ const navigation: NavItem[] = [
   //   icon: Home,
   //   roles: ["admin", "project_manager", "finance", "customer", "employee"],
   // },
-  // {
-  //   title: "All Projects",
-  //   href: "/projects",
-  //   icon: Ship,
-  //   roles: ["admin", "project_manager", "customer", "employee"],
-  // },
+  {
+    title: "All Projects",
+    href: "/projects",
+    icon: Ship,
+    roles: ["admin", "project_manager", "customer", "employee"],
+  },
   // {
   //   title: "Daily Activities",
   //   href: "/projects/activities",
@@ -227,12 +227,12 @@ const navigation: NavItem[] = [
     icon: Users,
     roles: ["admin"],
   },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-    roles: ["admin"],
-  },
+  // {
+  //   title: "Settings",
+  //   href: "/settings",
+  //   icon: Settings,
+  //   roles: ["admin"],
+  // },
   {
     title: "Error Logs",
     href: "/error-logs",

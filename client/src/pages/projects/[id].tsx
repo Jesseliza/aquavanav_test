@@ -305,9 +305,10 @@ export default function ProjectDetail() {
   });
   const [isAssetAssignmentDialogOpen, setIsAssetAssignmentDialogOpen] = useState(false);
   const [assetAssignmentData, setAssetAssignmentData] = useState({
-    assetId: 0,
+    instanceId: 0,
     startDate: "",
     endDate: "",
+    notes: "",
   });
   const [editProjectData, setEditProjectData] = useState({
     title: "",
@@ -552,12 +553,12 @@ export default function ProjectDetail() {
   });
 
   const { data: projectAssets } = useQuery<any[]>({
-    queryKey: ["/api/projects", id, "asset-assignments"],
+    queryKey: ["/api/projects", id, "asset-instance-assignments"],
     queryFn: async () => {
-      const response = await fetch(`/api/projects/${id}/asset-assignments`, {
+      const response = await fetch(`/api/projects/${id}/asset-instance-assignments`, {
         credentials: "include",
       });
-      if (!response.ok) throw new Error("Failed to fetch project asset assignments");
+      if (!response.ok) throw new Error("Failed to fetch project asset instance assignments");
       return response.json();
     },
     enabled: isAuthenticated && !!id,
@@ -1181,16 +1182,16 @@ export default function ProjectDetail() {
   });
 
   const assignAssetMutation = useMutation({
-    mutationFn: async (data: { assetId: number; startDate: string; endDate: string; monthlyRate: number }) => {
-      const response = await apiRequest(`/api/projects/${id}/asset-assignments`, { method: "POST", body: data });
+    mutationFn: async (data: { instanceId: number; startDate: string; endDate: string; notes?: string }) => {
+      const response = await apiRequest(`/api/projects/${id}/asset-instance-assignments`, { method: "POST", body: data });
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "asset-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "asset-instance-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] }); // Refresh project cost
       toast({
-        title: "Asset Assigned",
-        description: "Asset has been assigned to the project successfully.",
+        title: "Asset Instance Assigned",
+        description: "Asset instance has been assigned to the project successfully.",
       });
       setIsAssetAssignmentDialogOpen(false);
       resetAssetAssignmentForm();
@@ -1198,7 +1199,7 @@ export default function ProjectDetail() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to assign asset",
+        description: error.message || "Failed to assign asset instance",
         variant: "destructive",
       });
     },
@@ -1206,21 +1207,21 @@ export default function ProjectDetail() {
 
   const removeAssetMutation = useMutation({
     mutationFn: async (assignmentId: number) => {
-      const response = await apiRequest(`/api/projects/${id}/asset-assignments/${assignmentId}`, { method: "DELETE" });
+      const response = await apiRequest(`/api/projects/${id}/asset-instance-assignments/${assignmentId}`, { method: "DELETE" });
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "asset-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "asset-instance-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] }); // Refresh project cost
       toast({
-        title: "Asset Removed",
-        description: "Asset has been removed from the project.",
+        title: "Asset Instance Removed",
+        description: "Asset instance has been removed from the project.",
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to remove asset",
+        description: error.message || "Failed to remove asset instance",
         variant: "destructive",
       });
     },
@@ -1240,74 +1241,63 @@ export default function ProjectDetail() {
 
   const resetAssetAssignmentForm = () => {
     setAssetAssignmentData({
-      assetId: 0,
+      instanceId: 0,
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
+      notes: "",
     });
   };
 
   const handleAssetAssignmentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!assetAssignmentData.assetId || !assetAssignmentData.startDate || !assetAssignmentData.endDate) {
+    if (!assetAssignmentData.instanceId || !assetAssignmentData.startDate) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please select an asset instance and start date",
         variant: "destructive",
       });
       return;
     }
 
-    // Get the selected asset to access its monthly rental amount
-    const selectedAsset = assets?.find(asset => asset.id === assetAssignmentData.assetId);
-    if (!selectedAsset?.monthlyRentalAmount) {
-      toast({
-        title: "Error",
-        description: "Selected asset does not have a monthly rental rate configured",
-        variant: "destructive",
+    // Validate dates if end date is provided
+    if (assetAssignmentData.endDate) {
+      const startDate = new Date(assetAssignmentData.startDate);
+      const endDate = new Date(assetAssignmentData.endDate);
+
+      if (endDate <= startDate) {
+        toast({
+          title: "Error",
+          description: "End date must be after start date",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if asset instance is already assigned during this period
+      const isOverlapping = projectAssets?.some(assignment => {
+        if (assignment.instanceId !== assetAssignmentData.instanceId) return false;
+        
+        if (!assignment.endDate) return true; // Ongoing assignment
+        
+        const existingStart = new Date(assignment.startDate);
+        const existingEnd = new Date(assignment.endDate);
+        
+        return (startDate <= existingEnd && endDate >= existingStart);
       });
-      return;
+
+      if (isOverlapping) {
+        toast({
+          title: "Error",
+          description: "Asset instance is already assigned to this project during the selected period",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
-    // Validate dates
-    const startDate = new Date(assetAssignmentData.startDate);
-    const endDate = new Date(assetAssignmentData.endDate);
-
-    if (endDate <= startDate) {
-      toast({
-        title: "Error",
-        description: "End date must be after start date",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if asset is already assigned during this period
-    const isOverlapping = projectAssets?.some(assignment => {
-      if (assignment.assetId !== assetAssignmentData.assetId) return false;
-      
-      const existingStart = new Date(assignment.startDate);
-      const existingEnd = new Date(assignment.endDate);
-      
-      return (startDate <= existingEnd && endDate >= existingStart);
-    });
-
-    if (isOverlapping) {
-      toast({
-        title: "Error",
-        description: "Asset is already assigned to this project during the selected period",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Include the monthly rate from the asset in the assignment data
-    const assignmentDataWithRate = {
-      ...assetAssignmentData,
-      monthlyRate: parseFloat(selectedAsset.monthlyRentalAmount)
-    };
-
-    assignAssetMutation.mutate(assignmentDataWithRate);
+    // Submit the assignment (backend will handle monthly rate from instance)
+    assignAssetMutation.mutate(assetAssignmentData);
   };
 
   const addConsumableItem = () => {
@@ -2144,7 +2134,7 @@ export default function ProjectDetail() {
 
       {/* Tabs for Activities, Photos, etc. */}
       <Tabs defaultValue="activities" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 h-auto">
           <TabsTrigger value="activities" className="flex items-center justify-center text-xs sm:text-sm p-2">
             <Activity className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Daily Activities</span>
@@ -2166,6 +2156,10 @@ export default function ProjectDetail() {
           <TabsTrigger value="locations" className="flex items-center justify-center text-xs sm:text-sm p-2">
             <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             Locations
+          </TabsTrigger>
+          <TabsTrigger value="assets" className="flex items-center justify-center text-xs sm:text-sm p-2">
+            <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            Assets
           </TabsTrigger>
           <TabsTrigger value="consumables" className="flex items-center justify-center text-xs sm:text-sm p-2">
             <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -3517,6 +3511,234 @@ export default function ProjectDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="assets">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Assigned Assets</CardTitle>
+                {canEdit && (
+                  <Dialog open={isAssetAssignmentDialogOpen} onOpenChange={setIsAssetAssignmentDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" data-testid="button-assign-asset">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Assign Asset
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Assign Asset Instance to Project</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleAssetAssignmentSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="assetInstance">Asset Instance *</Label>
+                          <Select
+                            value={assetAssignmentData.instanceId?.toString() || ""}
+                            onValueChange={(value) => {
+                              setAssetAssignmentData(prev => ({
+                                ...prev,
+                                instanceId: parseInt(value)
+                              }));
+                            }}
+                          >
+                            <SelectTrigger className="w-full" data-testid="select-asset-instance">
+                              <SelectValue placeholder="Select asset instance" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {assets?.filter(asset => asset.status === 'available').map((asset) => (
+                                <SelectItem key={asset.id} value={asset.id.toString()}>
+                                  {asset.assetTypeName || 'Unknown'} - {asset.tag}
+                                  {asset.serialNumber && ` (SN: ${asset.serialNumber})`}
+                                  {asset.monthlyRentalAmount && ` - ${asset.rentalCurrency} ${parseFloat(asset.monthlyRentalAmount).toFixed(2)}/month`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Only available asset instances are shown
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="assetStartDate">Start Date *</Label>
+                            <Input
+                              id="assetStartDate"
+                              type="date"
+                              value={assetAssignmentData.startDate}
+                              onChange={(e) => setAssetAssignmentData(prev => ({ ...prev, startDate: e.target.value }))}
+                              required
+                              className="w-full"
+                              data-testid="input-asset-start-date"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="assetEndDate">End Date</Label>
+                            <Input
+                              id="assetEndDate"
+                              type="date"
+                              value={assetAssignmentData.endDate}
+                              onChange={(e) => setAssetAssignmentData(prev => ({ ...prev, endDate: e.target.value }))}
+                              min={assetAssignmentData.startDate}
+                              className="w-full"
+                              data-testid="input-asset-end-date"
+                            />
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Leave empty for ongoing assignment
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="assetNotes">Notes</Label>
+                          <Textarea
+                            id="assetNotes"
+                            value={assetAssignmentData.notes}
+                            onChange={(e) => setAssetAssignmentData(prev => ({ ...prev, notes: e.target.value }))}
+                            placeholder="Any notes about this asset assignment..."
+                            rows={3}
+                            className="w-full"
+                            data-testid="input-asset-notes"
+                          />
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-end gap-2 pt-6 border-t border-slate-200 dark:border-slate-700">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsAssetAssignmentDialogOpen(false)}
+                            className="w-full sm:w-auto"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={assignAssetMutation.isPending}
+                            className="w-full sm:w-auto"
+                            data-testid="button-submit-asset-assignment"
+                          >
+                            {assignAssetMutation.isPending ? "Assigning..." : "Assign Asset"}
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!projectAssets || projectAssets.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-500 dark:text-slate-400">No assets assigned yet</p>
+                  {canEdit && (
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAssetAssignmentDialogOpen(true)}
+                      className="mt-4"
+                      data-testid="button-assign-first-asset"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Assign First Asset
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {projectAssets.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4"
+                      data-testid={`asset-assignment-${assignment.id}`}
+                    >
+                      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-start gap-2">
+                            <Package className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-slate-900 dark:text-slate-100">
+                                {assignment.assetTypeName || 'Unknown Asset'}
+                              </h4>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  Tag: {assignment.tag}
+                                </Badge>
+                                {assignment.serialNumber && (
+                                  <Badge variant="outline" className="text-xs">
+                                    SN: {assignment.serialNumber}
+                                  </Badge>
+                                )}
+                                {assignment.barcode && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Barcode: {assignment.barcode}
+                                  </Badge>
+                                )}
+                                <Badge 
+                                  variant={assignment.status === 'active' ? 'default' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {assignment.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-600 dark:text-slate-400 ml-7">
+                            <div>
+                              <span className="font-medium">Start:</span> {formatDate(assignment.startDate)}
+                            </div>
+                            {assignment.endDate && (
+                              <div>
+                                <span className="font-medium">End:</span> {formatDate(assignment.endDate)}
+                              </div>
+                            )}
+                            {!assignment.endDate && (
+                              <div>
+                                <span className="font-medium">Status:</span> Ongoing
+                              </div>
+                            )}
+                          </div>
+
+                          {assignment.monthlyRate && (
+                            <div className="text-sm text-slate-600 dark:text-slate-400 ml-7">
+                              <span className="font-medium">Monthly Rate:</span> {assignment.currency || 'AED'} {parseFloat(assignment.monthlyRate).toFixed(2)}
+                              {assignment.totalCost && (
+                                <span className="ml-2">
+                                  | <span className="font-medium">Total Cost:</span> {assignment.currency || 'AED'} {parseFloat(assignment.totalCost).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {assignment.notes && (
+                            <div className="text-sm text-slate-600 dark:text-slate-400 ml-7">
+                              <span className="font-medium">Notes:</span> {assignment.notes}
+                            </div>
+                          )}
+                        </div>
+
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAssetMutation.mutate(assignment.id)}
+                            disabled={removeAssetMutation.isPending}
+                            className="text-red-500 hover:text-red-700 shrink-0"
+                            data-testid={`button-remove-asset-${assignment.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="consumables">
           <Card>
             <CardHeader>
