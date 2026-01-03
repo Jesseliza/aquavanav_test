@@ -74,6 +74,33 @@ import {
   creditNotes,
 } from "../migrations/schema";
 
+function parseProjectData(body: any, file?: Express.Multer.File) {
+  const data = { ...body };
+  if (file) {
+    data.vesselImage = file.path;
+  }
+  // Coerce string fields to their correct types
+  if (data.locations && typeof data.locations === 'string') {
+    data.locations = JSON.parse(data.locations);
+  }
+  if (data.customerId) {
+    data.customerId = parseInt(data.customerId, 10);
+  }
+  if (data.estimatedBudget) {
+    data.estimatedBudget = parseFloat(data.estimatedBudget);
+  }
+  if (data.startDate && typeof data.startDate === 'string') {
+    data.startDate = new Date(data.startDate);
+  }
+  if (data.plannedEndDate && typeof data.plannedEndDate === 'string') {
+    data.plannedEndDate = new Date(data.plannedEndDate);
+  }
+  if (data.actualEndDate && typeof data.actualEndDate === 'string') {
+    data.actualEndDate = new Date(data.actualEndDate);
+  }
+  return data;
+}
+
 function generateQuotationHTML(
   quotation: any,
   customer: any,
@@ -509,6 +536,8 @@ const storage_multer = multer.diskStorage({
       uploadDir = "uploads/supplier-documents";
     } else if (req.route?.path?.includes('documents')) {
       uploadDir = "uploads/employee-documents";
+    } else if (file.fieldname === 'vesselImage') {
+      uploadDir = "uploads/projects/vesselimage";
     }
     
     if (!fs.existsSync(uploadDir)) {
@@ -1605,55 +1634,14 @@ app.patch(
     "/api/projects",
     requireAuth,
     requireRole(["admin", "project_manager"]),
+    upload.single("vesselImage"),
     async (req, res) => {
       try {
-        console.log("Received project data:", req.body);
-
-        // Clean the data before validation
-        const cleanData = { ...req.body };
-
-        // Convert date strings to Date objects if they exist
-        if (cleanData.startDate && typeof cleanData.startDate === "string") {
-          cleanData.startDate = new Date(cleanData.startDate);
-        }
-        if (
-          cleanData.plannedEndDate &&
-          typeof cleanData.plannedEndDate === "string"
-        ) {
-          cleanData.plannedEndDate = new Date(cleanData.plannedEndDate);
-        }
-
-        // Convert estimatedBudget to string if it's a number
-        if (
-          cleanData.estimatedBudget &&
-          typeof cleanData.estimatedBudget === "number"
-        ) {
-          cleanData.estimatedBudget = cleanData.estimatedBudget.toString();
-        }
-
-        // Ensure locations is an array (don't delete empty arrays)
-        if (!cleanData.locations) {
-          cleanData.locations = [];
-        }
-
-        // Remove undefined/null fields to avoid validation issues (but keep empty arrays)
-        Object.keys(cleanData).forEach((key) => {
-          if (
-            cleanData[key] === undefined ||
-            cleanData[key] === null ||
-            (cleanData[key] === "" && key !== "locations")
-          ) {
-            delete cleanData[key];
-          }
-        });
-
-        console.log("Cleaned project data:", cleanData);
-
-        const projectData = insertProjectSchema.parse(cleanData);
-        const project = await storage.createProject(projectData);
+        const projectData = parseProjectData(req.body, req.file);
+        const parsedData = insertProjectSchema.parse(projectData);
+        const project = await storage.createProject(parsedData);
         res.status(201).json(project);
       } catch (error) {
-        console.error("Project creation error:", error);
         if (error instanceof ZodError) {
           return res
             .status(400)
@@ -1668,67 +1656,18 @@ app.patch(
     "/api/projects/:id",
     requireAuth,
     requireRole(["admin", "project_manager"]),
+    upload.single("vesselImage"),
     async (req, res) => {
       try {
         const id = parseInt(req.params.id);
-        const projectData = { ...req.body };
-
-        console.log("Received project update data:", projectData);
-
-        // Handle date fields properly
-        if (
-          projectData.startDate &&
-          typeof projectData.startDate === "string"
-        ) {
-          projectData.startDate = new Date(projectData.startDate);
-        }
-        if (
-          projectData.plannedEndDate &&
-          typeof projectData.plannedEndDate === "string"
-        ) {
-          projectData.plannedEndDate = new Date(projectData.plannedEndDate);
-        }
-        if (
-          projectData.actualEndDate &&
-          typeof projectData.actualEndDate === "string"
-        ) {
-          projectData.actualEndDate = new Date(projectData.actualEndDate);
-        }
-
-        // If status is being changed to completed, set actual end date
-        if (projectData.status === "completed" && !projectData.actualEndDate) {
-          projectData.actualEndDate = new Date();
-        }
-
-        // Ensure locations is properly handled - don't modify if it's already an array
-        if (projectData.locations !== undefined) {
-          if (!Array.isArray(projectData.locations)) {
-            projectData.locations = [];
-          }
-          // Log the locations being saved
-          console.log("Saving locations:", projectData.locations);
-        }
-
-        // Convert estimatedBudget to string if it's a number
-        if (
-          projectData.estimatedBudget &&
-          typeof projectData.estimatedBudget === "number"
-        ) {
-          projectData.estimatedBudget = projectData.estimatedBudget.toString();
-        }
-
+        const projectData = parseProjectData(req.body, req.file);
         const project = await storage.updateProject(id, projectData);
 
         if (!project) {
           return res.status(404).json({ message: "Project not found" });
         }
 
-        console.log(
-          "Project updated successfully with locations:",
-          project.locations,
-        );
-
-        // Recalculate cost if the project dates changed or status changed
+        // Recalculate cost if relevant fields are changed
         if (
           projectData.startDate ||
           projectData.actualEndDate ||
@@ -1739,7 +1678,6 @@ app.patch(
 
         res.json(project);
       } catch (error) {
-        console.error("Project update error:", error);
         res.status(500).json({ message: "Failed to update project" });
       }
     },

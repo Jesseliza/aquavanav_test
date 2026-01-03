@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertProjectSchema, Customer } from "@shared/schema";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { createProjectFormData } from "@/lib/formData";
 
 const createProjectSchema = insertProjectSchema.extend({
   startDate: z.string().optional(),
@@ -51,6 +52,7 @@ export default function ProjectCreate() {
     additionalField3Title: "",
     additionalField3Description: "",
   });
+  const [vesselImageFile, setVesselImageFile] = useState<File | null>(null);
 
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [newLocation, setNewLocation] = useState("");
@@ -86,11 +88,10 @@ export default function ProjectCreate() {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: CreateProjectData) => {
-      // Clean and validate data before sending
       const processedData: Partial<CreateProjectData> & { locations: string[] } = {
         title: data.title.trim(),
         status: data.status || "not_started",
-        locations: Array.isArray(data.locations) ? data.locations.filter((loc: string) => loc.trim()) : [], // Ensure locations is an array and filter out empty strings
+        locations: Array.isArray(data.locations) ? data.locations.filter((loc: string) => loc.trim()) : [],
       };
 
       // Only include fields with valid values
@@ -99,9 +100,6 @@ export default function ProjectCreate() {
       }
       if (data.vesselName && data.vesselName.trim()) {
         processedData.vesselName = data.vesselName.trim();
-      }
-      if (data.vesselImage && data.vesselImage.trim()) {
-        processedData.vesselImage = data.vesselImage.trim();
       }
       if (data.vesselImoNumber && data.vesselImoNumber.trim()) {
         processedData.vesselImoNumber = data.vesselImoNumber.trim();
@@ -145,15 +143,18 @@ export default function ProjectCreate() {
       if (data.additionalField3Description && data.additionalField3Description.trim()) {
         processedData.additionalField3Description = data.additionalField3Description.trim();
       }
+      const formData = createProjectFormData(processedData, vesselImageFile);
 
-      console.log('Sending project data:', processedData);
-      const response = await apiRequest("/api/projects", {
+      const response = await fetch("/api/projects", {
         method: "POST",
-        body: JSON.stringify(processedData),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      } as RequestInit);
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to create project' }));
+        throw new Error(errorData.message);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -319,8 +320,7 @@ export default function ProjectCreate() {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    // For now, we'll create a temporary URL for preview
-                    // In a real implementation, you'd upload to a file storage service
+                    setVesselImageFile(file);
                     const imageUrl = URL.createObjectURL(file);
                     handleChange("vesselImage", imageUrl);
                   }
