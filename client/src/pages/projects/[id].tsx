@@ -310,6 +310,7 @@ export default function ProjectDetail() {
     endDate: "",
     notes: "",
   });
+  const [vesselImageFile, setVesselImageFile] = useState<File | null>(null);
   const [editProjectData, setEditProjectData] = useState({
     title: "",
     description: "",
@@ -995,8 +996,15 @@ export default function ProjectDetail() {
   };
 
   const editProjectMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest(`/api/projects/${id}`, { method: "PUT", body: data });
+    mutationFn: async (data: FormData) => {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "PUT",
+        body: data,
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update project");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -1421,43 +1429,43 @@ export default function ProjectDetail() {
       return;
     }
 
-    // Clean the data and properly handle dates
-    const cleanedData = { ...editProjectData };
+    const formData = new FormData();
 
-    // Remove any undefined or empty values and properly handle dates
-    Object.keys(cleanedData).forEach(key => {
-      if (cleanedData[key as keyof typeof cleanedData] === "" || cleanedData[key as keyof typeof cleanedData] === undefined) {
-        delete cleanedData[key as keyof typeof cleanedData];
+
+    // Helper to append if value is not null or undefined
+    const appendIfExists = (key: string, value: string | number | null | undefined) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, String(value));
       }
-    });
+    };
 
-    // Only include date fields if they have valid values
-    const updateData: any = { ...cleanedData };
 
-    if (editProjectData.startDate && editProjectData.startDate.trim()) {
-      updateData.startDate = new Date(editProjectData.startDate);
+    appendIfExists("title", editProjectData.title);
+    appendIfExists("description", editProjectData.description);
+    appendIfExists("vesselName", editProjectData.vesselName);
+    appendIfExists("vesselImoNumber", editProjectData.vesselImoNumber);
+    appendIfExists("status", editProjectData.status);
+    appendIfExists("startDate", editProjectData.startDate);
+    appendIfExists("plannedEndDate", editProjectData.plannedEndDate);
+    appendIfExists("actualEndDate", editProjectData.actualEndDate);
+    appendIfExists("ridgingCrewNos", editProjectData.ridgingCrewNos);
+    appendIfExists("modeOfContract", editProjectData.modeOfContract);
+    appendIfExists("workingHours", editProjectData.workingHours);
+    appendIfExists("ppe", editProjectData.ppe);
+    appendIfExists("additionalField1Title", editProjectData.additionalField1Title);
+    appendIfExists("additionalField1Description", editProjectData.additionalField1Description);
+    appendIfExists("additionalField2Title", editProjectData.additionalField2Title);
+    appendIfExists("additionalField2Description", editProjectData.additionalField2Description);
+    appendIfExists("additionalField3Title", editProjectData.additionalField3Title);
+    appendIfExists("additionalField3Description", editProjectData.additionalField3Description);
+
+
+    if (vesselImageFile) {
+      formData.append("vesselImage", vesselImageFile);
     }
 
-    if (editProjectData.plannedEndDate && editProjectData.plannedEndDate.trim()) {
-      updateData.plannedEndDate = new Date(editProjectData.plannedEndDate);
-    }
 
-    if (editProjectData.actualEndDate && editProjectData.actualEndDate.trim()) {
-      updateData.actualEndDate = new Date(editProjectData.actualEndDate);
-    }
-
-    // Remove any date fields that are empty strings to avoid sending them
-    if (!editProjectData.startDate || !editProjectData.startDate.trim()) {
-      delete updateData.startDate;
-    }
-    if (!editProjectData.plannedEndDate || !editProjectData.plannedEndDate.trim()) {
-      delete updateData.plannedEndDate;
-    }
-    if (!editProjectData.actualEndDate || !editProjectData.actualEndDate.trim()) {
-      delete updateData.actualEndDate;
-    }
-
-    editProjectMutation.mutate(updateData);
+    editProjectMutation.mutate(formData);
   };
 
   // Show loading state while authentication is being checked
@@ -1622,17 +1630,16 @@ export default function ProjectDetail() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          // For now, we'll create a temporary URL for preview
-                          // In a real implementation, you'd upload to a file storage service
+                          setVesselImageFile(file);
                           const imageUrl = URL.createObjectURL(file);
                           setEditProjectData(prev => ({ ...prev, vesselImage: imageUrl }));
                         }
                       }}
                     />
-                    {(editProjectData.vesselImage || project?.vesselImage) && (
+                    {(editProjectData.vesselImage || (project?.vesselImage && !vesselImageFile)) && (
                       <div className="mt-2">
                         <img
-                          src={editProjectData.vesselImage || project?.vesselImage}
+                          src={vesselImageFile ? editProjectData.vesselImage : project?.vesselImage}
                           alt="Vessel preview"
                           className="h-32 w-48 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
                         />
