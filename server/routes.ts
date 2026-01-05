@@ -74,33 +74,6 @@ import {
   creditNotes,
 } from "../migrations/schema";
 
-function parseProjectData(body: any, file?: Express.Multer.File) {
-  const data = { ...body };
-  if (file) {
-    data.vesselImage = file.path;
-  }
-  // Coerce string fields to their correct types
-  if (data.locations && typeof data.locations === 'string') {
-    data.locations = JSON.parse(data.locations);
-  }
-  if (data.customerId) {
-    data.customerId = parseInt(data.customerId, 10);
-  }
-  if (data.estimatedBudget) {
-    data.estimatedBudget = parseFloat(data.estimatedBudget);
-  }
-  if (data.startDate && typeof data.startDate === 'string') {
-    data.startDate = new Date(data.startDate);
-  }
-  if (data.plannedEndDate && typeof data.plannedEndDate === 'string') {
-    data.plannedEndDate = new Date(data.plannedEndDate);
-  }
-  if (data.actualEndDate && typeof data.actualEndDate === 'string') {
-    data.actualEndDate = new Date(data.actualEndDate);
-  }
-  return data;
-}
-
 function generateQuotationHTML(
   quotation: any,
   customer: any,
@@ -536,8 +509,6 @@ const storage_multer = multer.diskStorage({
       uploadDir = "uploads/supplier-documents";
     } else if (req.route?.path?.includes('documents')) {
       uploadDir = "uploads/employee-documents";
-    } else if (file.fieldname === 'vesselImage') {
-      uploadDir = "uploads/projects/vesselimage";
     }
     
     if (!fs.existsSync(uploadDir)) {
@@ -1592,6 +1563,73 @@ app.patch(
     }
   });
 
+// Multer config for project vessel images
+const vesselImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = "uploads/projects/vesselimage";
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+      const extension = path.extname(file.originalname);
+      cb(null, `${file.fieldname}-${uniqueSuffix}${extension}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const mimetype = allowedTypes.test(file.mimetype);
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error("Error: File upload only supports the following filetypes - " + allowedTypes));
+  },
+});
+
+// Helper function to parse and clean project data from multipart/form-data
+const parseProjectDataFromFormData = (body: any) => {
+    const data = { ...body };
+
+    // Handle date strings from FormData
+    ['startDate', 'plannedEndDate', 'actualEndDate'].forEach(dateKey => {
+        if (data[dateKey] && typeof data[dateKey] === 'string') {
+            const date = new Date(data[dateKey]);
+            if (!isNaN(date.getTime())) {
+                data[dateKey] = date;
+            } else {
+                delete data[dateKey];
+            }
+        }
+    });
+
+    // Handle potential number strings
+    if (data.customerId && typeof data.customerId === 'string') {
+        const num = parseInt(data.customerId, 10);
+        if (!isNaN(num)) data.customerId = num;
+    }
+
+    if (data.locations && typeof data.locations === 'string') {
+        try {
+            data.locations = JSON.parse(data.locations);
+        } catch (e) {
+            // If parsing fails, treat it as a single-item array with the original string
+            data.locations = [data.locations];
+        }
+    }
+
+    // Clean up empty/nullish string values from FormData
+    Object.keys(data).forEach(key => {
+        if (data[key] === 'null' || data[key] === 'undefined' || data[key] === '') {
+            delete data[key];
+        }
+    });
+
+    return data;
+};
+
     // Project routes
   app.get("/api/projects", requireAuth, async (req, res) => {
     try {
@@ -1634,14 +1672,20 @@ app.patch(
     "/api/projects",
     requireAuth,
     requireRole(["admin", "project_manager"]),
-    upload.single("vesselImage"),
+    vesselImageUpload.single("vesselImage"),
     async (req, res) => {
       try {
-        const projectData = parseProjectData(req.body, req.file);
-        const parsedData = insertProjectSchema.parse(projectData);
-        const project = await storage.createProject(parsedData);
+        const parsedData = parseProjectDataFromFormData(req.body);
+
+        if (req.file) {
+          parsedData.vesselImage = `/${req.file.path}`;
+        }
+
+        const validatedData = insertProjectSchema.parse(parsedData);
+        const project = await storage.createProject(validatedData);
         res.status(201).json(project);
       } catch (error) {
+        console.error("Project creation error:", error);
         if (error instanceof ZodError) {
           return res
             .status(400)
@@ -1656,18 +1700,28 @@ app.patch(
     "/api/projects/:id",
     requireAuth,
     requireRole(["admin", "project_manager"]),
-    upload.single("vesselImage"),
+    vesselImageUpload.single("vesselImage"),
     async (req, res) => {
       try {
         const id = parseInt(req.params.id);
-        const projectData = parseProjectData(req.body, req.file);
+        const projectData = parseProjectDataFromFormData(req.body);
+
+        if (req.file) {
+          projectData.vesselImage = `/${req.file.path}`;
+        }
+
+        // If status is being changed to completed, set actual end date
+        if (projectData.status === "completed" && !projectData.actualEndDate) {
+          projectData.actualEndDate = new Date();
+        }
+
         const project = await storage.updateProject(id, projectData);
 
         if (!project) {
           return res.status(404).json({ message: "Project not found" });
         }
 
-        // Recalculate cost if relevant fields are changed
+        // Recalculate cost if the project dates changed or status changed
         if (
           projectData.startDate ||
           projectData.actualEndDate ||
@@ -1678,6 +1732,7 @@ app.patch(
 
         res.json(project);
       } catch (error) {
+        console.error("Project update error:", error);
         res.status(500).json({ message: "Failed to update project" });
       }
     },

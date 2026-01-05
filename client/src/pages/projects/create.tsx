@@ -15,7 +15,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertProjectSchema, Customer } from "@shared/schema";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { createProjectFormData } from "@/lib/formData";
 
 const createProjectSchema = insertProjectSchema.extend({
   startDate: z.string().optional(),
@@ -88,62 +87,44 @@ export default function ProjectCreate() {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: CreateProjectData) => {
-      const processedData: Partial<CreateProjectData> & { locations: string[] } = {
-        title: data.title.trim(),
-        status: data.status || "not_started",
-        locations: Array.isArray(data.locations) ? data.locations.filter((loc: string) => loc.trim()) : [],
+      const formData = new FormData();
+
+      const appendIfExists = (key: string, value: string | number | null | undefined | string[]) => {
+        if (value !== null && value !== undefined && value !== '') {
+            if (typeof value === 'string') {
+                formData.append(key, value.trim());
+            } else if (Array.isArray(value)) {
+                // For now, we'll just stringify arrays. Adjust if backend expects different format.
+                formData.append(key, JSON.stringify(value));
+            } else {
+                formData.append(key, String(value));
+            }
+        }
       };
 
-      // Only include fields with valid values
-      if (data.description && data.description.trim()) {
-        processedData.description = data.description.trim();
+      appendIfExists("title", data.title);
+      appendIfExists("description", data.description);
+      appendIfExists("vesselName", data.vesselName);
+      appendIfExists("vesselImoNumber", data.vesselImoNumber);
+      appendIfExists("status", data.status);
+      appendIfExists("customerId", data.customerId);
+      appendIfExists("locations", data.locations);
+      appendIfExists("startDate", data.startDate);
+      appendIfExists("plannedEndDate", data.plannedEndDate);
+      appendIfExists("ridgingCrewNos", data.ridgingCrewNos);
+      appendIfExists("modeOfContract", data.modeOfContract);
+      appendIfExists("workingHours", data.workingHours);
+      appendIfExists("ppe", data.ppe);
+      appendIfExists("additionalField1Title", data.additionalField1Title);
+      appendIfExists("additionalField1Description", data.additionalField1Description);
+      appendIfExists("additionalField2Title", data.additionalField2Title);
+      appendIfExists("additionalField2Description", data.additionalField2Description);
+      appendIfExists("additionalField3Title", data.additionalField3Title);
+      appendIfExists("additionalField3Description", data.additionalField3Description);
+
+      if (vesselImageFile) {
+        formData.append("vesselImage", vesselImageFile);
       }
-      if (data.vesselName && data.vesselName.trim()) {
-        processedData.vesselName = data.vesselName.trim();
-      }
-      if (data.vesselImoNumber && data.vesselImoNumber.trim()) {
-        processedData.vesselImoNumber = data.vesselImoNumber.trim();
-      }
-      if (data.startDate && data.startDate.trim()) {
-        processedData.startDate = data.startDate;
-      }
-      if (data.plannedEndDate && data.plannedEndDate.trim()) {
-        processedData.plannedEndDate = data.plannedEndDate;
-      }
-      if (data.customerId && !isNaN(parseInt(data.customerId.toString()))) {
-        processedData.customerId = parseInt(data.customerId.toString());
-      }
-      if (data.ridgingCrewNos && data.ridgingCrewNos.trim()) {
-        processedData.ridgingCrewNos = data.ridgingCrewNos.trim();
-      }
-      if (data.modeOfContract && data.modeOfContract.trim()) {
-        processedData.modeOfContract = data.modeOfContract.trim();
-      }
-      if (data.workingHours && data.workingHours.trim()) {
-        processedData.workingHours = data.workingHours.trim();
-      }
-      if (data.ppe && data.ppe.trim()) {
-        processedData.ppe = data.ppe.trim();
-      }
-      if (data.additionalField1Title && data.additionalField1Title.trim()) {
-        processedData.additionalField1Title = data.additionalField1Title.trim();
-      }
-      if (data.additionalField1Description && data.additionalField1Description.trim()) {
-        processedData.additionalField1Description = data.additionalField1Description.trim();
-      }
-      if (data.additionalField2Title && data.additionalField2Title.trim()) {
-        processedData.additionalField2Title = data.additionalField2Title.trim();
-      }
-      if (data.additionalField2Description && data.additionalField2Description.trim()) {
-        processedData.additionalField2Description = data.additionalField2Description.trim();
-      }
-      if (data.additionalField3Title && data.additionalField3Title.trim()) {
-        processedData.additionalField3Title = data.additionalField3Title.trim();
-      }
-      if (data.additionalField3Description && data.additionalField3Description.trim()) {
-        processedData.additionalField3Description = data.additionalField3Description.trim();
-      }
-      const formData = createProjectFormData(processedData, vesselImageFile);
 
       const response = await fetch("/api/projects", {
         method: "POST",
@@ -155,6 +136,7 @@ export default function ProjectCreate() {
         const errorData = await response.json().catch(() => ({ message: 'Failed to create project' }));
         throw new Error(errorData.message);
       }
+
       return response.json();
     },
     onSuccess: () => {
@@ -323,6 +305,9 @@ export default function ProjectCreate() {
                     setVesselImageFile(file);
                     const imageUrl = URL.createObjectURL(file);
                     handleChange("vesselImage", imageUrl);
+                  } else {
+                    setVesselImageFile(null);
+                    handleChange("vesselImage", "");
                   }
                 }}
               />

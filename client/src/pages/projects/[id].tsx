@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { Project, DailyActivity, Employee, insertDailyActivitySchema, ProjectPhotoGroup, ProjectPhoto } from "@shared/schema";
 import { z } from "zod";
-import { createProjectFormData } from "@/lib/formData";
 
 // Vessel Location Tracker Component
 interface VesselLocationTrackerProps {
@@ -311,6 +310,7 @@ export default function ProjectDetail() {
     endDate: "",
     notes: "",
   });
+  const [vesselImageFile, setVesselImageFile] = useState<File | null>(null);
   const [editProjectData, setEditProjectData] = useState({
     title: "",
     description: "",
@@ -332,7 +332,6 @@ export default function ProjectDetail() {
     additionalField3Title: "",
     additionalField3Description: "",
   });
-  const [vesselImageFile, setVesselImageFile] = useState<File | null>(null);
 
   const [activityData, setActivityData] = useState<Partial<CreateActivityData>>({
     date: new Date().toISOString().split('T')[0],
@@ -443,7 +442,7 @@ export default function ProjectDetail() {
         title: project.title || "",
         description: project.description || "",
         vesselName: project.vesselName || "",
-        vesselImage: project.vesselImage ? `/${project.vesselImage.replace(/^\//, '')}` : "",
+        vesselImage: project.vesselImage || "",
         vesselImoNumber: project.vesselImoNumber || "",
         status: project.status || "",
         startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
@@ -997,30 +996,14 @@ export default function ProjectDetail() {
   };
 
   const editProjectMutation = useMutation({
-    mutationFn: async (projectData: typeof editProjectData) => {
-      const dataToSend = { ...projectData };
-
-      // If an image path exists (from the server) and no new file is being uploaded,
-      // remove the leading slash we added for display purposes.
-      if (dataToSend.vesselImage && dataToSend.vesselImage.startsWith('/') && !vesselImageFile) {
-        dataToSend.vesselImage = dataToSend.vesselImage.substring(1);
-      } else if (vesselImageFile) {
-        // If a new file is being uploaded, remove the image path property
-        // so the server doesn't receive the blob URL. The file itself will be handled.
-        delete (dataToSend as Partial<typeof dataToSend>).vesselImage;
-      }
-
-      const formData = createProjectFormData(dataToSend, vesselImageFile);
-
+    mutationFn: async (data: FormData) => {
       const response = await fetch(`/api/projects/${id}`, {
         method: "PUT",
-        body: formData,
+        body: data,
         credentials: "include",
       });
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to update project' }));
-        throw new Error(errorData.message);
+        throw new Error("Failed to update project");
       }
       return response.json();
     },
@@ -1031,7 +1014,6 @@ export default function ProjectDetail() {
         description: "Project has been updated successfully.",
       });
       setIsEditProjectDialogOpen(false);
-      setVesselImageFile(null); // Reset file state after successful upload
     },
     onError: (error: Error) => {
       toast({
@@ -1446,7 +1428,44 @@ export default function ProjectDetail() {
       });
       return;
     }
-    editProjectMutation.mutate(editProjectData);
+
+    const formData = new FormData();
+
+
+    // Helper to append if value is not null or undefined
+    const appendIfExists = (key: string, value: string | number | null | undefined) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, String(value));
+      }
+    };
+
+
+    appendIfExists("title", editProjectData.title);
+    appendIfExists("description", editProjectData.description);
+    appendIfExists("vesselName", editProjectData.vesselName);
+    appendIfExists("vesselImoNumber", editProjectData.vesselImoNumber);
+    appendIfExists("status", editProjectData.status);
+    appendIfExists("startDate", editProjectData.startDate);
+    appendIfExists("plannedEndDate", editProjectData.plannedEndDate);
+    appendIfExists("actualEndDate", editProjectData.actualEndDate);
+    appendIfExists("ridgingCrewNos", editProjectData.ridgingCrewNos);
+    appendIfExists("modeOfContract", editProjectData.modeOfContract);
+    appendIfExists("workingHours", editProjectData.workingHours);
+    appendIfExists("ppe", editProjectData.ppe);
+    appendIfExists("additionalField1Title", editProjectData.additionalField1Title);
+    appendIfExists("additionalField1Description", editProjectData.additionalField1Description);
+    appendIfExists("additionalField2Title", editProjectData.additionalField2Title);
+    appendIfExists("additionalField2Description", editProjectData.additionalField2Description);
+    appendIfExists("additionalField3Title", editProjectData.additionalField3Title);
+    appendIfExists("additionalField3Description", editProjectData.additionalField3Description);
+
+
+    if (vesselImageFile) {
+      formData.append("vesselImage", vesselImageFile);
+    }
+
+
+    editProjectMutation.mutate(formData);
   };
 
   // Show loading state while authentication is being checked
@@ -1617,10 +1636,10 @@ export default function ProjectDetail() {
                         }
                       }}
                     />
-                    {(editProjectData.vesselImage) && (
+                    {(editProjectData.vesselImage || (project?.vesselImage && !vesselImageFile)) && (
                       <div className="mt-2">
                         <img
-                          src={editProjectData.vesselImage}
+                          src={vesselImageFile ? editProjectData.vesselImage : project?.vesselImage}
                           alt="Vessel preview"
                           className="h-32 w-48 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
                         />
@@ -1917,7 +1936,7 @@ export default function ProjectDetail() {
                 <div className="flex items-center space-x-4">
                   {project.vesselImage && (
                     <img
-                        src={`/${project.vesselImage.replace(/^\//, '')}`}
+                      src={project.vesselImage}
                       alt={project.vesselName || 'Vessel'}
                       className="h-20 w-20 rounded-lg object-cover"
                     />
