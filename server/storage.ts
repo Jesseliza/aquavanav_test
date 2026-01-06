@@ -350,7 +350,7 @@ class Storage {
 
   async addPhotosToPhotoGroup(
     groupId: number,
-    photosData: Omit<InsertProjectPhoto, "photoGroupId">[]
+    photosData: Omit<InsertProjectPhoto, "groupId">[]
   ): Promise<ProjectPhoto[]> {
     if (!photosData || photosData.length === 0) {
       return [];
@@ -358,7 +358,7 @@ class Storage {
 
     const photosToInsert = photosData.map((photo) => ({
       ...photo,
-      photoGroupId: groupId,
+      groupId: groupId,
     }));
 
     const savedPhotos = await db
@@ -9727,7 +9727,7 @@ export interface IStorage {
   ): Promise<ProjectPhotoGroup>;
   addPhotosToPhotoGroup(
     groupId: number,
-    photosData: Omit<InsertProjectPhoto, "photoGroupId">[]
+    photosData: Omit<InsertProjectPhoto, "groupId">[]
   ): Promise<ProjectPhoto[]>;
   updateProjectPhotoGroup(
     id: number,
