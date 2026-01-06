@@ -94,7 +94,6 @@ export default function ProjectCreate() {
             if (typeof value === 'string') {
                 formData.append(key, value.trim());
             } else if (Array.isArray(value)) {
-                // For now, we'll just stringify arrays. Adjust if backend expects different format.
                 formData.append(key, JSON.stringify(value));
             } else {
                 formData.append(key, String(value));

@@ -310,7 +310,6 @@ export default function ProjectDetail() {
     endDate: "",
     notes: "",
   });
-  const [vesselImageFile, setVesselImageFile] = useState<File | null>(null);
   const [editProjectData, setEditProjectData] = useState({
     title: "",
     description: "",
@@ -332,6 +331,7 @@ export default function ProjectDetail() {
     additionalField3Title: "",
     additionalField3Description: "",
   });
+  const [vesselImageFile, setVesselImageFile] = useState<File | null>(null);
 
   const [activityData, setActivityData] = useState<Partial<CreateActivityData>>({
     date: new Date().toISOString().split('T')[0],
