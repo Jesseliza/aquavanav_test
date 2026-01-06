@@ -698,6 +698,7 @@ export default function ProjectDetail() {
       location: "",
       tasks: "",
     });
+    setIsCustomCompletedLocation(true);
   };
 
   const removeCompletedActivity = (index: number) => {
@@ -720,7 +721,7 @@ export default function ProjectDetail() {
       tasks: "",
       date: new Date().toISOString().split('T')[0],
     });
-    setIsCustomPlannedLocation(true);
+    setIsCustomCompletedLocation(true);
   };
 
   const removePlannedActivity = (index: number) => {
