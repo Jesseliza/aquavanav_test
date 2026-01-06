@@ -352,8 +352,6 @@ export default function ProjectDetail() {
     tasks: "",
   });
 
-  const [isCustomLocation, setIsCustomLocation] = useState(false);
-
   const [isPlannedActivityDialogOpen, setIsPlannedActivityDialogOpen] = useState(false);
   const [plannedActivities, setPlannedActivities] = useState<Array<{
     location: string;
@@ -2299,13 +2297,11 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={isCustomLocation ? "custom" : newPlannedActivity.location}
+                                  value={newCompletedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
-                                      setIsCustomLocation(true);
                                       setNewCompletedActivity(prev => ({ ...prev, location: "" }));
                                     } else {
-                                      setIsCustomLocation(false);
                                       setNewCompletedActivity(prev => ({ ...prev, location: value }));
                                     }
                                   }}
@@ -2330,12 +2326,12 @@ export default function ProjectDetail() {
                                   </SelectContent>
                                 </Select>
 
-                                {isCustomLocation && (
+                                {(!newCompletedActivity.location || !project?.locations?.includes(newCompletedActivity.location)) && (
                                   <Input
                                     value={newCompletedActivity.location}
                                     onChange={(e) => setNewCompletedActivity(prev => ({ ...prev, location: e.target.value }))}
                                     placeholder="Enter location"
-                                    className="w-full"
+                                    className="w-full mt-2"
                                   />
                                 )}
                               </div>
@@ -2602,13 +2598,11 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={isCustomLocation ? "custom" : newCompletedActivity.location}
+                                  value={newPlannedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
-                                      setIsCustomLocation(true);
                                       setNewPlannedActivity(prev => ({ ...prev, location: "" }));
                                     } else {
-                                      setIsCustomLocation(false);
                                       setNewPlannedActivity(prev => ({ ...prev, location: value }));
                                     }
                                   }}
@@ -2633,12 +2627,12 @@ export default function ProjectDetail() {
                                   </SelectContent>
                                 </Select>
 
-                                {isCustomLocation && (
+                                {(!newPlannedActivity.location || !project?.locations?.includes(newPlannedActivity.location)) && (
                                   <Input
                                     value={newPlannedActivity.location}
                                     onChange={(e) => setNewPlannedActivity(prev => ({ ...prev, location: e.target.value }))}
                                     placeholder="Enter location"
-                                    className="w-full"
+                                    className="w-full mt-2"
                                   />
                                 )}
                               </div>
