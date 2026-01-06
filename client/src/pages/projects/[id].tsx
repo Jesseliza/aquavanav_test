@@ -2305,7 +2305,7 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={newCompletedActivity.location}
+                                  value={isCustomCompletedLocation ? "" : newCompletedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
                                       setIsCustomCompletedLocation(true);
@@ -2614,7 +2614,7 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={newPlannedActivity.location}
+                                  value={isCustomPlannedLocation ? "" : newPlannedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
                                       setIsCustomPlannedLocation(true);
