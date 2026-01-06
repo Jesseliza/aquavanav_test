@@ -352,6 +352,8 @@ export default function ProjectDetail() {
     tasks: "",
   });
 
+  const [isCustomLocation, setIsCustomLocation] = useState(true);
+
   const [isPlannedActivityDialogOpen, setIsPlannedActivityDialogOpen] = useState(false);
   const [plannedActivities, setPlannedActivities] = useState<Array<{
     location: string;
@@ -2297,11 +2299,13 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={newCompletedActivity.location}
+                                  value={isCustomLocation ? "custom" : newCompletedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
+                                      setIsCustomLocation(true);
                                       setNewCompletedActivity(prev => ({ ...prev, location: "" }));
                                     } else {
+                                      setIsCustomLocation(false);
                                       setNewCompletedActivity(prev => ({ ...prev, location: value }));
                                     }
                                   }}
@@ -2326,7 +2330,7 @@ export default function ProjectDetail() {
                                   </SelectContent>
                                 </Select>
 
-                                {(!project?.locations?.includes(newCompletedActivity.location || "") || newCompletedActivity.location === "") && (
+                                {isCustomLocation && (
                                   <Input
                                     value={newCompletedActivity.location}
                                     onChange={(e) => setNewCompletedActivity(prev => ({ ...prev, location: e.target.value }))}
