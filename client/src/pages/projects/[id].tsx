@@ -92,7 +92,7 @@ function VesselLocationTracker({ imoNumber, vesselName }: VesselLocationTrackerP
 
   const formatSpeed = (speed: number) => `${speed.toFixed(1)} knots`;
   const formatCourse = (course: number) => `${Math.round(course)}°`;
-  const formatCoordinates = (lat: number, lon: number) => 
+  const formatCoordinates = (lat: number, lon: number) =>
     `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
 
   if (loading && !vesselData) {
@@ -138,10 +138,10 @@ function VesselLocationTracker({ imoNumber, vesselName }: VesselLocationTrackerP
             <span>Last updated: {lastUpdated.toLocaleString()}</span>
           )}
         </div>
-        <Button 
-          onClick={fetchVesselLocation} 
-          disabled={loading} 
-          size="sm" 
+        <Button
+          onClick={fetchVesselLocation}
+          disabled={loading}
+          size="sm"
           variant="outline"
         >
           {loading ? (
@@ -212,7 +212,7 @@ function VesselLocationTracker({ imoNumber, vesselName }: VesselLocationTrackerP
         <CardContent>
           <div className="relative h-96 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
             <iframe
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${vesselData.lon-0.1},${vesselData.lat-0.1},${vesselData.lon+0.1},${vesselData.lat+0.1}&layer=mapnik&marker=${vesselData.lat},${vesselData.lon}`}
+              src={`https://www.openstreetmap.org/export/embed.html?bbox=${vesselData.lon - 0.1},${vesselData.lat - 0.1},${vesselData.lon + 0.1},${vesselData.lat + 0.1}&layer=mapnik&marker=${vesselData.lat},${vesselData.lon}`}
               width="100%"
               height="100%"
               style={{ border: 0 }}
@@ -1285,12 +1285,12 @@ export default function ProjectDetail() {
       // Check if asset instance is already assigned during this period
       const isOverlapping = projectAssets?.some(assignment => {
         if (assignment.instanceId !== assetAssignmentData.instanceId) return false;
-        
+
         if (!assignment.endDate) return true; // Ongoing assignment
-        
+
         const existingStart = new Date(assignment.startDate);
         const existingEnd = new Date(assignment.endDate);
-        
+
         return (startDate <= existingEnd && endDate >= existingStart);
       });
 
@@ -1649,12 +1649,31 @@ export default function ProjectDetail() {
 
                   <div className="space-y-2">
                     <Label htmlFor="editDescription">Description</Label>
-                    <Textarea
-                      id="editDescription"
+                    <ReactQuill
+                      theme="snow"
                       value={editProjectData.description}
-                      onChange={(e) => setEditProjectData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Enter project description"
-                      rows={3}
+                      onChange={(value) => setEditProjectData(prev => ({ ...prev, description: value }))}
+                      placeholder="Detailed project description..."
+                      modules={{
+                        toolbar: [
+                          [{ 'header': [1, 2, 3, false] }],
+                          ['bold', 'italic', 'underline', 'strike'],
+                          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                          [{ 'color': [] }, { 'background': [] }],
+                          ['link'],
+                          ['clean']
+                        ],
+                      }}
+                      formats={[
+                        'header',
+                        'bold', 'italic', 'underline', 'strike',
+                        'list', 'bullet',
+                        'color', 'background',
+                        'link'
+                      ]}
+                      style={{
+                        minHeight: '120px'
+                      }}
                     />
                   </div>
 
@@ -1709,7 +1728,7 @@ export default function ProjectDetail() {
                   {/* New Fields Section */}
                   <div className="space-y-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                     <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Additional Project Details</h3>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="editRidgingCrewNos">Ridging Crew Numbers</Label>
@@ -1764,7 +1783,7 @@ export default function ProjectDetail() {
                     {/* Additional Custom Fields */}
                     <div className="space-y-6">
                       <h4 className="text-md font-medium text-slate-900 dark:text-slate-100">Custom Fields</h4>
-                      
+
                       {/* Additional Field 1 */}
                       <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                         <div className="space-y-2">
@@ -1788,7 +1807,7 @@ export default function ProjectDetail() {
                                 toolbar: [
                                   [{ 'header': [1, 2, 3, false] }],
                                   ['bold', 'italic', 'underline', 'strike'],
-                                  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                  [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                                   [{ 'color': [] }, { 'background': [] }],
                                   ['link'],
                                   ['clean']
@@ -1832,7 +1851,7 @@ export default function ProjectDetail() {
                                 toolbar: [
                                   [{ 'header': [1, 2, 3, false] }],
                                   ['bold', 'italic', 'underline', 'strike'],
-                                  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                  [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                                   [{ 'color': [] }, { 'background': [] }],
                                   ['link'],
                                   ['clean']
@@ -1876,7 +1895,7 @@ export default function ProjectDetail() {
                                 toolbar: [
                                   [{ 'header': [1, 2, 3, false] }],
                                   ['bold', 'italic', 'underline', 'strike'],
-                                  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                  [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                                   [{ 'color': [] }, { 'background': [] }],
                                   ['link'],
                                   ['clean']
@@ -2002,16 +2021,16 @@ export default function ProjectDetail() {
               {(project.additionalField1Title || project.additionalField2Title || project.additionalField3Title) && (
                 <div className="space-y-4">
                   <h4 className="font-medium text-slate-900 dark:text-slate-100">Additional Information</h4>
-                  
+
                   {project.additionalField1Title && (
                     <div className="border-l-4 border-blue-500 pl-4">
                       <h5 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
                         {project.additionalField1Title}
                       </h5>
                       {project.additionalField1Description && (
-                        <div 
-                          className="text-sm text-slate-600 dark:text-slate-400" 
-                          dangerouslySetInnerHTML={{ __html: project.additionalField1Description }} 
+                        <div
+                          className="text-sm text-slate-600 dark:text-slate-400"
+                          dangerouslySetInnerHTML={{ __html: project.additionalField1Description }}
                         />
                       )}
                     </div>
@@ -2023,9 +2042,9 @@ export default function ProjectDetail() {
                         {project.additionalField2Title}
                       </h5>
                       {project.additionalField2Description && (
-                        <div 
-                          className="text-sm text-slate-600 dark:text-slate-400" 
-                          dangerouslySetInnerHTML={{ __html: project.additionalField2Description }} 
+                        <div
+                          className="text-sm text-slate-600 dark:text-slate-400"
+                          dangerouslySetInnerHTML={{ __html: project.additionalField2Description }}
                         />
                       )}
                     </div>
@@ -2037,9 +2056,9 @@ export default function ProjectDetail() {
                         {project.additionalField3Title}
                       </h5>
                       {project.additionalField3Description && (
-                        <div 
-                          className="text-sm text-slate-600 dark:text-slate-400" 
-                          dangerouslySetInnerHTML={{ __html: project.additionalField3Description }} 
+                        <div
+                          className="text-sm text-slate-600 dark:text-slate-400"
+                          dangerouslySetInnerHTML={{ __html: project.additionalField3Description }}
                         />
                       )}
                     </div>
@@ -2105,11 +2124,10 @@ export default function ProjectDetail() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Net Profit/Loss</p>
-                  <p className={`text-lg font-bold ${
-                    parseFloat(projectRevenue.profit) >= 0
+                  <p className={`text-lg font-bold ${parseFloat(projectRevenue.profit) >= 0
                       ? 'text-green-600 dark:text-green-400'
                       : 'text-red-600 dark:text-red-400'
-                  }`}>
+                    }`}>
                     {formatCurrency(projectRevenue.profit)}
                   </p>
                 </div>
@@ -3681,7 +3699,7 @@ export default function ProjectDetail() {
                                     Barcode: {assignment.barcode}
                                   </Badge>
                                 )}
-                                <Badge 
+                                <Badge
                                   variant={assignment.status === 'active' ? 'default' : 'secondary'}
                                   className="text-xs"
                                 >

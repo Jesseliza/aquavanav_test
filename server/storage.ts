@@ -1753,7 +1753,7 @@ class Storage {
   // Project methods
   async getProjects(): Promise<Project[]> {
     try {
-      return await db.select().from(projects);
+      return await db.select().from(projects).orderBy(projects.id);
     } catch (error: any) {
       await this.createErrorLog({
         message: "Error in getProjects: " + (error?.message || "Unknown error"),
