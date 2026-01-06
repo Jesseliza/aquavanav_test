@@ -2261,7 +2261,12 @@ export default function ProjectDetail() {
                   )}
                 </div>
                 {canEdit && (
-                  <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
+                  <Dialog open={isActivityDialogOpen} onOpenChange={(isOpen) => {
+                    setIsActivityDialogOpen(isOpen);
+                    if (isOpen) {
+                      setIsCustomCompletedLocation(true);
+                    }
+                  }}>
                     <DialogTrigger asChild>
                       <Button size="sm">
                         <Plus className="h-4 w-4 mr-2" />
@@ -2564,7 +2569,12 @@ export default function ProjectDetail() {
               <div className="flex items-center justify-between">
                 <CardTitle>Planned Activities</CardTitle>
                 {canEdit && (
-                  <Dialog open={isPlannedActivityDialogOpen} onOpenChange={setIsPlannedActivityDialogOpen}>
+                  <Dialog open={isPlannedActivityDialogOpen} onOpenChange={(isOpen) => {
+                    setIsPlannedActivityDialogOpen(isOpen);
+                    if (isOpen) {
+                      setIsCustomPlannedLocation(true);
+                    }
+                  }}>
                     <DialogTrigger asChild>
                       <Button size="sm">
                         <Plus className="h-4 w-4 mr-2" />
