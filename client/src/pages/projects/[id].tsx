@@ -647,6 +647,7 @@ export default function ProjectDetail() {
       location: "",
       tasks: "",
     });
+    setIsCustomCompletedLocation(true);
   };
 
   const handleActivitySubmit = (e: React.FormEvent) => {
@@ -719,6 +720,7 @@ export default function ProjectDetail() {
       tasks: "",
       date: new Date().toISOString().split('T')[0],
     });
+    setIsCustomPlannedLocation(true);
   };
 
   const removePlannedActivity = (index: number) => {
