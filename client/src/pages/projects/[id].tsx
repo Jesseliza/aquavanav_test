@@ -2265,6 +2265,7 @@ export default function ProjectDetail() {
                     setIsActivityDialogOpen(isOpen);
                     if (isOpen) {
                       setIsCustomCompletedLocation(true);
+                      setNewCompletedActivity({ location: "", tasks: "" });
                     }
                   }}>
                     <DialogTrigger asChild>
@@ -2304,7 +2305,7 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={isCustomCompletedLocation ? "custom" : newCompletedActivity.location}
+                                  value={newCompletedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
                                       setIsCustomCompletedLocation(true);
@@ -2573,6 +2574,7 @@ export default function ProjectDetail() {
                     setIsPlannedActivityDialogOpen(isOpen);
                     if (isOpen) {
                       setIsCustomPlannedLocation(true);
+                      setNewPlannedActivity({ location: "", tasks: "", date: new Date().toISOString().split('T')[0] });
                     }
                   }}>
                     <DialogTrigger asChild>
@@ -2612,7 +2614,7 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={isCustomPlannedLocation ? "custom" : newPlannedActivity.location}
+                                  value={newPlannedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
                                       setIsCustomPlannedLocation(true);
