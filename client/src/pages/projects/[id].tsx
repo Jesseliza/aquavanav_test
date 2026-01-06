@@ -1716,6 +1716,7 @@ export default function ProjectDetail() {
                         id="editPlannedEndDate"
                         type="date"
                         value={editProjectData.plannedEndDate}
+                        min={editProjectData.startDate || undefined}
                         onChange={(e) => setEditProjectData(prev => ({ ...prev, plannedEndDate: e.target.value }))}
                       />
                     </div>
@@ -1725,6 +1726,7 @@ export default function ProjectDetail() {
                         id="editActualEndDate"
                         type="date"
                         value={editProjectData.actualEndDate}
+                        min={editProjectData.startDate || undefined}
                         onChange={(e) => setEditProjectData(prev => ({ ...prev, actualEndDate: e.target.value }))}
                       />
                     </div>
@@ -2130,8 +2132,8 @@ export default function ProjectDetail() {
                 <div>
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Net Profit/Loss</p>
                   <p className={`text-lg font-bold ${parseFloat(projectRevenue.profit) >= 0
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400'
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-red-600 dark:text-red-400'
                     }`}>
                     {formatCurrency(projectRevenue.profit)}
                   </p>
