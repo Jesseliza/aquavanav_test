@@ -670,6 +670,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.post(
+    "/api/projects/:id/photo-groups-with-photos",
+    requireAuth,
+    requireRole(["admin", "project_manager"]),
+    upload.array("photos", 10),
+    async (req, res) => {
+      try {
+        const projectId = parseInt(req.params.id);
+        const { title, date, description } = req.body;
+
+        if (!title || !date) {
+          return res
+            .status(400)
+            .json({ message: "Title and date are required" });
+        }
+
+        const group = await storage.createProjectPhotoGroup({
+          projectId,
+          title,
+          date,
+          description,
+        });
+
+        if (req.files && Array.isArray(req.files)) {
+          for (const file of req.files) {
+            await storage.createProjectPhoto({
+              projectPhotoGroupId: group.id,
+              fileName: file.filename,
+              originalName: file.originalname,
+              filePath: `/${file.path}`,
+              fileSize: file.size,
+              mimeType: file.mimetype,
+            });
+          }
+        }
+
+        res.status(201).json(group);
+      } catch (error) {
+        console.error("Create photo group with photos error:", error);
+        res.status(500).json({ message: "Failed to create photo group" });
+      }
+    },
+  );
+
   app.get(
     "/api/users/:id",
     requireAuth,
