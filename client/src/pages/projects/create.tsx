@@ -156,7 +156,13 @@ export default function ProjectCreate() {
   });
 
   const handleChange = (field: keyof CreateProjectData, value: any) => {
-    setFormData((prev: CreateProjectData) => ({ ...prev, [field]: value }));
+    setFormData((prev: CreateProjectData) => {
+      const newFormData = { ...prev, [field]: value };
+      if (field === 'startDate' && newFormData.plannedEndDate && newFormData.plannedEndDate < value) {
+        newFormData.plannedEndDate = '';
+      }
+      return newFormData;
+    });
   };
 
   const addLocation = () => {
@@ -378,6 +384,7 @@ export default function ProjectCreate() {
                   type="date"
                   value={formData.plannedEndDate}
                   onChange={(e) => handleChange("plannedEndDate", e.target.value)}
+                  min={formData.startDate}
                 />
               </div>
             </div>

@@ -1707,7 +1707,19 @@ export default function ProjectDetail() {
                         id="editStartDate"
                         type="date"
                         value={editProjectData.startDate}
-                        onChange={(e) => setEditProjectData(prev => ({ ...prev, startDate: e.target.value }))}
+                        onChange={(e) => {
+                          const newStartDate = e.target.value;
+                          setEditProjectData(prev => {
+                            const newData = { ...prev, startDate: newStartDate };
+                            if (newData.plannedEndDate && newData.plannedEndDate < newStartDate) {
+                              newData.plannedEndDate = "";
+                            }
+                            if (newData.actualEndDate && newData.actualEndDate < newStartDate) {
+                              newData.actualEndDate = "";
+                            }
+                            return newData;
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
@@ -1717,6 +1729,7 @@ export default function ProjectDetail() {
                         type="date"
                         value={editProjectData.plannedEndDate}
                         onChange={(e) => setEditProjectData(prev => ({ ...prev, plannedEndDate: e.target.value }))}
+                        min={editProjectData.startDate}
                       />
                     </div>
                     <div className="space-y-2">
@@ -1726,6 +1739,7 @@ export default function ProjectDetail() {
                         type="date"
                         value={editProjectData.actualEndDate}
                         onChange={(e) => setEditProjectData(prev => ({ ...prev, actualEndDate: e.target.value }))}
+                        min={editProjectData.startDate}
                       />
                     </div>
                   </div>
