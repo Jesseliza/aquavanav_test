@@ -348,6 +348,38 @@ class Storage {
     }
   }
 
+  async createPhotoGroupWithPhotos(
+    groupData: InsertProjectPhotoGroup,
+    photosData: Omit<InsertProjectPhoto, "projectPhotoGroupId">[]
+  ): Promise<ProjectPhotoGroup> {
+    try {
+      const [group] = await db
+        .insert(projectPhotoGroups)
+        .values(groupData)
+        .returning();
+
+      if (photosData && photosData.length > 0) {
+        const photosToInsert = photosData.map((photo) => ({
+          ...photo,
+          projectPhotoGroupId: group.id,
+        }));
+        await db.insert(projectPhotos).values(photosToInsert);
+      }
+
+      return group;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          "Error in createPhotoGroupWithPhotos: " +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "createPhotoGroupWithPhotos",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
   // User methods
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
@@ -9703,6 +9735,10 @@ export interface IStorage {
   getProjectPhotoGroups(projectId: number): Promise<ProjectPhotoGroup[]>;
   createProjectPhotoGroup(
     groupData: InsertProjectPhotoGroup
+  ): Promise<ProjectPhotoGroup>;
+  createPhotoGroupWithPhotos(
+    groupData: InsertProjectPhotoGroup,
+    photosData: Omit<InsertProjectPhoto, "projectPhotoGroupId">[]
   ): Promise<ProjectPhotoGroup>;
   updateProjectPhotoGroup(
     id: number,

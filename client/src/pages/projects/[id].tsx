@@ -905,7 +905,7 @@ export default function ProjectDetail() {
         }
       }
 
-      const response = await fetch(`/api/projects/${id}/photo-groups-with-photos`, {
+      const response = await fetch(`/api/projects/${id}/photo-groups`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
