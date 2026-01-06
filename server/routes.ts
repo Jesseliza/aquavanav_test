@@ -535,17 +535,26 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: function (req, file, cb) {
-    // Allow common document and image types
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|csv|xlsx|xls/;
-    const extname = allowedTypes.test(
-      path.extname(file.originalname).toLowerCase(),
-    );
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
+    // Check if the route is for photo group uploads, which should be stricter
+    if (req.originalUrl.includes('/photo-groups')) {
+      const allowedImageTypes = /jpeg|jpg|png|gif/;
+      const isImage = allowedImageTypes.test(path.extname(file.originalname).toLowerCase()) &&
+                      allowedImageTypes.test(file.mimetype);
+      if (isImage) {
+        cb(null, true);
+      } else {
+        cb(new Error("Only image files (jpeg, jpg, png, gif) are allowed for photo groups."));
+      }
     } else {
-      cb(new Error("Only document and image files are allowed"));
+      // For other routes, allow documents as well
+      const allowedGeneralTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx/;
+      const isAllowed = allowedGeneralTypes.test(path.extname(file.originalname).toLowerCase()) &&
+                        allowedGeneralTypes.test(file.mimetype);
+      if (isAllowed) {
+        cb(null, true);
+      } else {
+        cb(new Error("Invalid file type. Allowed types include images and common documents."));
+      }
     }
   },
 });
@@ -676,7 +685,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/projects/:id/photo-groups",
     requireAuth,
     requireRole(["admin", "project_manager"]),
-    upload.array("photos", 10),
     async (req, res) => {
       try {
         const projectId = parseInt(req.params.id);
@@ -688,14 +696,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .json({ message: "Title and date are required" });
         }
 
-        const photosData = (req.files as Express.Multer.File[]).map((file) => ({
-          fileName: file.filename,
-          originalName: file.originalname,
-          filePath: `/${file.path}`,
-          fileSize: file.size,
-          mimeType: file.mimetype,
-        }));
-
         const parsedGroupData = insertProjectPhotoGroupSchema.parse({
           projectId,
           title,
@@ -704,15 +704,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: req.session.userId,
         });
 
-        const group = await storage.createPhotoGroupWithPhotos(
-          parsedGroupData,
+        const group = await storage.createProjectPhotoGroup(parsedGroupData);
+        res.status(201).json(group);
+      } catch (error) {
+        console.error("Create photo group error:", error);
+        res.status(500).json({ message: "Failed to create photo group" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/projects/:projectId/photo-groups/:groupId/photos",
+    requireAuth,
+    upload.array("photos", 20),
+    async (req, res) => {
+      try {
+        const { projectId, groupId } = req.params;
+        const userId = req.session.userId!;
+
+        // Authorization Check
+        const project = await storage.getProject(parseInt(projectId));
+        if (!project) {
+          return res.status(404).json({ message: "Project not found" });
+        }
+
+        const user = await storage.getUser(userId);
+        const customers = await storage.getCustomers();
+        const customer = customers.find(c => c.userId === user.id);
+
+        let isAuthorized = false;
+        if (user.role === 'admin' || user.role === 'project_manager') {
+          isAuthorized = true;
+        } else if (user.role === 'customer' && customer && project.customerId === customer.id) {
+          isAuthorized = true;
+        } else if (user.role === 'employee') {
+          const projectEmployees = await storage.getProjectEmployees(parseInt(projectId));
+          if (projectEmployees.some(emp => emp.userId === userId)) {
+            isAuthorized = true;
+          }
+        }
+
+        if (!isAuthorized) {
+          return res.status(403).json({ message: "You are not authorized to upload photos to this project." });
+        }
+
+        if (!req.files || !(req.files as Express.Multer.File[]).length) {
+          return res.status(400).json({ message: "No photos uploaded" });
+        }
+
+        const files = req.files as Express.Multer.File[];
+
+        const photosData = files.map((file) => ({
+          filename: file.filename,
+          originalName: file.originalname,
+          filePath: `/${file.path.replace(/\\/g, "/")}`,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+        }));
+
+        const savedPhotos = await storage.addPhotosToPhotoGroup(
+          Number(groupId),
           photosData
         );
 
-        res.status(201).json(group);
+        res.status(201).json(savedPhotos);
       } catch (error) {
-        console.error("Create photo group with photos error:", error);
-        res.status(500).json({ message: "Failed to create photo group" });
+        console.error("Error uploading photos:", error);
+        res.status(500).json({ message: "Failed to upload photos" });
       }
     }
   );
