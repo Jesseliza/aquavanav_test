@@ -7810,11 +7810,26 @@ class Storage {
   // Project Photo Group methods
   async getProjectPhotoGroups(projectId: number): Promise<ProjectPhotoGroup[]> {
     try {
-      return await db
+      const groups = await db
         .select()
         .from(projectPhotoGroups)
         .where(eq(projectPhotoGroups.projectId, projectId))
         .orderBy(desc(projectPhotoGroups.createdAt));
+
+      const groupIds = groups.map((g) => g.id);
+      if (groupIds.length === 0) {
+        return [];
+      }
+
+      const photos = await db
+        .select()
+        .from(projectPhotos)
+        .where(inArray(projectPhotos.groupId, groupIds));
+
+      return groups.map((group) => ({
+        ...group,
+        photos: photos.filter((p) => p.groupId === group.id),
+      }));
     } catch (error: any) {
       await this.createErrorLog({
         message:
