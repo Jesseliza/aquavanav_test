@@ -729,7 +729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
 
             await storage.addPhotosToPhotoGroup(
-              group[0].id,
+              group.id,
               photosData
             );
         }
