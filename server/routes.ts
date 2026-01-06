@@ -685,6 +685,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/projects/:id/photo-groups",
     requireAuth,
     requireRole(["admin", "project_manager"]),
+    upload.array("photos", 20),
     async (req, res) => {
       try {
         const projectId = parseInt(req.params.id);
@@ -705,72 +706,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const group = await storage.createProjectPhotoGroup(parsedGroupData);
+
+        if (req.files && (req.files as Express.Multer.File[]).length > 0) {
+            const files = req.files as Express.Multer.File[];
+            const photosData = files.map((file) => ({
+              filename: file.filename,
+              originalName: file.originalname,
+              filePath: `/${file.path.replace(/\\/g, "/")}`,
+              fileSize: file.size,
+              mimeType: file.mimetype,
+            }));
+
+            await storage.addPhotosToPhotoGroup(
+              group[0].id,
+              photosData
+            );
+        }
+
         res.status(201).json(group);
       } catch (error) {
         console.error("Create photo group error:", error);
         res.status(500).json({ message: "Failed to create photo group" });
-      }
-    }
-  );
-
-  app.post(
-    "/api/projects/:projectId/photo-groups/:groupId/photos",
-    requireAuth,
-    upload.array("photos", 20),
-    async (req, res) => {
-      try {
-        const { projectId, groupId } = req.params;
-        const userId = req.session.userId!;
-
-        // Authorization Check
-        const project = await storage.getProject(parseInt(projectId));
-        if (!project) {
-          return res.status(404).json({ message: "Project not found" });
-        }
-
-        const user = await storage.getUser(userId);
-        const customers = await storage.getCustomers();
-        const customer = customers.find(c => c.userId === user.id);
-
-        let isAuthorized = false;
-        if (user.role === 'admin' || user.role === 'project_manager') {
-          isAuthorized = true;
-        } else if (user.role === 'customer' && customer && project.customerId === customer.id) {
-          isAuthorized = true;
-        } else if (user.role === 'employee') {
-          const projectEmployees = await storage.getProjectEmployees(parseInt(projectId));
-          if (projectEmployees.some(emp => emp.userId === userId)) {
-            isAuthorized = true;
-          }
-        }
-
-        if (!isAuthorized) {
-          return res.status(403).json({ message: "You are not authorized to upload photos to this project." });
-        }
-
-        if (!req.files || !(req.files as Express.Multer.File[]).length) {
-          return res.status(400).json({ message: "No photos uploaded" });
-        }
-
-        const files = req.files as Express.Multer.File[];
-
-        const photosData = files.map((file) => ({
-          filename: file.filename,
-          originalName: file.originalname,
-          filePath: `/${file.path.replace(/\\/g, "/")}`,
-          fileSize: file.size,
-          mimeType: file.mimetype,
-        }));
-
-        const savedPhotos = await storage.addPhotosToPhotoGroup(
-          Number(groupId),
-          photosData
-        );
-
-        res.status(201).json(savedPhotos);
-      } catch (error) {
-        console.error("Error uploading photos:", error);
-        res.status(500).json({ message: "Failed to upload photos" });
       }
     }
   );
