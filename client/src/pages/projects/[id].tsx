@@ -892,34 +892,35 @@ export default function ProjectDetail() {
 
   const createPhotoGroupMutation = useMutation({
     mutationFn: async (data: { title: string; date: string; description?: string; photos?: File[] }) => {
-      const response = await apiRequest(`/api/projects/${id}/photo-groups`, {
-        method: 'POST',
-        body: {
-          title: data.title,
-          date: data.date, // Send the date string directly, let the server handle the conversion
-          description: data.description,
-        }
-      });
-      const group = await response.json();
+      const formData = new FormData();
+      formData.append('title', data.title);
+      formData.append('date', data.date);
+      if (data.description) {
+        formData.append('description', data.description);
+      }
 
-      // Upload photos if provided
       if (data.photos && data.photos.length > 0) {
         for (const file of data.photos) {
-          // For now, we'll simulate file upload with a placeholder path
-          // In a real implementation, you'd upload to a file storage service
-          const photoData = {
-            filename: `${Date.now()}_${file.name}`,
-            originalName: file.name,
-            filePath: `/uploads/projects/${id}/photos/${Date.now()}_${file.name}`,
-            fileSize: file.size,
-            mimeType: file.type,
-          };
-
-          await apiRequest(`/api/projects/${id}/photo-groups/${group.id}/photos`, { method: 'POST', body: photoData });
+          formData.append('photos', file);
         }
       }
 
-      return group;
+      const response = await fetch(`/api/projects/${id}/photo-groups-with-photos`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        try {
+            const errorData = await response.json();
+            throw new Error(errorData.message || response.statusText);
+        } catch (e) {
+            throw new Error(response.statusText);
+        }
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "photo-groups"] });
