@@ -352,7 +352,7 @@ export default function ProjectDetail() {
     tasks: "",
   });
 
-  const [isCustomLocation, setIsCustomLocation] = useState(true);
+  const [isCustomLocation, setIsCustomLocation] = useState(false);
 
   const [isPlannedActivityDialogOpen, setIsPlannedActivityDialogOpen] = useState(false);
   const [plannedActivities, setPlannedActivities] = useState<Array<{
@@ -2299,7 +2299,7 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={isCustomLocation ? "custom" : newCompletedActivity.location}
+                                  value={isCustomLocation ? "custom" : newPlannedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
                                       setIsCustomLocation(true);
@@ -2602,11 +2602,13 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={newPlannedActivity.location}
+                                  value={isCustomLocation ? "custom" : newCompletedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
+                                      setIsCustomLocation(true);
                                       setNewPlannedActivity(prev => ({ ...prev, location: "" }));
                                     } else {
+                                      setIsCustomLocation(false);
                                       setNewPlannedActivity(prev => ({ ...prev, location: value }));
                                     }
                                   }}
@@ -2631,7 +2633,7 @@ export default function ProjectDetail() {
                                   </SelectContent>
                                 </Select>
 
-                                {(!project?.locations?.includes(newPlannedActivity.location || "") || newPlannedActivity.location === "") && (
+                                {isCustomLocation && (
                                   <Input
                                     value={newPlannedActivity.location}
                                     onChange={(e) => setNewPlannedActivity(prev => ({ ...prev, location: e.target.value }))}
