@@ -685,7 +685,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/projects/:id/photo-groups",
     requireAuth,
     requireRole(["admin", "project_manager"]),
-    upload.array("photos", 20),
+    (req, res, next) => {
+        upload.array("photos", 20)(req, res, (err) => {
+            if (err instanceof multer.MulterError) {
+                // A Multer error occurred when uploading.
+                return res.status(400).json({ message: err.message });
+            } else if (err) {
+                // An unknown error occurred when uploading.
+                return res.status(400).json({ message: err.message });
+            }
+            next();
+        });
+    },
     async (req, res) => {
       try {
         const projectId = parseInt(req.params.id);
