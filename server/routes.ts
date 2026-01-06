@@ -507,6 +507,8 @@ const storage_multer = multer.diskStorage({
       uploadDir = "uploads/customer-documents";
     } else if (req.originalUrl?.includes('/api/suppliers')) {
       uploadDir = "uploads/supplier-documents";
+    } else if (req.originalUrl?.includes('/photo-groups')) {
+      uploadDir = "uploads/projects/photogroups";
     } else if (req.originalUrl?.includes('/api/projects')) {
       uploadDir = "uploads/projects/vesselimage";
     } else if (req.originalUrl?.includes('/api/employees')) {
@@ -694,13 +696,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mimeType: file.mimetype,
         }));
 
+        const parsedGroupData = insertProjectPhotoGroupSchema.parse({
+          projectId,
+          title,
+          date,
+          description,
+          createdBy: req.session.userId,
+        });
+
         const group = await storage.createPhotoGroupWithPhotos(
-          {
-            projectId,
-            title,
-            date,
-            description,
-          },
+          parsedGroupData,
           photosData
         );
 
