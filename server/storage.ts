@@ -348,39 +348,25 @@ class Storage {
     }
   }
 
-  async createPhotoGroupWithPhotos(
-    groupData: InsertProjectPhotoGroup,
-    photosData: Omit<InsertProjectPhoto, "groupId">[]
-  ): Promise<ProjectPhotoGroup> {
-    try {
-      const group = await db.transaction(async (tx) => {
-        const [newGroup] = await tx
-          .insert(projectPhotoGroups)
-          .values(groupData)
-          .returning();
-
-        if (photosData && photosData.length > 0) {
-          const photosToInsert = photosData.map((photo) => ({
-            ...photo,
-            groupId: newGroup.id,
-          }));
-          await tx.insert(projectPhotos).values(photosToInsert);
-        }
-
-        return newGroup;
-      });
-      return group;
-    } catch (error: any) {
-      await this.createErrorLog({
-        message:
-          "Error in createPhotoGroupWithPhotos: " +
-          (error?.message || "Unknown error"),
-        stack: error?.stack,
-        component: "createPhotoGroupWithPhotos",
-        severity: "error",
-      });
-      throw error;
+  async addPhotosToPhotoGroup(
+    groupId: number,
+    photosData: Omit<InsertProjectPhoto, "photoGroupId">[]
+  ): Promise<ProjectPhoto[]> {
+    if (!photosData || photosData.length === 0) {
+      return [];
     }
+
+    const photosToInsert = photosData.map((photo) => ({
+      ...photo,
+      photoGroupId: groupId,
+    }));
+
+    const savedPhotos = await db
+      .insert(projectPhotos)
+      .values(photosToInsert)
+      .returning();
+
+    return savedPhotos;
   }
 
   // User methods
@@ -9739,10 +9725,10 @@ export interface IStorage {
   createProjectPhotoGroup(
     groupData: InsertProjectPhotoGroup
   ): Promise<ProjectPhotoGroup>;
-  createPhotoGroupWithPhotos(
-    groupData: InsertProjectPhotoGroup,
-    photosData: Omit<InsertProjectPhoto, "groupId">[]
-  ): Promise<ProjectPhotoGroup>;
+  addPhotosToPhotoGroup(
+    groupId: number,
+    photosData: Omit<InsertProjectPhoto, "photoGroupId">[]
+  ): Promise<ProjectPhoto[]>;
   updateProjectPhotoGroup(
     id: number,
     groupData: Partial<InsertProjectPhotoGroup>
