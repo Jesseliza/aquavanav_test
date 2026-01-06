@@ -351,6 +351,7 @@ export default function ProjectDetail() {
     location: "",
     tasks: "",
   });
+  const [isCustomCompletedLocation, setIsCustomCompletedLocation] = useState(false);
 
   const [isPlannedActivityDialogOpen, setIsPlannedActivityDialogOpen] = useState(false);
   const [plannedActivities, setPlannedActivities] = useState<Array<{
@@ -364,6 +365,7 @@ export default function ProjectDetail() {
     tasks: "",
     date: new Date().toISOString().split('T')[0],
   });
+  const [isCustomPlannedLocation, setIsCustomPlannedLocation] = useState(false);
 
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [selectedEmployees, setSelectedEmployees] = useState<number[]>([]);
@@ -2297,11 +2299,13 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={newCompletedActivity.location}
+                                  value={isCustomCompletedLocation ? "custom" : newCompletedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
+                                      setIsCustomCompletedLocation(true);
                                       setNewCompletedActivity(prev => ({ ...prev, location: "" }));
                                     } else {
+                                      setIsCustomCompletedLocation(false);
                                       setNewCompletedActivity(prev => ({ ...prev, location: value }));
                                     }
                                   }}
@@ -2326,7 +2330,7 @@ export default function ProjectDetail() {
                                   </SelectContent>
                                 </Select>
 
-                                {(!newCompletedActivity.location || !project?.locations?.includes(newCompletedActivity.location)) && (
+                                {isCustomCompletedLocation && (
                                   <Input
                                     value={newCompletedActivity.location}
                                     onChange={(e) => setNewCompletedActivity(prev => ({ ...prev, location: e.target.value }))}
@@ -2598,11 +2602,13 @@ export default function ProjectDetail() {
                               <div className="space-y-2">
                                 <Label>Location</Label>
                                 <Select
-                                  value={newPlannedActivity.location}
+                                  value={isCustomPlannedLocation ? "custom" : newPlannedActivity.location}
                                   onValueChange={(value) => {
                                     if (value === "custom") {
+                                      setIsCustomPlannedLocation(true);
                                       setNewPlannedActivity(prev => ({ ...prev, location: "" }));
                                     } else {
+                                      setIsCustomPlannedLocation(false);
                                       setNewPlannedActivity(prev => ({ ...prev, location: value }));
                                     }
                                   }}
@@ -2627,7 +2633,7 @@ export default function ProjectDetail() {
                                   </SelectContent>
                                 </Select>
 
-                                {(!newPlannedActivity.location || !project?.locations?.includes(newPlannedActivity.location)) && (
+                                {isCustomPlannedLocation && (
                                   <Input
                                     value={newPlannedActivity.location}
                                     onChange={(e) => setNewPlannedActivity(prev => ({ ...prev, location: e.target.value }))}
