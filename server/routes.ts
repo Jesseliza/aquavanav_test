@@ -503,11 +503,13 @@ const storage_multer = multer.diskStorage({
   destination: function (req, file, cb) {
     // Determine directory based on route
     let uploadDir = "uploads/payment-files";
-    if (req.route?.path?.includes('customers')) {
+    if (req.originalUrl?.includes('/api/customers')) {
       uploadDir = "uploads/customer-documents";
-    } else if (req.route?.path?.includes('suppliers')) {
+    } else if (req.originalUrl?.includes('/api/suppliers')) {
       uploadDir = "uploads/supplier-documents";
-    } else if (req.route?.path?.includes('documents')) {
+    } else if (req.originalUrl?.includes('/api/projects')) {
+      uploadDir = "uploads/projects/vesselimage";
+    } else if (req.originalUrl?.includes('/api/employees')) {
       uploadDir = "uploads/employee-documents";
     }
     
@@ -1563,32 +1565,6 @@ app.patch(
     }
   });
 
-// Multer config for project vessel images
-const vesselImageUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const dir = "uploads/projects/vesselimage";
-      fs.mkdirSync(dir, { recursive: true });
-      cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
-      const extension = path.extname(file.originalname);
-      cb(null, `${file.fieldname}-${uniqueSuffix}${extension}`);
-    },
-  }),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const mimetype = allowedTypes.test(file.mimetype);
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error("Error: File upload only supports the following filetypes - " + allowedTypes));
-  },
-});
-
 // Helper function to parse and clean project data from multipart/form-data
 const parseProjectDataFromFormData = (body: any) => {
     const data = { ...body };
@@ -1615,7 +1591,6 @@ const parseProjectDataFromFormData = (body: any) => {
         try {
             data.locations = JSON.parse(data.locations);
         } catch (e) {
-            // If parsing fails, treat it as a single-item array with the original string
             data.locations = [data.locations];
         }
     }
@@ -1672,7 +1647,7 @@ const parseProjectDataFromFormData = (body: any) => {
     "/api/projects",
     requireAuth,
     requireRole(["admin", "project_manager"]),
-    vesselImageUpload.single("vesselImage"),
+    upload.single("vesselImage"),
     async (req, res) => {
       try {
         const parsedData = parseProjectDataFromFormData(req.body);
@@ -1700,7 +1675,7 @@ const parseProjectDataFromFormData = (body: any) => {
     "/api/projects/:id",
     requireAuth,
     requireRole(["admin", "project_manager"]),
-    vesselImageUpload.single("vesselImage"),
+    upload.single("vesselImage"),
     async (req, res) => {
       try {
         const id = parseInt(req.params.id);
