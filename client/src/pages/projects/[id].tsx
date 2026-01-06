@@ -892,38 +892,30 @@ export default function ProjectDetail() {
 
   const createPhotoGroupMutation = useMutation({
     mutationFn: async (data: { title: string; date: string; description?: string; photos?: File[] }) => {
-      // Step 1: Create the photo group
-      const group = await apiRequest(`/api/projects/${id}/photo-groups`, {
-        method: 'POST',
-        body: {
-          title: data.title,
-          date: data.date,
-          description: data.description,
-        },
-      });
-
-      // Step 2: Upload photos if any
-      if (data.photos && data.photos.length > 0) {
-        const formData = new FormData();
+      const formData = new FormData();
+      formData.append('title', data.title);
+      formData.append('date', data.date);
+      if (data.description) {
+        formData.append('description', data.description);
+      }
+      if (data.photos) {
         for (const file of data.photos) {
           formData.append('photos', file);
         }
-
-        const photoResponse = await fetch(`/api/projects/${id}/photo-groups/${group.id}/photos`, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-        });
-
-        if (!photoResponse.ok) {
-          // If photo upload fails, we might want to inform the user.
-          // The group is created, but photos failed.
-          const errorData = await photoResponse.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Photo group created, but failed to upload photos');
-        }
       }
 
-      return group;
+      const response = await fetch(`/api/projects/${id}/photo-groups`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create photo group');
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "photo-groups"] });
