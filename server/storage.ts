@@ -385,13 +385,107 @@ class Storage {
     }
   }
 
-  async deleteProjectAssetInstanceAssignment(id: number): Promise<boolean> {
+  async createProjectAssetInstanceAssignment(assignmentData: {
+    projectId: number;
+    instanceId: number;
+    startDate: Date;
+    endDate: Date | null;
+    notes?: string;
+    assignedBy?: number;
+  }): Promise<any> {
     try {
       const result = await db
+        .insert(projectAssetInstanceAssignments)
+        .values(assignmentData)
+        .returning();
+
+      const assignment = result[0];
+
+      await db
+        .update(assetInventoryInstances)
+        .set({ status: "in_use", assignedProjectId: assignmentData.projectId })
+        .where(eq(assetInventoryInstances.id, assignmentData.instanceId));
+
+      // Recalculate project cost
+      await this.recalculateProjectCost(assignment.projectId);
+
+      return assignment;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          "Error in createProjectAssetInstanceAssignment: " +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "createProjectAssetInstanceAssignment",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async getProjectAssetInstanceAssignments(projectId: number): Promise<any[]> {
+    try {
+      const assignments = await db
+        .select({
+          id: projectAssetInstanceAssignments.id,
+          projectId: projectAssetInstanceAssignments.projectId,
+          instanceId: projectAssetInstanceAssignments.instanceId,
+          assetTypeName: assetTypes.name,
+          assetTag: assetInventoryInstances.assetTag,
+          startDate: projectAssetInstanceAssignments.startDate,
+          endDate: projectAssetInstanceAssignments.endDate,
+          assignedAt: projectAssetInstanceAssignments.assignedAt,
+          monthlyRate: assetInventoryInstances.monthlyRentalAmount, // Alias for consistency
+        })
+        .from(projectAssetInstanceAssignments)
+        .leftJoin(
+          assetInventoryInstances,
+          eq(
+            projectAssetInstanceAssignments.instanceId,
+            assetInventoryInstances.id
+          )
+        )
+        .leftJoin(
+          assetTypes,
+          eq(assetInventoryInstances.assetTypeId, assetTypes.id)
+        )
+        .where(eq(projectAssetInstanceAssignments.projectId, projectId))
+        .orderBy(desc(projectAssetInstanceAssignments.assignedAt));
+
+      return assignments;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in getProjectAssetInstanceAssignments (projectId: ${projectId}): ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "getProjectAssetInstanceAssignments",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async deleteProjectAssetInstanceAssignment(id: number): Promise<boolean> {
+    try {
+      const [deletedAssignment] = await db
         .delete(projectAssetInstanceAssignments)
         .where(eq(projectAssetInstanceAssignments.id, id))
         .returning();
-      return result.length > 0;
+
+      if (deletedAssignment) {
+        // Update the asset instance status back to 'available'
+        await db
+          .update(assetInventoryInstances)
+          .set({ status: "available", assignedProjectId: null })
+          .where(eq(assetInventoryInstances.id, deletedAssignment.instanceId));
+
+        // Recalculate project cost
+        await this.recalculateProjectCost(deletedAssignment.projectId);
+        return true;
+      }
+
+      return false;
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -399,6 +493,38 @@ class Storage {
           (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deleteProjectAssetInstanceAssignment",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async updateProjectAssetInstanceAssignment(
+    id: number,
+    assignmentData: Partial<{ endDate: Date | null; notes?: string }>
+  ): Promise<any> {
+    try {
+      const result = await db
+        .update(projectAssetInstanceAssignments)
+        .set(assignmentData)
+        .where(eq(projectAssetInstanceAssignments.id, id))
+        .returning();
+
+      const assignment = result[0];
+
+      if (assignment) {
+        // Recalculate project cost
+        await this.recalculateProjectCost(assignment.projectId);
+      }
+
+      return assignment;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in updateProjectAssetInstanceAssignment (id: ${id}): ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "updateProjectAssetInstanceAssignment",
         severity: "error",
       });
       throw error;
@@ -2233,14 +2359,18 @@ class Storage {
       // Project asset assignment costs
       let totalAssetRentalCost = 0;
 
-      const assetAssignments = await this.getProjectAssetAssignments(projectId);
+      const assetAssignments = await this.getProjectAssetInstanceAssignments(
+        projectId
+      );
       for (const assignment of assetAssignments) {
-        const rentalCost = await this.calculateAssetRentalCost(
-          new Date(assignment.startDate),
-          new Date(assignment.endDate),
-          assignment.monthlyRate
-        );
-        totalAssetRentalCost += rentalCost;
+        if (assignment.monthlyRate && assignment.startDate) {
+          const rentalCost = await this.calculateAssetRentalCost(
+            new Date(assignment.startDate),
+            assignment.endDate ? new Date(assignment.endDate) : new Date(),
+            parseFloat(assignment.monthlyRate)
+          );
+          totalAssetRentalCost += rentalCost;
+        }
       }
       console.log(
         `Total asset rental cost: ${totalAssetRentalCost.toFixed(2)}`
@@ -6277,7 +6407,6 @@ class Storage {
   }
 
   async calculateAssetRentalCost(
-    // This is the second calculateAssetRentalCost
     startDate: Date,
     endDate: Date,
     monthlyRate: number
@@ -6331,23 +6460,25 @@ class Storage {
     }
   }
 
-  async getAssetAssignmentHistory(assetId: number): Promise<any[]> {
+  async getAssetAssignmentHistory(instanceId: number): Promise<any[]> {
     try {
-      const history: AssetAssignmentHistoryEntry[] = await db
+      const history = await db
         .select({
-          id: projectAssetAssignments.id,
-          projectId: projectAssetAssignments.projectId,
+          id: projectAssetInstanceAssignments.id,
+          projectId: projectAssetInstanceAssignments.projectId,
           projectTitle: projects.title,
-          startDate: projectAssetAssignments.startDate,
-          endDate: projectAssetAssignments.endDate,
-          monthlyRate: projectAssetAssignments.monthlyRate,
-          totalCost: projectAssetAssignments.totalCost,
-          assignedAt: projectAssetAssignments.assignedAt,
+          startDate: projectAssetInstanceAssignments.startDate,
+          endDate: projectAssetInstanceAssignments.endDate,
+          notes: projectAssetInstanceAssignments.notes,
+          assignedAt: projectAssetInstanceAssignments.assignedAt,
         })
-        .from(projectAssetAssignments)
-        .leftJoin(projects, eq(projectAssetAssignments.projectId, projects.id))
-        .where(eq(projectAssetAssignments.assetId, assetId))
-        .orderBy(desc(projectAssetAssignments.assignedAt));
+        .from(projectAssetInstanceAssignments)
+        .leftJoin(
+          projects,
+          eq(projectAssetInstanceAssignments.projectId, projects.id)
+        )
+        .where(eq(projectAssetInstanceAssignments.instanceId, instanceId))
+        .orderBy(desc(projectAssetInstanceAssignments.assignedAt));
 
       return history;
     } catch (error: any) {
@@ -6363,27 +6494,35 @@ class Storage {
     }
   }
 
-  async getAllAssetAssignments(): Promise<AllAssetAssignmentsEntry[]> {
+  async getAllAssetAssignments(): Promise<any[]> {
     try {
-      const assignments: AllAssetAssignmentsEntry[] = await db
+      const assignments = await db
         .select({
-          id: projectAssetAssignments.id,
-          projectId: projectAssetAssignments.projectId,
+          id: projectAssetInstanceAssignments.id,
+          projectId: projectAssetInstanceAssignments.projectId,
           projectTitle: projects.title,
-          assetId: projectAssetAssignments.assetId,
-          assetName: assetTypes.name,
-          assetCode: assets.assetTag,
-          startDate: projectAssetAssignments.startDate,
-          endDate: projectAssetAssignments.endDate,
-          monthlyRate: projectAssetAssignments.monthlyRate,
-          totalCost: projectAssetAssignments.totalCost,
-          assignedAt: projectAssetAssignments.assignedAt,
+          instanceId: projectAssetInstanceAssignments.instanceId,
+          assetTypeName: assetTypes.name,
+          assetTag: assetInventoryInstances.assetTag,
+          startDate: projectAssetInstanceAssignments.startDate,
+          endDate: projectAssetInstanceAssignments.endDate,
+          monthlyRate: assetInventoryInstances.monthlyRentalAmount,
+          assignedAt: projectAssetInstanceAssignments.assignedAt,
         })
-        .from(projectAssetAssignments)
-        .leftJoin(projects, eq(projectAssetAssignments.projectId, projects.id))
-        .leftJoin(assets, eq(projectAssetAssignments.assetId, assets.id))
-        .leftJoin(assetTypes, eq(assets.assetTypeId, assetTypes.id))
-        .orderBy(desc(projectAssetAssignments.assignedAt));
+        .from(projectAssetInstanceAssignments)
+        .leftJoin(
+          projects,
+          eq(projectAssetInstanceAssignments.projectId, projects.id)
+        )
+        .leftJoin(
+          assetInventoryInstances,
+          eq(projectAssetInstanceAssignments.instanceId, assetInventoryInstances.id)
+        )
+        .leftJoin(
+          assetTypes,
+          eq(assetInventoryInstances.assetTypeId, assetTypes.id)
+        )
+        .orderBy(desc(projectAssetInstanceAssignments.assignedAt));
 
       return assignments;
     } catch (error: any) {
@@ -7751,6 +7890,196 @@ class Storage {
     }
   }
 
+  async calculateAssetRentalCost(
+    startDate: Date,
+    endDate: Date,
+    monthlyRate: number
+  ): Promise<number> {
+    try {
+      // Calculate pro-rated cost based on days utilized * (Monthly rent / days in that month)
+      // If usage spans multiple months, calculate cost for each month separately
+
+      let totalCost = 0;
+      const currentDate = new Date(startDate);
+
+      while (currentDate <= endDate) {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+
+        // Get the first and last day of the current month
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const daysInMonth = lastDayOfMonth.getDate();
+
+        // Determine the start and end of the period within this month
+        const periodStart = currentDate >= startDate ? currentDate : startDate;
+        const periodEnd = endDate <= lastDayOfMonth ? endDate : lastDayOfMonth;
+
+        // Calculate days used in this month (inclusive of both start and end dates)
+        const diffTime = periodEnd.getTime() - periodStart.getTime();
+        const daysUsedInMonth = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        // Calculate pro-rated cost for this month
+        const dailyRateForMonth = monthlyRate / daysInMonth;
+        const costForMonth = daysUsedInMonth * dailyRateForMonth;
+
+        totalCost += costForMonth;
+
+        // Move to the first day of the next month
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        currentDate.setDate(1);
+      }
+
+      return totalCost;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          "Error in calculateAssetRentalCost (second block): " +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "calculateAssetRentalCost (second block)",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async getAssetAssignmentHistory(instanceId: number): Promise<any[]> {
+    try {
+      const history = await db
+        .select({
+          id: projectAssetInstanceAssignments.id,
+          projectId: projectAssetInstanceAssignments.projectId,
+          projectTitle: projects.title,
+          startDate: projectAssetInstanceAssignments.startDate,
+          endDate: projectAssetInstanceAssignments.endDate,
+          notes: projectAssetInstanceAssignments.notes,
+          assignedAt: projectAssetInstanceAssignments.assignedAt,
+        })
+        .from(projectAssetInstanceAssignments)
+        .leftJoin(
+          projects,
+          eq(projectAssetInstanceAssignments.projectId, projects.id)
+        )
+        .where(eq(projectAssetInstanceAssignments.instanceId, instanceId))
+        .orderBy(desc(projectAssetInstanceAssignments.assignedAt));
+
+      return history;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in getAssetAssignmentHistory (second block, assetId: ${assetId}): ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "getAssetAssignmentHistory (second block)",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async getAllAssetAssignments(): Promise<any[]> {
+    try {
+      const assignments = await db
+        .select({
+          id: projectAssetInstanceAssignments.id,
+          projectId: projectAssetInstanceAssignments.projectId,
+          projectTitle: projects.title,
+          instanceId: projectAssetInstanceAssignments.instanceId,
+          assetTypeName: assetTypes.name,
+          assetTag: assetInventoryInstances.assetTag,
+          startDate: projectAssetInstanceAssignments.startDate,
+          endDate: projectAssetInstanceAssignments.endDate,
+          monthlyRate: assetInventoryInstances.monthlyRentalAmount,
+          assignedAt: projectAssetInstanceAssignments.assignedAt,
+        })
+        .from(projectAssetInstanceAssignments)
+        .leftJoin(
+          projects,
+          eq(projectAssetInstanceAssignments.projectId, projects.id)
+        )
+        .leftJoin(
+          assetInventoryInstances,
+          eq(projectAssetInstanceAssignments.instanceId, assetInventoryInstances.id)
+        )
+        .leftJoin(
+          assetTypes,
+          eq(assetInventoryInstances.assetTypeId, assetTypes.id)
+        )
+        .orderBy(desc(projectAssetInstanceAssignments.assignedAt));
+
+      return assignments;
+    } catch (error: any) {
+      console.error("Error in getAllAssetAssignments:", error);
+      throw error;
+    }
+  }
+
+  async updateAssetStatusBasedOnAssignments(assetId: number): Promise<void> {
+    try {
+      // Get current assignments for this asset
+      const currentAssignments = await db
+        .select()
+        .from(projectAssetAssignments)
+        .where(
+          and(
+            eq(projectAssetAssignments.assetId, assetId),
+            or(
+              isNull(projectAssetAssignments.endDate),
+              gte(projectAssetAssignments.endDate, new Date())
+            )
+          )
+        );
+
+      // Update asset status based on assignments
+      const newStatus =
+        currentAssignments.length > 0 ? "assigned" : "available";
+
+      await this.updateAsset(assetId, { status: newStatus });
+
+      console.log(
+        `Updated asset ${assetId} status to ${newStatus} based on ${currentAssignments.length} active assignments`
+      );
+    } catch (error: any) {
+      console.error(
+        "Original error in updateAssetStatusBasedOnAssignments (second block):",
+        error
+      ); // Keep original console.error
+      await this.createErrorLog({
+        message:
+          `Error in updateAssetStatusBasedOnAssignments (second block, assetId: ${assetId}): ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "updateAssetStatusBasedOnAssignments (second block)",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  // Method to update all asset statuses (useful for maintenance/cron jobs)
+  async updateAllAssetStatuses(): Promise<void> {
+    try {
+      const allAssets = await this.getAssets();
+
+      for (const asset of allAssets) {
+        await this.updateAssetStatusBasedOnAssignments(asset.id);
+      }
+
+      console.log(`Updated status for ${allAssets.length} assets`);
+    } catch (error: any) {
+      console.error("Original error in updateAllAssetStatuses:", error); // Keep original console.error
+      await this.createErrorLog({
+        message:
+          "Error in updateAllAssetStatuses: " +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "updateAllAssetStatuses",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
   // Project Consumables methods
   async getProjectConsumables(
     projectId: number
@@ -10070,9 +10399,6 @@ export interface IStorage {
   getProjectAssetAssignments(
     projectId: number
   ): Promise<ProjectAssetAssignmentWithAssetInfo[]>;
-  createProjectAssetAssignment(
-    assignmentData: InsertProjectAssetAssignment
-  ): Promise<ProjectAssetAssignment>;
   createProjectAssetInstanceAssignment(assignmentData: {
     projectId: number;
     instanceId: number;
@@ -10083,20 +10409,17 @@ export interface IStorage {
   }): Promise<any>;
   getProjectAssetInstanceAssignments(projectId: number): Promise<any[]>;
   deleteProjectAssetInstanceAssignment(id: number): Promise<boolean>;
-  updateProjectAssetAssignment(
+  updateProjectAssetInstanceAssignment(
     id: number,
-    assignmentData: Partial<InsertProjectAssetAssignment>
-  ): Promise<ProjectAssetAssignment | undefined>;
-  deleteProjectAssetAssignment(id: number): Promise<boolean>;
+    assignmentData: Partial<{ endDate: Date | null; notes?: string }>
+  ): Promise<any>;
   calculateAssetRentalCost(
     startDate: Date,
     endDate: Date,
     monthlyRate: number
   ): Promise<number>;
-  getAssetAssignmentHistory(
-    assetId: number
-  ): Promise<AssetAssignmentHistoryEntry[]>;
-  getAllAssetAssignments(): Promise<AllAssetAssignmentsEntry[]>;
+  getAssetAssignmentHistory(instanceId: number): Promise<any[]>;
+  getAllAssetAssignments(): Promise<any[]>;
   updateAssetStatusBasedOnAssignments(assetId: number): Promise<void>;
   updateAllAssetStatuses(): Promise<void>;
 

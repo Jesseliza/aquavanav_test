@@ -2835,28 +2835,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-
-  app.delete(
-    "/api/projects/:projectId/asset-assignments/:assignmentId",
+  app.put(
+    "/api/projects/:projectId/asset-instance-assignments/:assignmentId",
     requireAuth,
     requireRole(["admin", "project_manager"]),
     async (req, res) => {
       try {
         const assignmentId = parseInt(req.params.assignmentId);
-        const deleted = await storage.deleteProjectAssetAssignment(
-          assignmentId
+        const { endDate, notes } = req.body;
+
+        const assignmentData = {
+          endDate: endDate ? new Date(endDate) : null,
+          notes,
+        };
+
+        const assignment = await storage.updateProjectAssetInstanceAssignment(
+          assignmentId,
+          assignmentData
         );
 
-        if (!deleted) {
+        if (!assignment) {
           return res
             .status(404)
-            .json({ message: "Asset assignment not found" });
+            .json({ message: "Asset instance assignment not found" });
         }
 
-        res.json({ message: "Asset assignment deleted successfully" });
+        res.json(assignment);
       } catch (error) {
-        console.error("Error deleting project asset assignment:", error);
-        res.status(500).json({ message: "Failed to delete asset assignment" });
+        console.error(
+          "Error updating project asset instance assignment:",
+          error
+        );
+        res
+          .status(500)
+          .json({ message: "Failed to update asset instance assignment" });
       }
     }
   );
