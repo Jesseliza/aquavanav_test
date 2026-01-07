@@ -743,6 +743,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   app.get(
+    "/api/projects/:id/photo-groups",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const projectId = parseInt(req.params.id);
+        if (isNaN(projectId)) {
+          return res.status(400).json({ message: "Invalid project ID" });
+        }
+
+        const photoGroups = await storage.getProjectPhotoGroups(projectId);
+        res.json(photoGroups);
+      } catch (error) {
+        console.error("Get photo groups error:", error);
+        res.status(500).json({ message: "Failed to get photo groups" });
+      }
+    },
+  );
+
+  app.get(
     "/api/users/:id",
     requireAuth,
     requireRole(["admin"]),
