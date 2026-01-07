@@ -758,7 +758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
 router.put(
-  "/api/project-consumables/:consumableId",
+  "/api/projects/:projectId/consumables/:consumableId",
   async (req: Request, res: Response) => {
     try {
       const { consumableId } = req.params;
@@ -778,7 +778,7 @@ router.put(
 );
 
 router.delete(
-  "/api/project-consumables/:consumableId",
+  "/api/projects/:projectId/consumables/:consumableId",
   async (req: Request, res: Response) => {
     try {
       const { consumableId } = req.params;
