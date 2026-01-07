@@ -479,16 +479,6 @@ export default function ProjectDetail() {
     }
   }, [project]);
 
-  // Initialize asset assignment dates with project dates
-  useEffect(() => {
-    if (project && isAssetAssignmentDialogOpen) {
-      setAssetAssignmentData(prev => ({
-        ...prev,
-        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
-        endDate: project.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
-      }));
-    }
-  }, [project, isAssetAssignmentDialogOpen]);
 
   const { data: photoGroups } = useQuery<PhotoGroupWithPhotos[]>({
     queryKey: ["/api/projects", id, "photo-groups"],
@@ -3564,7 +3554,18 @@ export default function ProjectDetail() {
               <div className="flex items-center justify-between">
                 <CardTitle>Assigned Assets</CardTitle>
                 {canEdit && (
-                  <Dialog open={isAssetAssignmentDialogOpen} onOpenChange={setIsAssetAssignmentDialogOpen}>
+                  <Dialog open={isAssetAssignmentDialogOpen} onOpenChange={(isOpen) => {
+                      setIsAssetAssignmentDialogOpen(isOpen);
+                      if (isOpen && project) {
+                        setAssetAssignmentData(prev => ({
+                          ...prev,
+                          startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
+                          endDate: project.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
+                          monthlyRate: "",
+                          notes: "",
+                        }));
+                      }
+                    }}>
                     <DialogTrigger asChild>
                       <Button size="sm" data-testid="button-assign-asset">
                         <Plus className="h-4 w-4 mr-2" />
