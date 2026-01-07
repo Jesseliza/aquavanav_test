@@ -305,7 +305,7 @@ export default function ProjectDetail() {
   });
   const [isAssetAssignmentDialogOpen, setIsAssetAssignmentDialogOpen] = useState(false);
   const [assetAssignmentData, setAssetAssignmentData] = useState({
-    instanceId: 0,
+    instanceId: '',
     startDate: "",
     endDate: "",
     monthlyRate: "",
@@ -479,16 +479,6 @@ export default function ProjectDetail() {
     }
   }, [project]);
 
-  // Initialize asset assignment dates with project dates
-  useEffect(() => {
-    if (project && isAssetAssignmentDialogOpen) {
-      setAssetAssignmentData(prev => ({
-        ...prev,
-        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
-        endDate: project.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
-      }));
-    }
-  }, [project, isAssetAssignmentDialogOpen]);
 
   const { data: photoGroups } = useQuery<PhotoGroupWithPhotos[]>({
     queryKey: ["/api/projects", id, "photo-groups"],
@@ -1251,7 +1241,7 @@ export default function ProjectDetail() {
 
   const resetAssetAssignmentForm = () => {
     setAssetAssignmentData({
-      instanceId: 0,
+      instanceId: '',
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
       monthlyRate: "",
@@ -1287,7 +1277,7 @@ export default function ProjectDetail() {
 
       // Check if asset instance is already assigned during this period
       const isOverlapping = projectAssets?.some(assignment => {
-        if (assignment.instanceId !== assetAssignmentData.instanceId) return false;
+        if (assignment.instanceId !== parseInt(assetAssignmentData.instanceId)) return false;
 
         if (!assignment.endDate) return true; // Ongoing assignment
 
@@ -1308,7 +1298,10 @@ export default function ProjectDetail() {
     }
 
     // Submit the assignment (backend will handle monthly rate from instance)
-    assignAssetMutation.mutate(assetAssignmentData);
+    assignAssetMutation.mutate({
+      ...assetAssignmentData,
+      instanceId: parseInt(assetAssignmentData.instanceId),
+    });
   };
 
   const addConsumableItem = () => {
@@ -3564,7 +3557,12 @@ export default function ProjectDetail() {
               <div className="flex items-center justify-between">
                 <CardTitle>Assigned Assets</CardTitle>
                 {canEdit && (
-                  <Dialog open={isAssetAssignmentDialogOpen} onOpenChange={setIsAssetAssignmentDialogOpen}>
+                  <Dialog open={isAssetAssignmentDialogOpen} onOpenChange={(isOpen) => {
+                    setIsAssetAssignmentDialogOpen(isOpen);
+                    if (isOpen) {
+                      resetAssetAssignmentForm();
+                    }
+                  }}>
                     <DialogTrigger asChild>
                       <Button size="sm" data-testid="button-assign-asset">
                         <Plus className="h-4 w-4 mr-2" />
@@ -3579,11 +3577,11 @@ export default function ProjectDetail() {
                         <div className="space-y-2">
                           <Label htmlFor="assetInstance">Asset Instance *</Label>
                           <Select
-                            value={assetAssignmentData.instanceId?.toString() || ""}
+                            value={assetAssignmentData.instanceId}
                             onValueChange={(value) => {
                               setAssetAssignmentData(prev => ({
                                 ...prev,
-                                instanceId: parseInt(value)
+                                instanceId: value
                               }));
                             }}
                           >
