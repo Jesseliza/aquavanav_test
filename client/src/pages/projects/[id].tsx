@@ -308,6 +308,7 @@ export default function ProjectDetail() {
     instanceId: 0,
     startDate: "",
     endDate: "",
+    monthlyRate: "",
     notes: "",
   });
   const [editProjectData, setEditProjectData] = useState({
@@ -1191,7 +1192,7 @@ export default function ProjectDetail() {
   });
 
   const assignAssetMutation = useMutation({
-    mutationFn: async (data: { instanceId: number; startDate: string; endDate: string; notes?: string }) => {
+    mutationFn: async (data: { instanceId: number; startDate: string; endDate: string; notes?: string, monthlyRate: string; }) => {
       const response = await apiRequest(`/api/projects/${id}/asset-instance-assignments`, { method: "POST", body: data });
       return response;
     },
@@ -1253,6 +1254,7 @@ export default function ProjectDetail() {
       instanceId: 0,
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
+      monthlyRate: "",
       notes: "",
     });
   };
@@ -1260,10 +1262,10 @@ export default function ProjectDetail() {
   const handleAssetAssignmentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!assetAssignmentData.instanceId || !assetAssignmentData.startDate) {
+    if (!assetAssignmentData.instanceId || !assetAssignmentData.startDate || !assetAssignmentData.monthlyRate) {
       toast({
         title: "Error",
-        description: "Please select an asset instance and start date",
+        description: "Please select an asset instance, start date and monthly rate",
         variant: "destructive",
       });
       return;
@@ -3632,6 +3634,19 @@ export default function ProjectDetail() {
                               Leave empty for ongoing assignment
                             </p>
                           </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="monthlyRate">Monthly Rent</Label>
+                          <Input
+                            id="monthlyRate"
+                            type="number"
+                            value={assetAssignmentData.monthlyRate}
+                            onChange={(e) => setAssetAssignmentData(prev => ({ ...prev, monthlyRate: e.target.value }))}
+                            placeholder="Enter monthly rent"
+                            required
+                            className="w-full"
+                          />
                         </div>
 
                         <div className="space-y-2">
