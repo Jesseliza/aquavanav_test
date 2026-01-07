@@ -6139,9 +6139,10 @@ class Storage {
       // Delete the assignment
       const result = await db
         .delete(projectAssetAssignments)
-        .where(eq(projectAssetAssignments.id, id));
+        .where(eq(projectAssetAssignments.id, id))
+        .returning({ id: projectAssetAssignments.id });
 
-      if (result.rowCount && result.rowCount > 0) {
+      if (result.length > 0) {
         // Update asset status based on remaining assignments
         await this.updateAssetStatusBasedOnAssignments(assetId);
 
@@ -6510,9 +6511,10 @@ class Storage {
       // Delete the assignment
       const result = await db
         .delete(projectAssetInstanceAssignments)
-        .where(eq(projectAssetInstanceAssignments.id, id));
+        .where(eq(projectAssetInstanceAssignments.id, id))
+        .returning({ id: projectAssetInstanceAssignments.id });
 
-      if (result.rowCount && result.rowCount > 0) {
+      if (result.length > 0) {
         // Update asset instance status back to available if no other active assignments
         if (instanceId) {
           const activeAssignments = await db
