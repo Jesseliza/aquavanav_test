@@ -305,7 +305,7 @@ export default function ProjectDetail() {
   });
   const [isAssetAssignmentDialogOpen, setIsAssetAssignmentDialogOpen] = useState(false);
   const [assetAssignmentData, setAssetAssignmentData] = useState({
-    instanceId: '',
+    instanceId: 0,
     startDate: "",
     endDate: "",
     monthlyRate: "",
@@ -479,6 +479,16 @@ export default function ProjectDetail() {
     }
   }, [project]);
 
+  // Initialize asset assignment dates with project dates
+  useEffect(() => {
+    if (project && isAssetAssignmentDialogOpen) {
+      setAssetAssignmentData(prev => ({
+        ...prev,
+        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
+        endDate: project.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
+      }));
+    }
+  }, [project, isAssetAssignmentDialogOpen]);
 
   const { data: photoGroups } = useQuery<PhotoGroupWithPhotos[]>({
     queryKey: ["/api/projects", id, "photo-groups"],
@@ -535,7 +545,7 @@ export default function ProjectDetail() {
   const plannedActivitiesTotalPages = plannedActivitiesData ? Math.ceil(plannedActivitiesData.total / itemsPerPage) : 0;
 
   const { data: assets } = useQuery<any[]>({
-    queryKey: ["/api/asset-inventory/instances"],
+    queryKey: ["asset-instances"],
     queryFn: async () => {
       const response = await fetch("/api/asset-inventory/instances", {
         credentials: "include",
@@ -1241,7 +1251,7 @@ export default function ProjectDetail() {
 
   const resetAssetAssignmentForm = () => {
     setAssetAssignmentData({
-      instanceId: '',
+      instanceId: 0,
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
       monthlyRate: "",
@@ -1277,7 +1287,7 @@ export default function ProjectDetail() {
 
       // Check if asset instance is already assigned during this period
       const isOverlapping = projectAssets?.some(assignment => {
-        if (assignment.instanceId !== parseInt(assetAssignmentData.instanceId)) return false;
+        if (assignment.instanceId !== assetAssignmentData.instanceId) return false;
 
         if (!assignment.endDate) return true; // Ongoing assignment
 
@@ -1298,10 +1308,7 @@ export default function ProjectDetail() {
     }
 
     // Submit the assignment (backend will handle monthly rate from instance)
-    assignAssetMutation.mutate({
-      ...assetAssignmentData,
-      instanceId: parseInt(assetAssignmentData.instanceId),
-    });
+    assignAssetMutation.mutate(assetAssignmentData);
   };
 
   const addConsumableItem = () => {
@@ -3557,12 +3564,7 @@ export default function ProjectDetail() {
               <div className="flex items-center justify-between">
                 <CardTitle>Assigned Assets</CardTitle>
                 {canEdit && (
-                  <Dialog open={isAssetAssignmentDialogOpen} onOpenChange={(isOpen) => {
-                    setIsAssetAssignmentDialogOpen(isOpen);
-                    if (isOpen) {
-                      resetAssetAssignmentForm();
-                    }
-                  }}>
+                  <Dialog open={isAssetAssignmentDialogOpen} onOpenChange={setIsAssetAssignmentDialogOpen}>
                     <DialogTrigger asChild>
                       <Button size="sm" data-testid="button-assign-asset">
                         <Plus className="h-4 w-4 mr-2" />
@@ -3577,11 +3579,11 @@ export default function ProjectDetail() {
                         <div className="space-y-2">
                           <Label htmlFor="assetInstance">Asset Instance *</Label>
                           <Select
-                            value={assetAssignmentData.instanceId}
+                            value={assetAssignmentData.instanceId?.toString() || ""}
                             onValueChange={(value) => {
                               setAssetAssignmentData(prev => ({
                                 ...prev,
-                                instanceId: value
+                                instanceId: parseInt(value)
                               }));
                             }}
                           >
