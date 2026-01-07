@@ -2902,13 +2902,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res: any) => {
       try {
         const projectId = parseInt(req.params.id);
-        const assignments = await storage.getProjectAssetInstanceAssignments(projectId);
+        const assignments = await storage.getProjectAssetInstanceAssignments(
+          projectId
+        );
         res.json(assignments);
       } catch (error) {
-        console.error("Error getting project asset instance assignments:", error);
-        res.status(500).json({ message: "Failed to get asset instance assignments" });
+        console.error(
+          "Error getting project asset instance assignments:",
+          error
+        );
+        res
+          .status(500)
+          .json({ message: "Failed to get asset instance assignments" });
       }
-    },
+    }
   );
 
   app.post(
@@ -2957,13 +2964,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: notes || null,
         };
 
-        const assignment = await storage.createProjectAssetInstanceAssignment(assignmentData);
+        const assignment = await storage.createProjectAssetInstanceAssignment(
+          assignmentData
+        );
         res.status(201).json(assignment);
       } catch (error) {
         console.error("Error creating asset instance assignment:", error);
-        res.status(500).json({ message: "Failed to create asset instance assignment" });
+        res
+          .status(500)
+          .json({ message: "Failed to create asset instance assignment" });
       }
-    },
+    }
   );
 
   app.put(
@@ -2998,21 +3009,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updateData.returnedAt = new Date();
         }
 
-        const updatedAssignment = await storage.updateProjectAssetInstanceAssignment(
-          assignmentId,
-          updateData,
-        );
+        const updatedAssignment =
+          await storage.updateProjectAssetInstanceAssignment(
+            assignmentId,
+            updateData
+          );
 
         if (!updatedAssignment) {
-          return res.status(404).json({ message: "Asset instance assignment not found" });
+          return res
+            .status(404)
+            .json({ message: "Asset instance assignment not found" });
         }
 
         res.json(updatedAssignment);
       } catch (error) {
         console.error("Error updating asset instance assignment:", error);
-        res.status(500).json({ message: "Failed to update asset instance assignment" });
+        res
+          .status(500)
+          .json({ message: "Failed to update asset instance assignment" });
       }
-    },
+    }
   );
 
   app.delete(
@@ -3022,20 +3038,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const assignmentId = parseInt(req.params.assignmentId);
-        const deleted = await storage.deleteProjectAssetInstanceAssignment(assignmentId);
+        const deleted = await storage.deleteProjectAssetInstanceAssignment(
+          assignmentId
+        );
 
         if (!deleted) {
-          return res.status(404).json({ message: "Asset instance assignment not found" });
+          return res
+            .status(404)
+            .json({ message: "Asset instance assignment not found" });
         }
 
         res.json({ message: "Asset instance assignment deleted successfully" });
       } catch (error) {
         console.error("Error deleting asset instance assignment:", error);
-        res.status(500).json({ message: "Failed to delete asset instance assignment" });
+        res
+          .status(500)
+          .json({ message: "Failed to delete asset instance assignment" });
       }
-    },
+    }
   );
-
 
   // Get all asset assignments for earnings calculation
   app.get("/api/asset-assignments", requireAuth, async (req, res) => {

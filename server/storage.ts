@@ -6139,10 +6139,9 @@ class Storage {
       // Delete the assignment
       const result = await db
         .delete(projectAssetAssignments)
-        .where(eq(projectAssetAssignments.id, id))
-        .returning({ id: projectAssetAssignments.id });
+        .where(eq(projectAssetAssignments.id, id));
 
-      if (result.length > 0) {
+      if (result.length && result.length > 0) {
         // Update asset status based on remaining assignments
         await this.updateAssetStatusBasedOnAssignments(assetId);
 
@@ -6353,7 +6352,7 @@ class Storage {
   }
 
   
-  // Project Asset Instance Assignment methods (new)
+ // Project Asset Instance Assignment methods (new)
   async getProjectAssetInstanceAssignments(projectId: number): Promise<any[]> {
     try {
       const assignments = await db
