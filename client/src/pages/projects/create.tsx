@@ -91,13 +91,13 @@ export default function ProjectCreate() {
 
       const appendIfExists = (key: string, value: string | number | null | undefined | string[]) => {
         if (value !== null && value !== undefined && value !== '') {
-            if (typeof value === 'string') {
-                formData.append(key, value.trim());
-            } else if (Array.isArray(value)) {
-                formData.append(key, JSON.stringify(value));
-            } else {
-                formData.append(key, String(value));
-            }
+          if (typeof value === 'string') {
+            formData.append(key, value.trim());
+          } else if (Array.isArray(value)) {
+            formData.append(key, JSON.stringify(value));
+          } else {
+            formData.append(key, String(value));
+          }
         }
       };
 
@@ -377,6 +377,7 @@ export default function ProjectCreate() {
                   id="plannedEndDate"
                   type="date"
                   value={formData.plannedEndDate}
+                  min={formData.startDate || undefined}
                   onChange={(e) => handleChange("plannedEndDate", e.target.value)}
                 />
               </div>

@@ -3062,10 +3062,9 @@ export default function ProjectDetail() {
                           {canEdit && (
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
                               onClick={() => handleDeletePhotoGroup(group.id)}
                               className="text-red-500 hover:text-red-700"
-                              aria-label="Delete photo group"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

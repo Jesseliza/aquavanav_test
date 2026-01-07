@@ -348,27 +348,6 @@ class Storage {
     }
   }
 
-  async addPhotosToPhotoGroup(
-    groupId: number,
-    photosData: Omit<InsertProjectPhoto, "groupId">[]
-  ): Promise<ProjectPhoto[]> {
-    if (!photosData || photosData.length === 0) {
-      return [];
-    }
-
-    const photosToInsert = photosData.map((photo) => ({
-      ...photo,
-      groupId: groupId,
-    }));
-
-    const savedPhotos = await db
-      .insert(projectPhotos)
-      .values(photosToInsert)
-      .returning();
-
-    return savedPhotos;
-  }
-
   // User methods
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
@@ -561,7 +540,11 @@ class Storage {
       const conditions =
         whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
-      const dataQueryBuilder = db.select().from(customers).where(conditions).orderBy(customers.id);
+      const dataQueryBuilder = db
+        .select()
+        .from(customers)
+        .where(conditions)
+        .orderBy(customers.id);
       // Note: original count query had a simpler where clause `eq(customers.isArchived, showArchived)`
       // This should ideally be consistent. For now, using the combined `conditions` for count.
       const countQueryBuilder = db
@@ -663,16 +646,12 @@ class Storage {
     customerData: Partial<InsertCustomer>
   ): Promise<Customer | undefined> {
     try {
-
-        if (customerData.phone && customerData.phone.trim() !== "") {
+      if (customerData.phone && customerData.phone.trim() !== "") {
         const existing = await db
           .select()
           .from(customers)
           .where(
-            and(
-              eq(customers.phone, customerData.phone),
-              ne(customers.id, id)
-            )
+            and(eq(customers.phone, customerData.phone), ne(customers.id, id))
           );
 
         if (existing.length > 0) {
@@ -749,7 +728,11 @@ class Storage {
       const conditions =
         whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
-      const dataQueryBuilder = db.select().from(suppliers).where(conditions).orderBy(suppliers.id);;
+      const dataQueryBuilder = db
+        .select()
+        .from(suppliers)
+        .where(conditions)
+        .orderBy(suppliers.id);
       // Original count query for suppliers also only filtered by showArchived.
       // Sticking to applying all conditions for count for consistency in the helper.
       const countQueryBuilder = db
@@ -945,7 +928,8 @@ class Storage {
     try {
       const result = await db
         .delete(customerDocuments)
-        .where(eq(customerDocuments.id, id)).returning();
+        .where(eq(customerDocuments.id, id))
+        .returning();
       return result.length > 0;
     } catch (error: any) {
       await this.createErrorLog({
@@ -1031,7 +1015,8 @@ class Storage {
     try {
       const result = await db
         .delete(supplierDocuments)
-        .where(eq(supplierDocuments.id, id)).returning();
+        .where(eq(supplierDocuments.id, id))
+        .returning();
       return result.length > 0;
     } catch (error: any) {
       await this.createErrorLog({
@@ -1796,7 +1781,9 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProject (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProject (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProject",
         severity: "error",
@@ -1813,7 +1800,9 @@ class Storage {
         .where(eq(projects.customerId, customerId));
     } catch (error: any) {
       await this.createErrorLog({
-        message: `Error in getProjectsByCustomer (customerId: ${customerId}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in getProjectsByCustomer (customerId: ${customerId}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getProjectsByCustomer",
         severity: "error",
@@ -1828,7 +1817,8 @@ class Storage {
       return result[0];
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in createProject: " + (error?.message || "Unknown error"),
+        message:
+          "Error in createProject: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProject",
         severity: "error",
@@ -1839,7 +1829,7 @@ class Storage {
 
   async updateProject(
     id: number,
-    data: Partial<Project>,
+    data: Partial<Project>
   ): Promise<Project | undefined> {
     try {
       const updatePayload: Partial<Project> = {};
@@ -1848,31 +1838,45 @@ class Storage {
       for (const key in data) {
         if (Object.prototype.hasOwnProperty.call(data, key)) {
           const value = (data as any)[key];
-          if (key === "startDate" || key === "plannedEndDate" || key === "actualEndDate") {
+          if (
+            key === "startDate" ||
+            key === "plannedEndDate" ||
+            key === "actualEndDate"
+          ) {
             const cleanedDate = this._cleanDateValue(value);
             if (cleanedDate !== undefined) {
               (updatePayload as any)[key] = cleanedDate;
-            } else if (value !== undefined) { // If _cleanDateValue returns undefined, but original value was present, it means invalid date to be ignored.
-              console.warn(`Invalid date value for ${key} will be ignored:`, value);
+            } else if (value !== undefined) {
+              // If _cleanDateValue returns undefined, but original value was present, it means invalid date to be ignored.
+              console.warn(
+                `Invalid date value for ${key} will be ignored:`,
+                value
+              );
             }
           } else if (key === "locations") {
-             if (value !== undefined) {
-                // Ensure it's an array, don't modify if already valid JSON or array
-                if (Array.isArray(value)) {
-                    (updatePayload as any)[key] = value;
-                } else {
-                    // Attempt to parse if it's a string, otherwise default to empty array or handle error
-                    try {
-                        const parsedLocations = typeof value === 'string' ? JSON.parse(value) : value;
-                        (updatePayload as any)[key] = Array.isArray(parsedLocations) ? parsedLocations : [];
-                    } catch (e) {
-                        console.warn(`Invalid JSON for locations, defaulting to empty array:`, value);
-                        (updatePayload as any)[key] = [];
-                    }
+            if (value !== undefined) {
+              // Ensure it's an array, don't modify if already valid JSON or array
+              if (Array.isArray(value)) {
+                (updatePayload as any)[key] = value;
+              } else {
+                // Attempt to parse if it's a string, otherwise default to empty array or handle error
+                try {
+                  const parsedLocations =
+                    typeof value === "string" ? JSON.parse(value) : value;
+                  (updatePayload as any)[key] = Array.isArray(parsedLocations)
+                    ? parsedLocations
+                    : [];
+                } catch (e) {
+                  console.warn(
+                    `Invalid JSON for locations, defaulting to empty array:`,
+                    value
+                  );
+                  (updatePayload as any)[key] = [];
                 }
+              }
             } else {
-                // if locations is explicitly undefined in payload, we might want to skip update or set to null
-                // For now, let's skip if undefined. If it needs to be settable to null, adjust logic.
+              // if locations is explicitly undefined in payload, we might want to skip update or set to null
+              // For now, let's skip if undefined. If it needs to be settable to null, adjust logic.
             }
           } else if (value !== undefined) {
             // For other fields, directly assign if the value is not undefined
@@ -1901,7 +1905,9 @@ class Storage {
     } catch (error: any) {
       console.error("Original error in updateProject:", error); // Keep original console.error for context if needed
       await this.createErrorLog({
-        message: `Error in updateProject (id: ${id}): ` + (error?.message || "Unknown error"),
+        message:
+          `Error in updateProject (id: ${id}): ` +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updateProject",
         severity: "error",
@@ -2406,8 +2412,8 @@ class Storage {
       total: number;
       totalPages: number;
     };
-  lowStockTotal: number;
-  totalInventoryValue: number;
+    lowStockTotal: number;
+    totalInventoryValue: number;
   }> {
     try {
       const whereClauses = [];
@@ -2428,47 +2434,47 @@ class Storage {
       const dataQueryBuilder = db
         .select()
         .from(inventoryItems)
-        .where(conditions).orderBy(inventoryItems.id);
+        .where(conditions)
+        .orderBy(inventoryItems.id);
       const countQueryBuilder = db
         .select({ count: sql<number>`count(*)` })
         .from(inventoryItems)
         .where(conditions);
 
       const lowStockCountQuery = db
-      .select({ count: sql<number>`count(*)` })
-      .from(inventoryItems)
-      .where(
-        and(
-          conditions,
-          lte(inventoryItems.currentStock, inventoryItems.minStockLevel)
-        )
-      );
+        .select({ count: sql<number>`count(*)` })
+        .from(inventoryItems)
+        .where(
+          and(
+            conditions,
+            lte(inventoryItems.currentStock, inventoryItems.minStockLevel)
+          )
+        );
 
       const totalValueQuery = db
-      .select({
-        total: sql<number>`
+        .select({
+          total: sql<number>`
           COALESCE(SUM(${inventoryItems.currentStock} * ${inventoryItems.avgCost}), 0)
         `,
-      })
-      .from(inventoryItems)
-      .where(conditions);
+        })
+        .from(inventoryItems)
+        .where(conditions);
 
-    const paginatedResult = await this._getPaginatedResults<InventoryItem>(
-      dataQueryBuilder,
-      countQueryBuilder,
-      page,
-      limit
-    );
+      const paginatedResult = await this._getPaginatedResults<InventoryItem>(
+        dataQueryBuilder,
+        countQueryBuilder,
+        page,
+        limit
+      );
 
-    const [lowStockResult] = await lowStockCountQuery;
-    const [valueResult] = await totalValueQuery;
+      const [lowStockResult] = await lowStockCountQuery;
+      const [valueResult] = await totalValueQuery;
 
-    return {
-      ...paginatedResult,
-      lowStockTotal: lowStockResult?.count ?? 0,
-      totalInventoryValue: valueResult?.total ?? 0,
-    };
-
+      return {
+        ...paginatedResult,
+        lowStockTotal: lowStockResult?.count ?? 0,
+        totalInventoryValue: valueResult?.total ?? 0,
+      };
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -2594,7 +2600,6 @@ class Storage {
     }
   }
 
-
   async getAssetInventoryMaintenanceRecords(
     instanceId: number
   ): Promise<any[]> {
@@ -2674,7 +2679,7 @@ class Storage {
           )
         )
         .orderBy(assetInventoryMaintenanceFiles.uploadedAt);
-        console.log(files,"files")
+      console.log(files, "files");
       return files;
     } catch (error: any) {
       await this.createErrorLog({
@@ -7865,6 +7870,27 @@ class Storage {
     }
   }
 
+  async addPhotosToPhotoGroup(
+    groupId: number,
+    photosData: Omit<InsertProjectPhoto, "groupId">[]
+  ): Promise<ProjectPhoto[]> {
+    if (!photosData || photosData.length === 0) {
+      return [];
+    }
+
+    const photosToInsert = photosData.map((photo) => ({
+      ...photo,
+      groupId: groupId,
+    }));
+
+    const savedPhotos = await db
+      .insert(projectPhotos)
+      .values(photosToInsert)
+      .returning();
+
+    return savedPhotos;
+  }
+
   async updateProjectPhotoGroup(
     id: number,
     groupData: Partial<InsertProjectPhotoGroup>
@@ -7907,7 +7933,7 @@ class Storage {
               await fs.unlink(filePath);
             } catch (fileError: any) {
               // If file not found, log it but don't block the deletion process
-              if (fileError.code !== 'ENOENT') {
+              if (fileError.code !== "ENOENT") {
                 throw fileError; // Re-throw other file system errors
               }
               console.warn(`File not found, skipping deletion: ${filePath}`);
