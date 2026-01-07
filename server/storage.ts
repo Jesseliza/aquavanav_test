@@ -385,6 +385,26 @@ class Storage {
     }
   }
 
+  async deleteProjectAssetInstanceAssignment(id: number): Promise<boolean> {
+    try {
+      const result = await db
+        .delete(projectAssetInstanceAssignments)
+        .where(eq(projectAssetInstanceAssignments.id, id))
+        .returning();
+      return result.length > 0;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in deleteProjectAssetInstanceAssignment: ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "deleteProjectAssetInstanceAssignment",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
   async getUsers(): Promise<User[]> {
     try {
       return await db.select().from(users);
@@ -6011,6 +6031,93 @@ class Storage {
   async createProjectAssetAssignment(
     assignmentData: InsertProjectAssetAssignment
   ): Promise<ProjectAssetAssignment> {
+  }
+
+  async createProjectAssetAssignment(
+    assignmentData: InsertProjectAssetAssignment
+  ): Promise<ProjectAssetAssignment> {
+    try {
+      const result = await db
+        .insert(projectAssetAssignments)
+        .values(assignmentData)
+        .returning();
+
+      // After assigning, update asset status
+      if (result[0]) {
+        await this.updateAssetStatusBasedOnAssignments(result[0].assetId);
+      }
+      return result[0];
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          "Error in createProjectAssetAssignment: " +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "createProjectAssetAssignment",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async createProjectAssetInstanceAssignment(assignmentData: {
+    projectId: number;
+    instanceId: number;
+    startDate: Date;
+    endDate: Date | null;
+    notes?: string;
+    assignedBy?: number;
+  }): Promise<any> {
+  }
+
+  async getProjectAssetInstanceAssignments(projectId: number): Promise<any[]> {
+    try {
+      const assignments = await db
+        .select()
+        .from(projectAssetInstanceAssignments)
+        .where(eq(projectAssetInstanceAssignments.projectId, projectId))
+        .orderBy(desc(projectAssetInstanceAssignments.startDate));
+      return assignments;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in getProjectAssetInstanceAssignments: ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "getProjectAssetInstanceAssignments",
+        severity: "error",
+      });
+      throw error;
+    }
+    try {
+      const result = await db
+        .insert(projectAssetInstanceAssignments)
+        .values({
+          ...assignmentData,
+        })
+        .returning();
+
+      // After assignment, update the asset instance's status to 'in_use'
+      await this.updateAssetInventoryInstance(assignmentData.instanceId, {
+        status: "in_use",
+        assignedProjectId: assignmentData.projectId,
+      });
+
+      // Recalculate project cost
+      await this.recalculateProjectCost(assignmentData.projectId);
+
+      return result[0];
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in createProjectAssetInstanceAssignment: ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "createProjectAssetInstanceAssignment",
+        severity: "error",
+      });
+      throw error;
+    }
     try {
       const result = await db
         .insert(projectAssetAssignments)
@@ -9966,6 +10073,16 @@ export interface IStorage {
   createProjectAssetAssignment(
     assignmentData: InsertProjectAssetAssignment
   ): Promise<ProjectAssetAssignment>;
+  createProjectAssetInstanceAssignment(assignmentData: {
+    projectId: number;
+    instanceId: number;
+    startDate: Date;
+    endDate: Date | null;
+    notes?: string;
+    assignedBy?: number;
+  }): Promise<any>;
+  getProjectAssetInstanceAssignments(projectId: number): Promise<any[]>;
+  deleteProjectAssetInstanceAssignment(id: number): Promise<boolean>;
   updateProjectAssetAssignment(
     id: number,
     assignmentData: Partial<InsertProjectAssetAssignment>
