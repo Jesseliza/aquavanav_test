@@ -2753,57 +2753,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Asset assignment routes
-  app.post(
-    "/api/projects/:id/asset-assignments",
+  app.get(
+    "/api/projects/:id/asset-instance-assignments",
     requireAuth,
     async (req: any, res: any) => {
       try {
         const projectId = parseInt(req.params.id);
-        const { assetId, startDate, endDate, monthlyRate } = req.body;
-
-        if (!assetId || !startDate || !endDate || !monthlyRate) {
-          return res.status(400).json({
-            message:
-              "Asset ID, start date, end date, and monthly rate are required",
-          });
-        }
-
-        // Validate that the provided monthly rate matches the asset's rate
-        const asset = await storage.getAssetInventoryInstance(assetId);
-        if (!asset) {
-          return res.status(404).json({ message: "Asset instance not found" });
-        }
-
-        const assetMonthlyRate = asset.monthlyRentalAmount
-          ? parseFloat(asset.monthlyRentalAmount)
-          : 0;
-        if (Math.abs(monthlyRate - assetMonthlyRate) > 0.01) {
-          // Allow small floating point differences
-          return res.status(400).json({
-            message: `Monthly rate mismatch. Asset rate is ${assetMonthlyRate}, provided rate is ${monthlyRate}`,
-          });
-        }
-
-        // Calculate total cost based on monthly rate and duration (pro-rated)
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const totalCost = await storage.calculateAssetRentalCost(
-          start,
-          end,
-          parseFloat(monthlyRate)
+        const assignments = await storage.getProjectAssetInstanceAssignments(
+          projectId
         );
+        res.json(assignments);
+      } catch (error) {
+        console.error("Error fetching asset instance assignments:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch asset instance assignments" });
+      }
+    }
+  );
+  app.post(
+    "/api/projects/:id/asset-instance-assignments",
+    requireAuth,
+    async (req: any, res: any) => {
+      try {
+        const projectId = parseInt(req.params.id);
+        const { instanceId, startDate, endDate, notes } = req.body;
+
+        if (!instanceId || !startDate) {
+          return res
+            .status(400)
+            .json({ message: "Asset instance ID and start date are required" });
+        }
 
         const assignmentData = {
           projectId,
-          assetId: parseInt(assetId),
-          startDate: start,
-          endDate: end,
-          monthlyRate: monthlyRate.toString(),
-          totalCost: totalCost.toString(),
+          instanceId: parseInt(instanceId),
+          startDate: new Date(startDate),
+          endDate: endDate ? new Date(endDate) : null,
+          notes,
           assignedBy: req.session.userId,
         };
 
-        const assignment = await storage.createProjectAssetAssignment(
+        const assignment = await storage.createProjectAssetInstanceAssignment(
           assignmentData
         );
         res.status(201).json(assignment);
@@ -2814,61 +2805,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  app.put(
-    "/api/projects/:projectId/asset-assignments/:assignmentId",
+  app.delete(
+    "/api/projects/:projectId/asset-instance-assignments/:assignmentId",
     requireAuth,
     requireRole(["admin", "project_manager"]),
     async (req, res) => {
       try {
         const assignmentId = parseInt(req.params.assignmentId);
-        const { startDate, endDate, monthlyRate } = req.body;
-
-        if (!startDate || !endDate || !monthlyRate) {
-          return res.status(400).json({
-            message: "Start date, end date, and monthly rate are required",
-          });
-        }
-
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        if (end <= start) {
-          return res
-            .status(400)
-            .json({ message: "End date must be after start date" });
-        }
-
-        const totalCost = await storage.calculateAssetRentalCost(
-          start,
-          end,
-          parseFloat(monthlyRate)
+        const deleted = await storage.deleteProjectAssetInstanceAssignment(
+          assignmentId
         );
 
-        const assignmentData = {
-          startDate: start,
-          endDate: end,
-          monthlyRate: monthlyRate.toString(),
-          totalCost: totalCost.toString(),
-        };
-
-        const assignment = await storage.updateProjectAssetAssignment(
-          assignmentId,
-          assignmentData
-        );
-
-        if (!assignment) {
+        if (!deleted) {
           return res
             .status(404)
-            .json({ message: "Asset assignment not found" });
+            .json({ message: "Asset instance assignment not found" });
         }
 
-        res.json(assignment);
+        res.json({ message: "Asset instance assignment deleted successfully" });
       } catch (error) {
-        console.error("Error updating project asset assignment:", error);
-        res.status(500).json({ message: "Failed to update asset assignment" });
+        console.error(
+          "Error deleting project asset instance assignment:",
+          error
+        );
+        res
+          .status(500)
+          .json({ message: "Failed to delete asset instance assignment" });
       }
     }
   );
+
 
   app.delete(
     "/api/projects/:projectId/asset-assignments/:assignmentId",
