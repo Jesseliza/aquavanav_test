@@ -7891,10 +7891,39 @@ class Storage {
 
   async deleteProjectPhotoGroup(id: number): Promise<boolean> {
     try {
-      const result = await db
-        .delete(projectPhotoGroups)
-        .where(eq(projectPhotoGroups.id, id));
-      return result.rowCount > 0;
+      await db.transaction(async (tx) => {
+        // 1. Get all photos in the group
+        const photosToDelete = await tx
+          .select()
+          .from(projectPhotos)
+          .where(eq(projectPhotos.groupId, id));
+
+        // 2. Delete photo files from the filesystem
+        for (const photo of photosToDelete) {
+          if (photo.filePath) {
+            // filePath is stored as '/uploads/...', remove leading '/' for fs operations
+            const filePath = photo.filePath.substring(1);
+            try {
+              await fs.unlink(filePath);
+            } catch (fileError: any) {
+              // If file not found, log it but don't block the deletion process
+              if (fileError.code !== 'ENOENT') {
+                throw fileError; // Re-throw other file system errors
+              }
+              console.warn(`File not found, skipping deletion: ${filePath}`);
+            }
+          }
+        }
+
+        // 3. Delete photo records from the database
+        await tx.delete(projectPhotos).where(eq(projectPhotos.groupId, id));
+
+        // 4. Delete the photo group record
+        await tx
+          .delete(projectPhotoGroups)
+          .where(eq(projectPhotoGroups.id, id));
+      });
+      return true;
     } catch (error: any) {
       await this.createErrorLog({
         message:
