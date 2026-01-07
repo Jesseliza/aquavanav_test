@@ -7851,52 +7851,43 @@ class Storage {
     projectId: number
   ): Promise<ProjectConsumableWithItems[]> {
     try {
-      const consumables: Array<Omit<ProjectConsumableWithItems, "items">> =
-        await db
-          .select({
-            id: projectConsumables.id,
-            projectId: projectConsumables.projectId,
-            date: projectConsumables.date,
-            createdBy: projectConsumables.createdBy,
-            createdAt: projectConsumables.createdAt,
-            createdByName: users.username,
-          })
-          .from(projectConsumables)
-          .leftJoin(users, eq(projectConsumables.createdBy, users.id))
-          .where(eq(projectConsumables.projectId, projectId))
-          .orderBy(desc(projectConsumables.date));
+      const result = await db.execute(sql`
+        SELECT
+          pc.id,
+          pc.project_id AS "projectId",
+          pc.date,
+          pc.created_by AS "createdBy",
+          pc.created_at AS "createdAt",
+          u.username AS "createdByName",
+          COALESCE(
+            (
+              SELECT
+                json_agg(
+                  json_build_object(
+                    'id', pci.id,
+                    'consumableId', pci.consumable_id,
+                    'inventoryItemId', pci.inventory_item_id,
+                    'quantity', pci.quantity,
+                    'unitCost', pci.unit_cost,
+                    'createdAt', pci.created_at,
+                    'updatedAt', pci.updated_at,
+                    'itemName', ii.name,
+                    'itemUnit', ii.unit
+                  )
+                )
+              FROM project_consumable_items pci
+              JOIN inventory_items ii ON pci.inventory_item_id = ii.id
+              WHERE pci.consumable_id = pc.id
+            ),
+            '[]'::json
+          ) AS items
+        FROM project_consumables pc
+        LEFT JOIN users u ON pc.created_by = u.id
+        WHERE pc.project_id = ${projectId}
+        ORDER BY pc.date DESC
+      `);
 
-      // Get items for each consumable record
-      const consumablesWithItems: ProjectConsumableWithItems[] =
-        await Promise.all(
-          consumables.map(async (consumable) => {
-            const items: ProjectConsumableItemWithDetails[] = await db
-              .select({
-                id: projectConsumableItems.id,
-                consumableId: projectConsumableItems.consumableId, // Ensure all fields from ProjectConsumableItem are present
-                inventoryItemId: projectConsumableItems.inventoryItemId,
-                quantity: projectConsumableItems.quantity,
-                unitCost: projectConsumableItems.unitCost,
-                createdAt: projectConsumableItems.createdAt, // Ensure all fields from ProjectConsumableItem
-                updatedAt: projectConsumableItems.updatedAt, // Ensure all fields from ProjectConsumableItem
-                itemName: inventoryItems.name,
-                itemUnit: inventoryItems.unit,
-              })
-              .from(projectConsumableItems)
-              .leftJoin(
-                inventoryItems,
-                eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
-              )
-              .where(eq(projectConsumableItems.consumableId, consumable.id));
-
-            return {
-              ...consumable,
-              items,
-            };
-          })
-        );
-
-      return consumablesWithItems;
+      return result as ProjectConsumableWithItems[];
     } catch (error: any) {
       await this.createErrorLog({
         message:
