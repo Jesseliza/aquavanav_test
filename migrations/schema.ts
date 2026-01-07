@@ -419,6 +419,18 @@ export const invoicePayments = pgTable("invoice_payments", {
 		}),
 ]);
 
+export const purchaseRequests = pgTable("purchase_requests", {
+	id: serial("id").primaryKey(),
+	requestNumber: text("request_number").notNull(),
+	requestedBy: integer("requested_by").references(() => employees.id),
+	status: text("status").default('pending').notNull(),
+	urgency: text("urgency").default('normal').notNull(),
+	reason: text("reason"),
+	requestDate: timestamp("request_date").defaultNow().notNull(),
+	approvedBy: integer("approved_by").references(() => employees.id),
+	approvalDate: timestamp("approval_date"),
+});
+
 export const purchaseRequestItems = pgTable("purchase_request_items", {
 	id: serial().primaryKey().notNull(),
 	requestId: integer("request_id").references(() => purchaseRequests.id, { onDelete: "cascade" }).notNull(),
@@ -575,11 +587,8 @@ export const errorLogs = pgTable("error_logs", {
 		columns: [table.userId],
 		foreignColumns: [users.id],
 		name: "error_logs_user_id_users_id_fk"
-	}),
-	index("error_logs_timestamp_idx").on(table.timestamp),
-	index("error_logs_user_id_idx").on(table.userId),
-	index("error_logs_severity_idx").on(table.severity),
-});
+	})
+]);
 
 export const generalLedgerEntries = pgTable("general_ledger_entries", {
   id: serial().primaryKey().notNull(),
