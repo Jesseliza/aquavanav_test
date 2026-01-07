@@ -535,7 +535,7 @@ export default function ProjectDetail() {
   const plannedActivitiesTotalPages = plannedActivitiesData ? Math.ceil(plannedActivitiesData.total / itemsPerPage) : 0;
 
   const { data: assets } = useQuery<any[]>({
-    queryKey: ["/api/asset-inventory/instances"],
+    queryKey: ["asset-instances"],
     queryFn: async () => {
       const response = await fetch("/api/asset-inventory/instances", {
         credentials: "include",
