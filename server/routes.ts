@@ -2917,11 +2917,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res: any) => {
       try {
         const projectId = parseInt(req.params.id);
-        const { instanceId, startDate, endDate, notes } = req.body;
+        const { instanceId, startDate, endDate, notes, monthlyRate } = req.body;
 
-        if (!instanceId || !startDate) {
+        if (!instanceId || !startDate || !monthlyRate) {
           return res.status(400).json({
-            message: "Instance ID and start date are required",
+            message: "Instance ID, start date and monthly rate are required",
           });
         }
 
@@ -2940,17 +2940,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               message: "End date must be after start date",
             });
           }
-        }
-
-        // Get monthly rate from instance
-        const monthlyRate = instance.monthlyRentalAmount
-          ? parseFloat(instance.monthlyRentalAmount)
-          : 0;
-
-        if (monthlyRate === 0) {
-          return res.status(400).json({
-            message: "Asset instance must have a monthly rental rate configured",
-          });
         }
 
         // Create assignment data
@@ -2984,7 +2973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const assignmentId = parseInt(req.params.assignmentId);
-        const { startDate, endDate, status, notes } = req.body;
+        const { startDate, endDate, status, notes, monthlyRate } = req.body;
 
         const updateData: any = {};
 
@@ -2999,6 +2988,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (notes !== undefined) {
           updateData.notes = notes;
+        }
+        if (monthlyRate) {
+          updateData.monthlyRate = monthlyRate.toString();
         }
 
         // If status is being changed to completed, set returnedAt
