@@ -757,6 +757,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+router.put(
+  "/api/project-consumables/:consumableId",
+  async (req: Request, res: Response) => {
+    try {
+      const { consumableId } = req.params;
+      const { date } = req.body;
+      const result = await storage.updateProjectConsumable(
+        parseInt(consumableId),
+        date
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Failed to update project consumable",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.delete(
+  "/api/project-consumables/:consumableId",
+  async (req: Request, res: Response) => {
+    try {
+      const { consumableId } = req.params;
+      const result = await storage.deleteProjectConsumable(
+        parseInt(consumableId)
+      );
+      res.status(200).json({ success: result });
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Failed to delete project consumable",
+        error: error.message,
+      });
+    }
+  }
+);
+
   app.get(
     "/api/users/:id",
     requireAuth,

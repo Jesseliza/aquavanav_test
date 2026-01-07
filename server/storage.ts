@@ -3409,163 +3409,6 @@ class Storage {
     }
   }
 
-  // Project Consumables methods
-  // async getProjectConsumables(projectId: number): Promise<any[]> {
-  //   try {
-  //     const result = await db
-  //       .select({
-  //         id: projectConsumables.id,
-  //         projectId: projectConsumables.projectId,
-  //         date: projectConsumables.date,
-  //         recordedBy: projectConsumables.recordedBy,
-  //         recordedAt: projectConsumables.recordedAt,
-  //         items: sql<any>`
-  //           json_agg(
-  //             json_build_object(
-  //               'id', pci.id,
-  //               'inventoryItemId', pci.inventory_item_id,
-  //               'inventoryItemName', ii.name,
-  //               'quantity', pci.quantity,
-  //               'unitCost', pci.unit_cost,
-  //               'unit', ii.unit
-  //             )
-  //           )
-  //         `,
-  //       })
-  //       .from(projectConsumables)
-  //       .leftJoin(
-  //         projectConsumableItems,
-  //         eq(projectConsumables.id, projectConsumableItems.consumableId)
-  //       )
-  //       .leftJoin(
-  //         inventoryItems,
-  //         eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
-  //       )
-  //       .where(eq(projectConsumables.projectId, projectId))
-  //       .groupBy(
-  //         projectConsumables.id,
-  //         projectConsumables.projectId,
-  //         projectConsumables.date,
-  //         projectConsumables.recordedBy,
-  //         projectConsumables.recordedAt
-  //       )
-  //       .orderBy(desc(projectConsumables.date));
-
-  //     return result;
-  //   } catch (error) {
-  //     console.error("Error getting project consumables:", error);
-  //     throw error;
-  //   }
-  // }
-
-  // async createProjectConsumables(
-  //   projectId: number,
-  //   date: string,
-  //   items: Array<{ inventoryItemId: number; quantity: number }>,
-  //   userId?: number
-  // ): Promise<any> {
-  //   try {
-  //     // Validate project exists
-  //     const project = await this.getProject(projectId);
-  //     if (!project) {
-  //       throw new Error(`Project with ID ${projectId} not found`);
-  //     }
-
-  //     // Create the project consumables record
-  //     const consumableRecord = await db
-  //       .insert(projectConsumables)
-  //       .values({
-  //         projectId,
-  //         date: new Date(date),
-  //         recordedBy: userId || null,
-  //       })
-  //       .returning();
-
-  //     const consumableId = consumableRecord[0].id;
-
-  //     // Create inventory transactions and consumable items
-  //     const createdItems = [];
-  //     let totalCost = 0;
-
-  //     for (const item of items) {
-  //       // Get inventory item details
-  //       const inventoryItem = await this.getInventoryItem(item.inventoryItemId);
-  //       if (!inventoryItem) {
-  //         throw new Error(
-  //           `Inventory item with ID ${item.inventoryItemId} not found`
-  //         );
-  //       }
-
-  //       // Check if there's enough stock
-  //       if (inventoryItem.currentStock < item.quantity) {
-  //         throw new Error(
-  //           `Insufficient stock for ${inventoryItem.name}. Available: ${inventoryItem.currentStock}, Required: ${item.quantity}`
-  //         );
-  //       }
-
-  //       // Use average cost as unit cost
-  //       const unitCost = parseFloat(inventoryItem.avgCost || "0");
-  //       const itemTotalCost = unitCost * item.quantity;
-  //       totalCost += itemTotalCost;
-
-  //       // Create inventory transaction (outflow)
-  //       await db.insert(inventoryTransactions).values({
-  //         itemId: item.inventoryItemId,
-  //         type: "outflow",
-  //         quantity: item.quantity,
-  //         unitCost: unitCost.toString(),
-  //         remainingQuantity: 0, // For outflow, remaining is 0
-  //         projectId: projectId,
-  //         reference: `CONSUMABLES-${consumableId}`,
-  //         createdBy: userId || null,
-  //       });
-
-  //       // Update inventory stock
-  //       await this.updateInventoryItem(item.inventoryItemId, {
-  //         currentStock: inventoryItem.currentStock - item.quantity,
-  //       });
-
-  //       // Create project consumable item record
-  //       const consumableItem = await db
-  //         .insert(projectConsumableItems)
-  //         .values({
-  //           consumableId: consumableId,
-  //           inventoryItemId: item.inventoryItemId,
-  //           quantity: item.quantity,
-  //           unitCost: unitCost.toString(),
-  //         })
-  //         .returning();
-
-  //       createdItems.push({
-  //         ...consumableItem[0],
-  //         inventoryItemName: inventoryItem.name,
-  //         unit: inventoryItem.unit,
-  //       });
-  //     }
-
-  //     // Update project cost
-  //     if (totalCost > 0) {
-  //       const currentCost = parseFloat(project.actualCost || "0");
-  //       const newCost = currentCost + totalCost;
-  //       await this.updateProject(projectId, {
-  //         actualCost: newCost.toFixed(2),
-  //       });
-  //     }
-
-  //     return {
-  //       id: consumableId,
-  //       projectId,
-  //       date,
-  //       items: createdItems,
-  //       totalCost: totalCost.toFixed(2),
-  //       recordedBy: userId,
-  //     };
-  //   } catch (error) {
-  //     console.error("Error creating project consumables:", error);
-  //     throw error;
-  //   }
-  // }
-
   // Supplier-Inventory Item mapping methods
   async getSupplierInventoryItems(
     inventoryItemId?: number,
@@ -7866,35 +7709,47 @@ class Storage {
           .where(eq(projectConsumables.projectId, projectId))
           .orderBy(desc(projectConsumables.date));
 
-      // Get items for each consumable record
-      const consumablesWithItems: ProjectConsumableWithItems[] =
-        await Promise.all(
-          consumables.map(async (consumable) => {
-            const items: ProjectConsumableItemWithDetails[] = await db
-              .select({
-                id: projectConsumableItems.id,
-                consumableId: projectConsumableItems.consumableId, // Ensure all fields from ProjectConsumableItem are present
-                inventoryItemId: projectConsumableItems.inventoryItemId,
-                quantity: projectConsumableItems.quantity,
-                unitCost: projectConsumableItems.unitCost,
-                createdAt: projectConsumableItems.createdAt, // Ensure all fields from ProjectConsumableItem
-                updatedAt: projectConsumableItems.updatedAt, // Ensure all fields from ProjectConsumableItem
-                itemName: inventoryItems.name,
-                itemUnit: inventoryItems.unit,
-              })
-              .from(projectConsumableItems)
-              .leftJoin(
-                inventoryItems,
-                eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
-              )
-              .where(eq(projectConsumableItems.consumableId, consumable.id));
+      if (consumables.length === 0) {
+        return [];
+      }
 
-            return {
-              ...consumable,
-              items,
-            };
-          })
-        );
+      const consumableIds = consumables.map((c) => c.id);
+
+      const allItems: (ProjectConsumableItemWithDetails & {
+        consumableId: number;
+      })[] = await db
+        .select({
+          id: projectConsumableItems.id,
+          consumableId: projectConsumableItems.consumableId,
+          inventoryItemId: projectConsumableItems.inventoryItemId,
+          quantity: projectConsumableItems.quantity,
+          unitCost: projectConsumableItems.unitCost,
+          createdAt: projectConsumableItems.createdAt,
+          updatedAt: projectConsumableItems.updatedAt,
+          itemName: inventoryItems.name,
+          itemUnit: inventoryItems.unit,
+        })
+        .from(projectConsumableItems)
+        .leftJoin(
+          inventoryItems,
+          eq(projectConsumableItems.inventoryItemId, inventoryItems.id)
+        )
+        .where(inArray(projectConsumableItems.consumableId, consumableIds));
+
+      const itemsByConsumableId = allItems.reduce((acc, item) => {
+        if (!acc[item.consumableId]) {
+          acc[item.consumableId] = [];
+        }
+        acc[item.consumableId].push(item);
+        return acc;
+      }, {} as Record<number, ProjectConsumableItemWithDetails[]>);
+
+      const consumablesWithItems: ProjectConsumableWithItems[] = consumables.map(
+        (consumable) => ({
+          ...consumable,
+          items: itemsByConsumableId[consumable.id] || [],
+        })
+      );
 
       return consumablesWithItems;
     } catch (error: any) {
@@ -8008,6 +7863,86 @@ class Storage {
           (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createProjectConsumables",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async updateProjectConsumable(
+    consumableId: number,
+    date: string
+  ): Promise<ProjectConsumable | undefined> {
+    try {
+      const result = await db
+        .update(projectConsumables)
+        .set({ date: new Date(date) })
+        .where(eq(projectConsumables.id, consumableId))
+        .returning();
+      return result[0];
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in updateProjectConsumable (id: ${consumableId}): ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "updateProjectConsumable",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async deleteProjectConsumable(consumableId: number): Promise<boolean> {
+    try {
+      await db.transaction(async (tx) => {
+        const items = await tx
+          .select()
+          .from(projectConsumableItems)
+          .where(eq(projectConsumableItems.consumableId, consumableId));
+
+        for (const item of items) {
+          const inventoryItem = await this.getInventoryItem(item.inventoryItemId);
+          if (inventoryItem) {
+            const newStock = inventoryItem.currentStock + item.quantity;
+            await tx
+              .update(inventoryItems)
+              .set({ currentStock: newStock })
+              .where(eq(inventoryItems.id, item.inventoryItemId));
+
+            await tx.insert(inventoryTransactions).values({
+              itemId: item.inventoryItemId,
+              type: "inflow",
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+              remainingQuantity: 0,
+              reference: `Return from Consumable ID: ${consumableId}`,
+            });
+          }
+        }
+
+        await tx
+          .delete(projectConsumableItems)
+          .where(eq(projectConsumableItems.consumableId, consumableId));
+
+        const result = await tx
+          .delete(projectConsumables)
+          .where(eq(projectConsumables.id, consumableId))
+          .returning();
+
+        if (result.length > 0) {
+          await this.recalculateProjectCost(result[0].projectId);
+        }
+      });
+
+      return true;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in deleteProjectConsumable (id: ${consumableId}): ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "deleteProjectConsumable",
         severity: "error",
       });
       throw error;
@@ -10022,6 +9957,11 @@ export interface IStorage {
     items: CreateProjectConsumableItemInput[],
     userId?: number
   ): Promise<CreatedProjectConsumable>;
+  updateProjectConsumable(
+    consumableId: number,
+    date: string
+  ): Promise<ProjectConsumable | undefined>;
+  deleteProjectConsumable(consumableId: number): Promise<boolean>;
 
   // Payroll methods
   getPayrollEntries(
