@@ -681,6 +681,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.delete(
+    "/api/projects/:projectId/photo-groups/:groupId",
+    requireAuth,
+    requireRole(["admin", "project_manager"]),
+    async (req, res) => {
+      try {
+        const groupId = parseInt(req.params.groupId);
+        if (isNaN(groupId)) {
+          return res.status(400).json({ message: "Invalid group ID" });
+        }
+
+        const deleted = await storage.deleteProjectPhotoGroup(groupId);
+        if (!deleted) {
+          // This might happen if the group was already deleted, but we'll treat it
+          // as a success for the client to avoid unnecessary error messages.
+          console.warn(`Attempted to delete a photo group that might not exist: ID ${groupId}`);
+        }
+
+        res.status(200).json({ message: "Photo group deleted successfully" });
+      } catch (error) {
+        console.error("Delete photo group error:", error);
+        res.status(500).json({ message: "Failed to delete photo group" });
+      }
+    },
+  );
+
   app.post(
     "/api/projects/:id/photo-groups",
     requireAuth,

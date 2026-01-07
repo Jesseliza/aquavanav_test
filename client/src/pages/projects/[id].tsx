@@ -938,7 +938,7 @@ export default function ProjectDetail() {
   const deletePhotoGroupMutation = useMutation({
     mutationFn: async (groupId: number) => {
       const response = await apiRequest(`/api/projects/${id}/photo-groups/${groupId}`, { method: "DELETE" });
-      return response.json();
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "photo-groups"] });
@@ -3062,11 +3062,12 @@ export default function ProjectDetail() {
                           {canEdit && (
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               onClick={() => handleDeletePhotoGroup(group.id)}
                               className="text-red-500 hover:text-red-700"
+                              aria-label="Delete photo group"
                             >
-                              Delete Group
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
