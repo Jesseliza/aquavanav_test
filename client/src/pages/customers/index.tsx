@@ -64,6 +64,14 @@ const createCustomerSchema = z.object({
   creditLimit: z.string().optional(),
   isVatApplicable: z.boolean().default(true),
   notes: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.vatRegistrationStatus === "registered" && (!data.vatNumber || data.vatNumber.trim() === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["vatNumber"],
+      message: "VAT Number is required when registered",
+    });
+  }
 });
 
 type Customer = z.infer<typeof customerSchema>;
@@ -511,12 +519,13 @@ export default function CustomersIndex() {
                     </div>
                     {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
-                        <Label htmlFor="vatNumber">VAT Number</Label>
+                        <Label htmlFor="vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span className="text-red-500">*</span>}</Label>
                         <Input
                           id="vatNumber"
                           value={formData.vatNumber}
                           onChange={(e) => handleChange("vatNumber", e.target.value)}
                           placeholder="100123456700003"
+                          required={formData.vatRegistrationStatus === "registered"}
                         />
                       </div>
                     )}
@@ -740,12 +749,13 @@ export default function CustomersIndex() {
                   </div>
                     {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
-                        <Label htmlFor="edit-vatNumber">VAT Number</Label>
+                        <Label htmlFor="edit-vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span className="text-red-500">*</span>}</Label>
                         <Input
                           id="edit-vatNumber"
                           value={formData.vatNumber}
                           onChange={(e) => handleChange("vatNumber", e.target.value)}
                           placeholder="100123456700003"
+                          required={formData.vatRegistrationStatus === "registered"}
                         />
                       </div>
                     )}
