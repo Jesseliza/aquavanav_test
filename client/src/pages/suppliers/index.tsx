@@ -33,7 +33,7 @@ const supplierSchema = z.object({
   // UAE VAT fields
   vatNumber: z.string().nullable(),
   vatRegistrationStatus: z.string().default("not_registered"),
-  vatTreatment: z.string().default("standard"),
+  vatTreatment: z.string().optional(),
   supplierType: z.string().default("business"),
   taxCategory: z.string().default("standard"),
   paymentTerms: z.string().nullable(),
@@ -330,7 +330,14 @@ export default function SuppliersIndex() {
   };
 
   const handleChange = (field: keyof CreateSupplierData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: value };
+      if (field === "vatRegistrationStatus" && value === "not_registered") {
+        newFormData.vatNumber = "";
+        newFormData.vatTreatment = "";
+      }
+      return newFormData;
+    });
   };
 
   const handleManageDocuments = (supplier: Supplier) => {
@@ -464,15 +471,6 @@ export default function SuppliersIndex() {
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="vatNumber">VAT Number</Label>
-                      <Input
-                        id="vatNumber"
-                        value={formData.vatNumber}
-                        onChange={(e) => handleChange("vatNumber", e.target.value)}
-                        placeholder="100123456700003"
-                      />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="vatRegistrationStatus">VAT Registration Status</Label>
                       <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
                         <SelectTrigger>
@@ -486,9 +484,21 @@ export default function SuppliersIndex() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {formData.vatRegistrationStatus !== "not_registered" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="vatNumber">VAT Number</Label>
+                      <Input
+                        id="vatNumber"
+                        value={formData.vatNumber}
+                        onChange={(e) => handleChange("vatNumber", e.target.value)}
+                        placeholder="100123456700003"
+                      />
+                    </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {formData.vatRegistrationStatus !== "not_registered" && (
                     <div className="space-y-2">
                       <Label htmlFor="vatTreatment">VAT Treatment</Label>
                       <Select value={formData.vatTreatment} onValueChange={(value) => handleChange("vatTreatment", value)}>
@@ -503,6 +513,7 @@ export default function SuppliersIndex() {
                         </SelectContent>
                       </Select>
                     </div>
+                  )}
                     <div className="space-y-2">
                       <Label htmlFor="supplierType">Supplier Type</Label>
                       <Select value={formData.supplierType} onValueChange={(value) => handleChange("supplierType", value)}>
