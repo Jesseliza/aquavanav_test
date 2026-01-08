@@ -3844,7 +3844,7 @@ export default function ProjectDetail() {
                                 <Select
                                   value={newConsumableItem.inventoryItemId?.toString() || ""}
                                   onValueChange={(value) => {
-                                    const itemId = Number(value);
+                                    const itemId = parseInt(value);
                                     const item = inventoryItems?.find(item => item.id === itemId);
                                     setNewConsumableItem(prev => ({
                                       ...prev,
@@ -3857,7 +3857,7 @@ export default function ProjectDetail() {
                                     <SelectValue placeholder="Select item" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {inventoryItems?.filter(item => item.category === 'consumables').map((item) => (
+                                    {inventoryItems?.filter(item => item.category === 'Consumables').map((item) => (
                                       <SelectItem key={item.id} value={item.id.toString()}>
                                         {item.name} (Stock: {item.currentStock} {item.unit})
                                       </SelectItem>

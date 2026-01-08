@@ -7857,12 +7857,12 @@ class Storage {
             id: projectConsumables.id,
             projectId: projectConsumables.projectId,
             date: projectConsumables.date,
-            createdBy: projectConsumables.createdBy,
-            createdAt: projectConsumables.createdAt,
+            createdBy: projectConsumables.recordedBy,
+            createdAt: projectConsumables.recordedAt,
             createdByName: users.username,
           })
           .from(projectConsumables)
-          .leftJoin(users, eq(projectConsumables.createdBy, users.id))
+          .leftJoin(users, eq(projectConsumables.recordedBy, users.id))
           .where(eq(projectConsumables.projectId, projectId))
           .orderBy(desc(projectConsumables.date));
 
@@ -7877,8 +7877,6 @@ class Storage {
                 inventoryItemId: projectConsumableItems.inventoryItemId,
                 quantity: projectConsumableItems.quantity,
                 unitCost: projectConsumableItems.unitCost,
-                createdAt: projectConsumableItems.createdAt, // Ensure all fields from ProjectConsumableItem
-                updatedAt: projectConsumableItems.updatedAt, // Ensure all fields from ProjectConsumableItem
                 itemName: inventoryItems.name,
                 itemUnit: inventoryItems.unit,
               })
@@ -7930,7 +7928,7 @@ class Storage {
         .values({
           projectId: projectId,
           date: new Date(date),
-          createdBy: userId || null,
+          recordedBy: userId || null,
         })
         .returning();
 
