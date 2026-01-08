@@ -56,7 +56,7 @@ const createCustomerSchema = z.object({
   // UAE VAT Compliance Fields
   vatNumber: z.string().optional(),
   vatRegistrationStatus: z.enum(["not_registered", "registered", "exempt", "suspended"]).default("not_registered"),
-  vatTreatment: z.enum(["standard", "zero_rated", "exempt", "out_of_scope"]).default("standard"),
+  vatTreatment: z.string().optional(),
   customerType: z.enum(["business", "individual", "government", "non_profit"]).default("business"),
   taxCategory: z.enum(["standard", "export", "gcc_customer", "free_zone"]).default("standard"),
   paymentTerms: z.enum(["30_days", "15_days", "7_days", "immediate", "net_30", "net_60", "net_90"]).default("30_days"),
@@ -306,7 +306,14 @@ export default function CustomersIndex() {
   };
 
   const handleChange = (field: keyof CreateCustomerData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: value };
+      if (field === "vatRegistrationStatus" && value === "not_registered") {
+        newFormData.vatNumber = "";
+        newFormData.vatTreatment = "";
+      }
+      return newFormData;
+    });
   };
 
   const handleEditCustomer = (customer: Customer) => {
@@ -478,15 +485,6 @@ export default function CustomersIndex() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="vatNumber">VAT Number</Label>
-                      <Input
-                        id="vatNumber"
-                        value={formData.vatNumber}
-                        onChange={(e) => handleChange("vatNumber", e.target.value)}
-                        placeholder="100123456700003"
-                      />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="vatRegistrationStatus">VAT Registration Status</Label>
                       <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
                         <SelectTrigger>
@@ -500,9 +498,21 @@ export default function CustomersIndex() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {formData.vatRegistrationStatus !== "not_registered" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="vatNumber">VAT Number</Label>
+                      <Input
+                        id="vatNumber"
+                        value={formData.vatNumber}
+                        onChange={(e) => handleChange("vatNumber", e.target.value)}
+                        placeholder="100123456700003"
+                      />
+                    </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {formData.vatRegistrationStatus !== "not_registered" && (
                     <div className="space-y-2">
                       <Label htmlFor="vatTreatment">VAT Treatment</Label>
                       <Select value={formData.vatTreatment} onValueChange={(value) => handleChange("vatTreatment", value)}>
@@ -517,6 +527,7 @@ export default function CustomersIndex() {
                         </SelectContent>
                       </Select>
                     </div>
+                  )}
                     <div className="space-y-2">
                       <Label htmlFor="customerType">Customer Type</Label>
                       <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
@@ -706,15 +717,6 @@ export default function CustomersIndex() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-vatNumber">VAT Number</Label>
-                    <Input
-                      id="edit-vatNumber"
-                      value={formData.vatNumber}
-                      onChange={(e) => handleChange("vatNumber", e.target.value)}
-                      placeholder="100123456700003"
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="edit-vatRegistrationStatus">VAT Registration Status</Label>
                     <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
                       <SelectTrigger>
@@ -728,9 +730,21 @@ export default function CustomersIndex() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {formData.vatRegistrationStatus !== "not_registered" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-vatNumber">VAT Number</Label>
+                    <Input
+                      id="edit-vatNumber"
+                      value={formData.vatNumber}
+                      onChange={(e) => handleChange("vatNumber", e.target.value)}
+                      placeholder="100123456700003"
+                    />
+                  </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {formData.vatRegistrationStatus !== "not_registered" && (
                   <div className="space-y-2">
                     <Label htmlFor="edit-vatTreatment">VAT Treatment</Label>
                     <Select value={formData.vatTreatment} onValueChange={(value) => handleChange("vatTreatment", value)}>
@@ -745,6 +759,7 @@ export default function CustomersIndex() {
                       </SelectContent>
                     </Select>
                   </div>
+                )}
                   <div className="space-y-2">
                     <Label htmlFor="edit-customerType">Customer Type</Label>
                     <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
