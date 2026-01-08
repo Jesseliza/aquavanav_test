@@ -3844,7 +3844,7 @@ export default function ProjectDetail() {
                                 <Select
                                   value={newConsumableItem.inventoryItemId?.toString() || ""}
                                   onValueChange={(value) => {
-                                    const itemId = parseInt(value);
+                                    const itemId = Number(value);
                                     const item = inventoryItems?.find(item => item.id === itemId);
                                     setNewConsumableItem(prev => ({
                                       ...prev,
