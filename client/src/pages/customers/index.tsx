@@ -727,20 +727,19 @@ export default function CustomersIndex() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-vatRegistrationStatus">VAT Registration Status</Label>
-                      <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_registered">Not Registered</SelectItem>
-                          <SelectItem value="registered">Registered</SelectItem>
-                          <SelectItem value="exempt">Exempt</SelectItem>
-                          <SelectItem value="suspended">Suspended</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Label htmlFor="edit-vatRegistrationStatus">VAT Registration Status</Label>
+                    <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_registered">Not Registered</SelectItem>
+                        <SelectItem value="registered">Registered</SelectItem>
+                        <SelectItem value="exempt">Exempt</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                     {formData.vatRegistrationStatus !== "not_registered" ? (
                       <div className="space-y-2">
                         <Label htmlFor="edit-vatNumber">VAT Number</Label>
@@ -752,9 +751,9 @@ export default function CustomersIndex() {
                         />
                       </div>
                     ) : <div />}
-                  </div>
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {formData.vatRegistrationStatus !== "not_registered" ? (
                       <div className="space-y-2">
                         <Label htmlFor="edit-vatTreatment">VAT Treatment</Label>
@@ -771,20 +770,20 @@ export default function CustomersIndex() {
                         </Select>
                       </div>
                     ) : <div />}
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-customerType">Customer Type</Label>
-                      <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="business">Business</SelectItem>
-                          <SelectItem value="individual">Individual</SelectItem>
-                          <SelectItem value="government">Government</SelectItem>
-                          <SelectItem value="non_profit">Non-Profit</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-customerType">Customer Type</Label>
+                    <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="business">Business</SelectItem>
+                        <SelectItem value="individual">Individual</SelectItem>
+                        <SelectItem value="government">Government</SelectItem>
+                        <SelectItem value="non_profit">Non-Profit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

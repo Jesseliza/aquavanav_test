@@ -56,7 +56,7 @@ const createSupplierSchema = z.object({
   // UAE VAT fields
   vatNumber: z.string().optional(),
   vatRegistrationStatus: z.string().default("not_registered"),
-  vatTreatment: z.string().optional(),
+  vatTreatment: z.string().default("standard"),
   supplierType: z.string().default("business"),
   taxCategory: z.string().default("standard"),
   paymentTerms: z.string().default("30_days"),
