@@ -505,7 +505,7 @@ export default function SuppliersIndex() {
                     </div>
                     {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
-                        <Label htmlFor="vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span className="text-red-500">*</span>}</Label>
+                        <Label htmlFor="vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span>*</span>}</Label>
                         <Input
                           id="vatNumber"
                           value={formData.vatNumber}

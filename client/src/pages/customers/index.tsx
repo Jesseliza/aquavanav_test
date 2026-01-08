@@ -519,7 +519,7 @@ export default function CustomersIndex() {
                     </div>
                     {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
-                        <Label htmlFor="vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span className="text-red-500">*</span>}</Label>
+                        <Label htmlFor="vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span>*</span>}</Label>
                         <Input
                           id="vatNumber"
                           value={formData.vatNumber}
@@ -749,7 +749,7 @@ export default function CustomersIndex() {
                   </div>
                     {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
-                        <Label htmlFor="edit-vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span className="text-red-500">*</span>}</Label>
+                        <Label htmlFor="edit-vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span>*</span>}</Label>
                         <Input
                           id="edit-vatNumber"
                           value={formData.vatNumber}
