@@ -99,13 +99,13 @@ export default function CustomersIndex() {
     // UAE VAT Compliance Fields
     vatNumber: "",
     vatRegistrationStatus: "not_registered",
-    vatTreatment: "standard",
+    vatTreatment: null,
     customerType: "business",
     taxCategory: "standard",
     paymentTerms: "30_days",
     currency: "AED",
     creditLimit: "",
-    isVatApplicable: true,
+    isVatApplicable: false,
     notes: "",
   });
 
@@ -289,13 +289,18 @@ export default function CustomersIndex() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
+    const payload: Omit<CreateCustomerData, "vatTreatment"> & { vatTreatment?: string | null } = {
       ...formData,
       creditLimit:
         formData.creditLimit && Number(formData.creditLimit) > 0
           ? formData.creditLimit
           : "0.00",
     };
+
+    if (payload.vatTreatment === null) {
+      delete payload.vatTreatment;
+    }
+
     startTransition(() => {
       if (editingCustomer) {
         updateCustomerMutation.mutate({ ...payload, id: editingCustomer.id });

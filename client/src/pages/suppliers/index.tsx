@@ -97,13 +97,13 @@ export default function SuppliersIndex() {
     // UAE VAT defaults
     vatNumber: "",
     vatRegistrationStatus: "not_registered",
-    vatTreatment: "standard",
+    vatTreatment: null,
     supplierType: "business",
     taxCategory: "standard",
     paymentTerms: "30_days",
     currency: "AED",
     creditLimit: "",
-    isVatApplicable: true,
+    isVatApplicable: false,
     notes: "",
   });
 
@@ -316,13 +316,18 @@ export default function SuppliersIndex() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-     const payload = {
+     const payload: Omit<CreateSupplierData, "vatTreatment"> & { vatTreatment?: string | null } = {
       ...formData,
       creditLimit:
         formData.creditLimit && Number(formData.creditLimit) > 0
           ? formData.creditLimit
           : "0.00",
     };
+
+    if (payload.vatTreatment === null) {
+      delete payload.vatTreatment;
+    }
+
     if (editingSupplier) {
       updateSupplierMutation.mutate({ id: editingSupplier.id, data: payload });
     } else {
