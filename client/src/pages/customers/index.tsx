@@ -56,7 +56,7 @@ const createCustomerSchema = z.object({
   // UAE VAT Compliance Fields
   vatNumber: z.string().optional(),
   vatRegistrationStatus: z.enum(["not_registered", "registered", "exempt", "suspended"]).default("not_registered"),
-  vatTreatment: z.string().nullable().optional(),
+  vatTreatment: z.enum(["standard", "zero_rated", "exempt", "out_of_scope"]).optional(),
   customerType: z.enum(["business", "individual", "government", "non_profit"]).default("business"),
   taxCategory: z.enum(["standard", "export", "gcc_customer", "free_zone"]).default("standard"),
   paymentTerms: z.enum(["30_days", "15_days", "7_days", "immediate", "net_30", "net_60", "net_90"]).default("30_days"),
@@ -99,7 +99,7 @@ export default function CustomersIndex() {
     // UAE VAT Compliance Fields
     vatNumber: "",
     vatRegistrationStatus: "not_registered",
-    vatTreatment: null,
+    vatTreatment: "zero_rated",
     customerType: "business",
     taxCategory: "standard",
     paymentTerms: "30_days",
@@ -276,31 +276,26 @@ export default function CustomersIndex() {
       // UAE VAT Compliance Fields
       vatNumber: "",
       vatRegistrationStatus: "not_registered",
-      vatTreatment: "standard",
+      vatTreatment: "zero_rated",
       customerType: "business",
       taxCategory: "standard",
       paymentTerms: "30_days",
       currency: "AED",
       creditLimit: "",
-      isVatApplicable: true,
+      isVatApplicable: false,
       notes: "",
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: Omit<CreateCustomerData, "vatTreatment"> & { vatTreatment?: string | null } = {
+    const payload = {
       ...formData,
       creditLimit:
         formData.creditLimit && Number(formData.creditLimit) > 0
           ? formData.creditLimit
           : "0.00",
     };
-
-    if (payload.vatTreatment === null) {
-      delete payload.vatTreatment;
-    }
-
     startTransition(() => {
       if (editingCustomer) {
         updateCustomerMutation.mutate({ ...payload, id: editingCustomer.id });
@@ -317,13 +312,13 @@ export default function CustomersIndex() {
       if (field === "vatRegistrationStatus") {
         if (value === "not_registered") {
           newFormData.vatNumber = "";
-          newFormData.vatTreatment = null;
+          newFormData.vatTreatment = "zero_rated";
           newFormData.isVatApplicable = false;
-        } else {
+        } else if (prev.vatRegistrationStatus === "not_registered") {
           newFormData.isVatApplicable = true;
-          if (!newFormData.vatTreatment) {
-            newFormData.vatTreatment = "standard";
-          }
+          newFormData.vatTreatment = "standard";
+        } else {
+            newFormData.isVatApplicable = true;
         }
       }
 
@@ -345,7 +340,7 @@ export default function CustomersIndex() {
       // UAE VAT Compliance Fields
       vatNumber: isNotRegistered ? "" : customer.vatNumber || "",
       vatRegistrationStatus: customer.vatRegistrationStatus || "not_registered",
-      vatTreatment: isNotRegistered ? null : customer.vatTreatment || "standard",
+      vatTreatment: isNotRegistered ? "zero_rated" : customer.vatTreatment || "standard",
       customerType: customer.customerType || "business",
       taxCategory: customer.taxCategory || "standard",
       paymentTerms: customer.paymentTerms || "30_days",

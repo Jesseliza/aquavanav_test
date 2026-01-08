@@ -33,7 +33,7 @@ const supplierSchema = z.object({
   // UAE VAT fields
   vatNumber: z.string().nullable(),
   vatRegistrationStatus: z.string().default("not_registered"),
-  vatTreatment: z.string().optional(),
+  vatTreatment: z.string().default("standard"),
   supplierType: z.string().default("business"),
   taxCategory: z.string().default("standard"),
   paymentTerms: z.string().nullable(),
@@ -56,7 +56,7 @@ const createSupplierSchema = z.object({
   // UAE VAT fields
   vatNumber: z.string().optional(),
   vatRegistrationStatus: z.string().default("not_registered"),
-  vatTreatment: z.string().nullable().optional(),
+  vatTreatment: z.enum(["standard", "zero_rated", "exempt", "out_of_scope"]).optional(),
   supplierType: z.string().default("business"),
   taxCategory: z.string().default("standard"),
   paymentTerms: z.string().default("30_days"),
@@ -97,7 +97,7 @@ export default function SuppliersIndex() {
     // UAE VAT defaults
     vatNumber: "",
     vatRegistrationStatus: "not_registered",
-    vatTreatment: null,
+    vatTreatment: "zero_rated",
     supplierType: "business",
     taxCategory: "standard",
     paymentTerms: "30_days",
@@ -275,13 +275,13 @@ export default function SuppliersIndex() {
       // UAE VAT defaults
       vatNumber: "",
       vatRegistrationStatus: "not_registered",
-      vatTreatment: "standard",
+      vatTreatment: "zero_rated",
       supplierType: "business",
       taxCategory: "standard",
       paymentTerms: "30_days",
       currency: "AED",
       creditLimit: "",
-      isVatApplicable: true,
+      isVatApplicable: false,
       notes: "",
     });
   };
@@ -300,7 +300,7 @@ export default function SuppliersIndex() {
         // UAE VAT fields
         vatNumber: isNotRegistered ? "" : editingSupplier.vatNumber || "",
         vatRegistrationStatus: editingSupplier.vatRegistrationStatus || "not_registered",
-        vatTreatment: isNotRegistered ? null : editingSupplier.vatTreatment || "standard",
+        vatTreatment: isNotRegistered ? "zero_rated" : editingSupplier.vatTreatment || "standard",
         supplierType: editingSupplier.supplierType || "business",
         taxCategory: editingSupplier.taxCategory || "standard",
         paymentTerms: editingSupplier.paymentTerms || "30_days",
@@ -316,18 +316,13 @@ export default function SuppliersIndex() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-     const payload: Omit<CreateSupplierData, "vatTreatment"> & { vatTreatment?: string | null } = {
+     const payload = {
       ...formData,
       creditLimit:
         formData.creditLimit && Number(formData.creditLimit) > 0
           ? formData.creditLimit
           : "0.00",
     };
-
-    if (payload.vatTreatment === null) {
-      delete payload.vatTreatment;
-    }
-
     if (editingSupplier) {
       updateSupplierMutation.mutate({ id: editingSupplier.id, data: payload });
     } else {
@@ -342,13 +337,13 @@ export default function SuppliersIndex() {
       if (field === "vatRegistrationStatus") {
         if (value === "not_registered") {
           newFormData.vatNumber = "";
-          newFormData.vatTreatment = null;
+          newFormData.vatTreatment = "zero_rated";
           newFormData.isVatApplicable = false;
-        } else {
+        } else if (prev.vatRegistrationStatus === "not_registered") {
           newFormData.isVatApplicable = true;
-          if (!newFormData.vatTreatment) {
-            newFormData.vatTreatment = "standard";
-          }
+          newFormData.vatTreatment = "standard";
+        } else {
+            newFormData.isVatApplicable = true;
         }
       }
 
