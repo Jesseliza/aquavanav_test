@@ -56,7 +56,7 @@ const createCustomerSchema = z.object({
   // UAE VAT Compliance Fields
   vatNumber: z.string().optional(),
   vatRegistrationStatus: z.enum(["not_registered", "registered", "exempt", "suspended"]).default("not_registered"),
-  vatTreatment: z.enum(["standard", "zero_rated", "exempt", "out_of_scope"]).default("standard"),
+  vatTreatment: z.string().optional(),
   customerType: z.enum(["business", "individual", "government", "non_profit"]).default("business"),
   taxCategory: z.enum(["standard", "export", "gcc_customer", "free_zone"]).default("standard"),
   paymentTerms: z.enum(["30_days", "15_days", "7_days", "immediate", "net_30", "net_60", "net_90"]).default("30_days"),
@@ -306,11 +306,29 @@ export default function CustomersIndex() {
   };
 
   const handleChange = (field: keyof CreateCustomerData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: value };
+
+      if (field === "vatRegistrationStatus") {
+        if (value === "not_registered") {
+          newFormData.vatNumber = "";
+          newFormData.vatTreatment = "";
+          newFormData.isVatApplicable = false;
+        } else {
+          newFormData.isVatApplicable = true;
+          if (!newFormData.vatTreatment) {
+            newFormData.vatTreatment = "standard";
+          }
+        }
+      }
+
+      return newFormData;
+    });
   };
 
   const handleEditCustomer = (customer: Customer) => {
     setEditingCustomer(customer);
+    const isNotRegistered = (customer.vatRegistrationStatus || "not_registered") === "not_registered";
     setFormData({
       name: customer.name,
       contactPerson: customer.contactPerson || "",
@@ -320,9 +338,9 @@ export default function CustomersIndex() {
       taxId: customer.taxId || "",
       userId: customer.userId,
       // UAE VAT Compliance Fields
-      vatNumber: customer.vatNumber || "",
+      vatNumber: isNotRegistered ? "" : customer.vatNumber || "",
       vatRegistrationStatus: customer.vatRegistrationStatus || "not_registered",
-      vatTreatment: customer.vatTreatment || "standard",
+      vatTreatment: isNotRegistered ? "" : customer.vatTreatment || "standard",
       customerType: customer.customerType || "business",
       taxCategory: customer.taxCategory || "standard",
       paymentTerms: customer.paymentTerms || "30_days",
@@ -330,7 +348,7 @@ export default function CustomersIndex() {
       creditLimit: customer.creditLimit && Number(customer.creditLimit) > 0
         ? customer.creditLimit
         : "",
-      isVatApplicable: customer.isVatApplicable ?? true,
+      isVatApplicable: !isNotRegistered,
       notes: customer.notes || "",
     });
     setIsEditDialogOpen(true);
@@ -478,15 +496,6 @@ export default function CustomersIndex() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="vatNumber">VAT Number</Label>
-                      <Input
-                        id="vatNumber"
-                        value={formData.vatNumber}
-                        onChange={(e) => handleChange("vatNumber", e.target.value)}
-                        placeholder="100123456700003"
-                      />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="vatRegistrationStatus">VAT Registration Status</Label>
                       <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
                         <SelectTrigger>
@@ -500,23 +509,36 @@ export default function CustomersIndex() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {formData.vatRegistrationStatus !== "not_registered" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="vatNumber">VAT Number</Label>
+                        <Input
+                          id="vatNumber"
+                          value={formData.vatNumber}
+                          onChange={(e) => handleChange("vatNumber", e.target.value)}
+                          placeholder="100123456700003"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="vatTreatment">VAT Treatment</Label>
-                      <Select value={formData.vatTreatment} onValueChange={(value) => handleChange("vatTreatment", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select treatment" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="standard">Standard (5%)</SelectItem>
-                          <SelectItem value="zero_rated">Zero Rated (0%)</SelectItem>
-                          <SelectItem value="exempt">Exempt</SelectItem>
-                          <SelectItem value="out_of_scope">Out of Scope</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {formData.vatRegistrationStatus !== "not_registered" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="vatTreatment">VAT Treatment</Label>
+                        <Select value={formData.vatTreatment || "standard"} onValueChange={(value) => handleChange("vatTreatment", value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select treatment" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="standard">Standard (5%)</SelectItem>
+                            <SelectItem value="zero_rated">Zero Rated (0%)</SelectItem>
+                            <SelectItem value="exempt">Exempt</SelectItem>
+                            <SelectItem value="out_of_scope">Out of Scope</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="customerType">Customer Type</Label>
                       <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
@@ -706,15 +728,6 @@ export default function CustomersIndex() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-vatNumber">VAT Number</Label>
-                    <Input
-                      id="edit-vatNumber"
-                      value={formData.vatNumber}
-                      onChange={(e) => handleChange("vatNumber", e.target.value)}
-                      placeholder="100123456700003"
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="edit-vatRegistrationStatus">VAT Registration Status</Label>
                     <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
                       <SelectTrigger>
@@ -728,23 +741,36 @@ export default function CustomersIndex() {
                       </SelectContent>
                     </Select>
                   </div>
+                    {formData.vatRegistrationStatus !== "not_registered" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-vatNumber">VAT Number</Label>
+                        <Input
+                          id="edit-vatNumber"
+                          value={formData.vatNumber}
+                          onChange={(e) => handleChange("vatNumber", e.target.value)}
+                          placeholder="100123456700003"
+                        />
+                      </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-vatTreatment">VAT Treatment</Label>
-                    <Select value={formData.vatTreatment} onValueChange={(value) => handleChange("vatTreatment", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select treatment" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">Standard (5%)</SelectItem>
-                        <SelectItem value="zero_rated">Zero Rated (0%)</SelectItem>
-                        <SelectItem value="exempt">Exempt</SelectItem>
-                        <SelectItem value="out_of_scope">Out of Scope</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {formData.vatRegistrationStatus !== "not_registered" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-vatTreatment">VAT Treatment</Label>
+                        <Select value={formData.vatTreatment || "standard"} onValueChange={(value) => handleChange("vatTreatment", value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select treatment" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="standard">Standard (5%)</SelectItem>
+                            <SelectItem value="zero_rated">Zero Rated (0%)</SelectItem>
+                            <SelectItem value="exempt">Exempt</SelectItem>
+                            <SelectItem value="out_of_scope">Out of Scope</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   <div className="space-y-2">
                     <Label htmlFor="edit-customerType">Customer Type</Label>
                     <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>

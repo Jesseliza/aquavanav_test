@@ -288,6 +288,7 @@ export default function SuppliersIndex() {
 
   useEffect(() => {
     if (editingSupplier) {
+      const isNotRegistered = (editingSupplier.vatRegistrationStatus || "not_registered") === "not_registered";
       setFormData({
         name: editingSupplier.name,
         contactPerson: editingSupplier.contactPerson || "",
@@ -297,9 +298,9 @@ export default function SuppliersIndex() {
         taxId: editingSupplier.taxId || "",
         category: editingSupplier.category || "",
         // UAE VAT fields
-        vatNumber: editingSupplier.vatNumber || "",
+        vatNumber: isNotRegistered ? "" : editingSupplier.vatNumber || "",
         vatRegistrationStatus: editingSupplier.vatRegistrationStatus || "not_registered",
-        vatTreatment: editingSupplier.vatTreatment || "standard",
+        vatTreatment: isNotRegistered ? "" : editingSupplier.vatTreatment || "standard",
         supplierType: editingSupplier.supplierType || "business",
         taxCategory: editingSupplier.taxCategory || "standard",
         paymentTerms: editingSupplier.paymentTerms || "30_days",
@@ -307,7 +308,7 @@ export default function SuppliersIndex() {
         creditLimit: editingSupplier.creditLimit && Number(editingSupplier.creditLimit) > 0
         ? editingSupplier.creditLimit
         : "",
-        isVatApplicable: editingSupplier.isVatApplicable ?? true,
+        isVatApplicable: !isNotRegistered,
         notes: editingSupplier.notes || "",
       });
     }
@@ -494,7 +495,7 @@ export default function SuppliersIndex() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {formData.vatRegistrationStatus !== "not_registered" ? (
+                    {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
                         <Label htmlFor="vatNumber">VAT Number</Label>
                         <Input
@@ -504,11 +505,11 @@ export default function SuppliersIndex() {
                           placeholder="100123456700003"
                         />
                       </div>
-                    ) : <div />}
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {formData.vatRegistrationStatus !== "not_registered" ? (
+                    {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
                         <Label htmlFor="vatTreatment">VAT Treatment</Label>
                         <Select value={formData.vatTreatment || "standard"} onValueChange={(value) => handleChange("vatTreatment", value)}>
@@ -523,7 +524,7 @@ export default function SuppliersIndex() {
                           </SelectContent>
                         </Select>
                       </div>
-                    ) : <div />}
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="supplierType">Supplier Type</Label>
                       <Select value={formData.supplierType} onValueChange={(value) => handleChange("supplierType", value)}>
