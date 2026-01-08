@@ -56,7 +56,7 @@ const createCustomerSchema = z.object({
   // UAE VAT Compliance Fields
   vatNumber: z.string().optional(),
   vatRegistrationStatus: z.enum(["not_registered", "registered", "exempt", "suspended"]).default("not_registered"),
-  vatTreatment: z.string().optional(),
+  vatTreatment: z.string().nullable().optional(),
   customerType: z.enum(["business", "individual", "government", "non_profit"]).default("business"),
   taxCategory: z.enum(["standard", "export", "gcc_customer", "free_zone"]).default("standard"),
   paymentTerms: z.enum(["30_days", "15_days", "7_days", "immediate", "net_30", "net_60", "net_90"]).default("30_days"),
@@ -312,7 +312,7 @@ export default function CustomersIndex() {
       if (field === "vatRegistrationStatus") {
         if (value === "not_registered") {
           newFormData.vatNumber = "";
-          newFormData.vatTreatment = "";
+          newFormData.vatTreatment = null;
           newFormData.isVatApplicable = false;
         } else {
           newFormData.isVatApplicable = true;
@@ -340,7 +340,7 @@ export default function CustomersIndex() {
       // UAE VAT Compliance Fields
       vatNumber: isNotRegistered ? "" : customer.vatNumber || "",
       vatRegistrationStatus: customer.vatRegistrationStatus || "not_registered",
-      vatTreatment: isNotRegistered ? "" : customer.vatTreatment || "standard",
+      vatTreatment: isNotRegistered ? null : customer.vatTreatment || "standard",
       customerType: customer.customerType || "business",
       taxCategory: customer.taxCategory || "standard",
       paymentTerms: customer.paymentTerms || "30_days",
@@ -520,9 +520,6 @@ export default function CustomersIndex() {
                         />
                       </div>
                     )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
                         <Label htmlFor="vatTreatment">VAT Treatment</Label>
@@ -729,7 +726,7 @@ export default function CustomersIndex() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-vatRegistrationStatus">VAT Registration Status</Label>
-                    <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
+                      <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -752,13 +749,10 @@ export default function CustomersIndex() {
                         />
                       </div>
                     )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {formData.vatRegistrationStatus !== "not_registered" && (
                       <div className="space-y-2">
                         <Label htmlFor="edit-vatTreatment">VAT Treatment</Label>
-                        <Select value={formData.vatTreatment || "standard"} onValueChange={(value) => handleChange("vatTreatment", value)}>
+                          <Select value={formData.vatTreatment || "standard"} onValueChange={(value) => handleChange("vatTreatment", value)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select treatment" />
                           </SelectTrigger>
@@ -773,7 +767,7 @@ export default function CustomersIndex() {
                     )}
                   <div className="space-y-2">
                     <Label htmlFor="edit-customerType">Customer Type</Label>
-                    <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
+                      <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
