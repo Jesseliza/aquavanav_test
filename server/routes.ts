@@ -1151,7 +1151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const id = parseInt(req.params.id);
-        const supplierData = req.body;
+        const supplierData = insertSupplierSchema.partial().parse(req.body);
         const supplier = await storage.updateSupplier(id, supplierData);
 
         if (!supplier) {
@@ -1160,6 +1160,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(supplier);
       } catch (error) {
+        if (error instanceof ZodError) {
+          return res.status(400).json({ message: "Invalid data", errors: error.errors });
+        }
         res.status(500).json({ message: "Failed to update supplier" });
       }
     }

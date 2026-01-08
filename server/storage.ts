@@ -87,6 +87,8 @@ import {
   type InsertDailyActivity,
   type Supplier,
   type InsertSupplier,
+  type SupplierBankDetails,
+  type InsertSupplierBankDetails,
   type SupplierInventoryItem,
   type InsertSupplierInventoryItem,
   type ProjectPhotoGroup,
@@ -765,8 +767,19 @@ class Storage {
         .select()
         .from(suppliers)
         .where(eq(suppliers.id, id))
+        .leftJoin(supplierBankDetails, eq(suppliers.id, supplierBankDetails.supplierId))
         .limit(1);
-      return result[0];
+
+      if (!result.length) {
+        return undefined;
+      }
+
+      const supplier = result[0].suppliers;
+      (supplier as Supplier).bankAccountDetails = result
+        .map(row => row.supplier_bank_details)
+        .filter((detail): detail is SupplierBankDetails => detail !== null);
+
+      return supplier;
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -782,28 +795,22 @@ class Storage {
 
   async createSupplier(supplierData: InsertSupplier): Promise<Supplier> {
     try {
-      const result = await db
-        .insert(suppliers)
-        .values(supplierData)
-        .returning();
+      const { bankAccountDetails, ...supplierInfo } = supplierData;
+      const result = await db.transaction(async (tx) => {
+        const [newSupplier] = await tx.insert(suppliers).values(supplierInfo).returning();
 
-      const supplier = result[0];
+        if (bankAccountDetails && bankAccountDetails.length > 0) {
+          const detailsToInsert = bankAccountDetails.map(detail => ({
+            supplierId: newSupplier.id,
+            accountDetails: detail.accountDetails,
+          }));
+          await tx.insert(supplierBankDetails).values(detailsToInsert);
+        }
 
-      // Create general ledger account for the supplier
-      // await this.createGeneralLedgerEntry({
-      //   entryType: "payable",
-      //   referenceType: "manual",
-      //   accountName: `Supplier: ${supplier.name}`,
-      //   description: `Supplier account created: ${supplier.name}`,
-      //   debitAmount: "0",
-      //   creditAmount: "0",
-      //   entityId: supplier.id,
-      //   entityName: supplier.name,
-      //   transactionDate: new Date().toISOString().split("T")[0],
-      //   status: "active",
-      // });
+        return newSupplier;
+      });
 
-      return supplier;
+      return await this.getSupplier(result.id);
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -821,12 +828,41 @@ class Storage {
     supplierData: Partial<InsertSupplier>
   ): Promise<Supplier | undefined> {
     try {
-      const result = await db
-        .update(suppliers)
-        .set(supplierData)
-        .where(eq(suppliers.id, id))
-        .returning();
-      return result[0];
+      const { bankAccountDetails, ...supplierInfo } = supplierData;
+
+      await db.transaction(async (tx) => {
+        if (Object.keys(supplierInfo).length > 0) {
+          await tx.update(suppliers).set(supplierInfo).where(eq(suppliers.id, id));
+        }
+
+        if (bankAccountDetails) {
+          const existingDetails = await tx.select().from(supplierBankDetails).where(eq(supplierBankDetails.supplierId, id));
+          const existingIds = existingDetails.map(d => d.id);
+          const incomingIds = bankAccountDetails.map(d => d.id).filter((id): id is number => !!id);
+
+          // Delete details that are no longer present
+          const toDelete = existingIds.filter(id => !incomingIds.includes(id));
+          if (toDelete.length > 0) {
+            await tx.delete(supplierBankDetails).where(inArray(supplierBankDetails.id, toDelete));
+          }
+
+          // Update existing and insert new details
+          for (const detail of bankAccountDetails) {
+            if (detail.id) { // Update existing
+              await tx.update(supplierBankDetails)
+                .set({ accountDetails: detail.accountDetails })
+                .where(eq(supplierBankDetails.id, detail.id));
+            } else { // Insert new
+              await tx.insert(supplierBankDetails).values({
+                supplierId: id,
+                accountDetails: detail.accountDetails,
+              });
+            }
+          }
+        }
+      });
+
+      return await this.getSupplier(id);
     } catch (error: any) {
       await this.createErrorLog({
         message:

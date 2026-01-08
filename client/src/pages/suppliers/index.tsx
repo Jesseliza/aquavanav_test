@@ -43,6 +43,11 @@ const supplierSchema = z.object({
   notes: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  bankAccountDetails: z.array(z.object({
+    id: z.number(),
+    supplierId: z.number(),
+    accountDetails: z.string(),
+  })).optional(),
 });
 
 const createSupplierSchema = z.object({
@@ -53,6 +58,10 @@ const createSupplierSchema = z.object({
   address: z.string().optional(),
   taxId: z.string().optional(),
   category: z.string().optional(),
+  bankAccountDetails: z.array(z.object({
+    id: z.number().optional(),
+    accountDetails: z.string(),
+  })).optional(),
   // UAE VAT fields
   vatNumber: z.string().optional(),
   vatRegistrationStatus: z.string().default("not_registered"),
@@ -113,6 +122,7 @@ export default function SuppliersIndex() {
     creditLimit: "",
     isVatApplicable: false,
     notes: "",
+    bankAccountDetails: [],
   });
 
   useEffect(() => {
@@ -291,6 +301,7 @@ export default function SuppliersIndex() {
       creditLimit: "",
       isVatApplicable: false,
       notes: "",
+    bankAccountDetails: [],
     });
   };
 
@@ -305,6 +316,7 @@ export default function SuppliersIndex() {
         address: editingSupplier.address || "",
         taxId: editingSupplier.taxId || "",
         category: editingSupplier.category || "",
+      bankAccountDetails: editingSupplier.bankAccountDetails || [],
         // UAE VAT fields
         vatNumber: isNotRegistered ? "" : editingSupplier.vatNumber || "",
         vatRegistrationStatus: editingSupplier.vatRegistrationStatus || "not_registered",
@@ -357,6 +369,23 @@ export default function SuppliersIndex() {
 
       return newFormData;
     });
+  };
+
+  const handleBankAccountChange = (index: number, value: string) => {
+    const newDetails = [...(formData.bankAccountDetails || [])];
+    newDetails[index].accountDetails = value;
+    handleChange("bankAccountDetails", newDetails);
+  };
+
+  const addBankAccountField = () => {
+    const newDetails = [...(formData.bankAccountDetails || []), { accountDetails: "" }];
+    handleChange("bankAccountDetails", newDetails);
+  };
+
+  const removeBankAccountField = (index: number) => {
+    const newDetails = [...(formData.bankAccountDetails || [])];
+    newDetails.splice(index, 1);
+    handleChange("bankAccountDetails", newDetails);
   };
 
   const handleManageDocuments = (supplier: Supplier) => {
@@ -482,6 +511,36 @@ export default function SuppliersIndex() {
                     onChange={(e) => handleChange("taxId", e.target.value)}
                     placeholder="TAX789012"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Bank Account Details</Label>
+                  {formData.bankAccountDetails?.map((detail, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <Textarea
+                        value={detail.accountDetails}
+                        onChange={(e) => handleBankAccountChange(index, e.target.value)}
+                        placeholder={`Bank Account Details #${index + 1}`}
+                        rows={2}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => removeBankAccountField(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addBankAccountField}
+                  >
+                    Add Bank Account
+                  </Button>
                 </div>
 
                 {/* UAE VAT Compliance Section */}
@@ -839,6 +898,18 @@ export default function SuppliersIndex() {
                     </div>
                   </div>
                 </div>
+
+                {/* Bank Account Details */}
+                {supplier.bankAccountDetails && supplier.bankAccountDetails.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-3">Bank Account Details</h4>
+                    {supplier.bankAccountDetails.map((detail, index) => (
+                      <div key={index} className="mb-2">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{detail.accountDetails}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* UAE VAT & Tax Information */}
                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
