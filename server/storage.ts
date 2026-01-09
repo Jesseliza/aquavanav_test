@@ -19,6 +19,7 @@ import {
   companies,
   customers,
   suppliers,
+  supplierBankDetails,
   employees,
   employeeNextOfKin,
   employeeTrainingRecords,
@@ -859,9 +860,10 @@ class Storage {
   async createSupplier(supplierData: InsertSupplier): Promise<SupplierWithBankDetails> {
     try {
       const { bankAccountDetails, ...supplierInfo } = supplierData;
-      const result = await db.transaction(async (tx) => {
+      const newSupplierWithDetails = await db.transaction(async (tx) => {
         const [newSupplier] = await tx.insert(suppliers).values(supplierInfo).returning();
 
+        let newBankDetails: SupplierBankDetails[] = [];
         if (bankAccountDetails && bankAccountDetails.length > 0) {
           const detailsToInsert = bankAccountDetails
             .filter(detail => detail.accountDetails.trim() !== "")
@@ -870,14 +872,14 @@ class Storage {
               accountDetails: detail.accountDetails,
             }));
           if (detailsToInsert.length > 0) {
-            await tx.insert(supplierBankDetails).values(detailsToInsert);
+            newBankDetails = await tx.insert(supplierBankDetails).values(detailsToInsert).returning();
           }
         }
 
-        return newSupplier;
+        return { ...newSupplier, bankAccountDetails: newBankDetails };
       });
 
-      return await this.getSupplier(result.id);
+      return newSupplierWithDetails;
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -897,9 +899,18 @@ class Storage {
     try {
       const { bankAccountDetails, ...supplierInfo } = supplierData;
 
-      await db.transaction(async (tx) => {
+      const updatedSupplierWithDetails = await db.transaction(async (tx) => {
+        let updatedSupplier: Supplier | undefined;
         if (Object.keys(supplierInfo).length > 0) {
-          await tx.update(suppliers).set(supplierInfo).where(eq(suppliers.id, id));
+          [updatedSupplier] = await tx.update(suppliers).set(supplierInfo).where(eq(suppliers.id, id)).returning();
+        } else {
+          [updatedSupplier] = await tx.select().from(suppliers).where(eq(suppliers.id, id));
+        }
+
+        if (!updatedSupplier) {
+          // If the supplier doesn't exist, we can't proceed.
+          // Returning null from transaction will cause db.transaction to return null.
+          return null;
         }
 
         if (bankAccountDetails) {
@@ -919,7 +930,7 @@ class Storage {
 
           // Update existing and insert new details
           for (const detail of validDetails) {
-            if (detail.id) { // Update existing
+            if (detail.id && existingIds.includes(detail.id)) { // Update existing
               await tx.update(supplierBankDetails)
                 .set({ accountDetails: detail.accountDetails })
                 .where(eq(supplierBankDetails.id, detail.id));
@@ -931,9 +942,17 @@ class Storage {
             }
           }
         }
+
+        const finalBankDetails = await tx.select().from(supplierBankDetails).where(eq(supplierBankDetails.supplierId, id));
+        return { ...updatedSupplier, bankAccountDetails: finalBankDetails };
       });
 
-      return await this.getSupplier(id);
+      // If transaction returned null, it means supplier was not found.
+      if (!updatedSupplierWithDetails) {
+        return undefined;
+      }
+
+      return updatedSupplierWithDetails;
     } catch (error: any) {
       await this.createErrorLog({
         message:
