@@ -701,7 +701,28 @@ class Storage {
   // Supplier methods
   async getSuppliers(): Promise<Supplier[]> {
     try {
-      return await db.select().from(suppliers);
+      const allSuppliers = await db.select().from(suppliers);
+      if (allSuppliers.length === 0) {
+        return [];
+      }
+      const supplierIds = allSuppliers.map((s) => s.id);
+      const bankDetails = await db
+        .select()
+        .from(supplierBankDetails)
+        .where(inArray(supplierBankDetails.supplierId, supplierIds));
+
+      const bankDetailsMap = new Map<number, SupplierBankDetails[]>();
+      for (const detail of bankDetails) {
+        if (!bankDetailsMap.has(detail.supplierId)) {
+          bankDetailsMap.set(detail.supplierId, []);
+        }
+        bankDetailsMap.get(detail.supplierId)!.push(detail);
+      }
+
+      return allSuppliers.map((supplier) => ({
+        ...supplier,
+        bankAccountDetails: bankDetailsMap.get(supplier.id) || [],
+      }));
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -730,24 +751,62 @@ class Storage {
       const conditions =
         whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
-      const dataQueryBuilder = db
-        .select()
-        .from(suppliers)
-        .where(conditions)
-        .orderBy(suppliers.id);
-      // Original count query for suppliers also only filtered by showArchived.
-      // Sticking to applying all conditions for count for consistency in the helper.
-      const countQueryBuilder = db
+      // 1. Get total count
+      const totalResult = await db
         .select({ count: sql<number>`count(*)` })
         .from(suppliers)
         .where(conditions);
+      const total = Number(totalResult[0].count);
+      const totalPages = Math.ceil(total / limit);
 
-      return this._getPaginatedResults<Supplier>(
-        dataQueryBuilder,
-        countQueryBuilder,
-        page,
-        limit
-      );
+      // 2. Fetch paginated suppliers
+      const supplierData = await db
+        .select()
+        .from(suppliers)
+        .where(conditions)
+        .orderBy(suppliers.id)
+        .limit(limit)
+        .offset((page - 1) * limit);
+
+      if (supplierData.length === 0) {
+        return {
+          data: [],
+          pagination: { page, limit, total, totalPages },
+        };
+      }
+
+      // 3. Fetch bank details for these suppliers
+      const supplierIds = supplierData.map((s) => s.id);
+      const bankDetails = await db
+        .select()
+        .from(supplierBankDetails)
+        .where(inArray(supplierBankDetails.supplierId, supplierIds));
+
+      // 4. Map bank details back to suppliers
+      const bankDetailsMap = new Map<number, SupplierBankDetails[]>();
+      for (const detail of bankDetails) {
+        if (!bankDetailsMap.has(detail.supplierId)) {
+          bankDetailsMap.set(detail.supplierId, []);
+        }
+        bankDetailsMap.get(detail.supplierId)!.push(detail);
+      }
+
+      const dataWithDetails = supplierData.map((supplier) => {
+        return {
+          ...supplier,
+          bankAccountDetails: bankDetailsMap.get(supplier.id) || [],
+        };
+      });
+
+      return {
+        data: dataWithDetails,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
     } catch (error: any) {
       await this.createErrorLog({
         message:
