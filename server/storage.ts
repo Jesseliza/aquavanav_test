@@ -863,11 +863,15 @@ class Storage {
         const [newSupplier] = await tx.insert(suppliers).values(supplierInfo).returning();
 
         if (bankAccountDetails && bankAccountDetails.length > 0) {
-          const detailsToInsert = bankAccountDetails.map(detail => ({
-            supplierId: newSupplier.id,
-            accountDetails: detail.accountDetails,
-          }));
-          await tx.insert(supplierBankDetails).values(detailsToInsert);
+          const detailsToInsert = bankAccountDetails
+            .filter(detail => detail.accountDetails.trim() !== "")
+            .map(detail => ({
+              supplierId: newSupplier.id,
+              accountDetails: detail.accountDetails,
+            }));
+          if (detailsToInsert.length > 0) {
+            await tx.insert(supplierBankDetails).values(detailsToInsert);
+          }
         }
 
         return newSupplier;
@@ -899,9 +903,13 @@ class Storage {
         }
 
         if (bankAccountDetails) {
+          const validDetails = bankAccountDetails.filter(
+            detail => detail.accountDetails.trim() !== ""
+          );
+
           const existingDetails = await tx.select().from(supplierBankDetails).where(eq(supplierBankDetails.supplierId, id));
           const existingIds = existingDetails.map(d => d.id);
-          const incomingIds = bankAccountDetails.map(d => d.id).filter((id): id is number => !!id);
+          const incomingIds = validDetails.map(d => d.id).filter((id): id is number => !!id);
 
           // Delete details that are no longer present
           const toDelete = existingIds.filter(id => !incomingIds.includes(id));
@@ -910,7 +918,7 @@ class Storage {
           }
 
           // Update existing and insert new details
-          for (const detail of bankAccountDetails) {
+          for (const detail of validDetails) {
             if (detail.id) { // Update existing
               await tx.update(supplierBankDetails)
                 .set({ accountDetails: detail.accountDetails })
