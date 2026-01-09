@@ -87,6 +87,7 @@ import {
   type InsertDailyActivity,
   type Supplier,
   type InsertSupplier,
+  type SupplierWithBankDetails,
   type SupplierBankDetails,
   type InsertSupplierBankDetails,
   type SupplierInventoryItem,
@@ -699,7 +700,7 @@ class Storage {
   }
 
   // Supplier methods
-  async getSuppliers(): Promise<Supplier[]> {
+  async getSuppliers(): Promise<SupplierWithBankDetails[]> {
     try {
       const allSuppliers = await db.select().from(suppliers);
       if (allSuppliers.length === 0) {
@@ -740,7 +741,7 @@ class Storage {
     limit: number,
     search: string,
     showArchived: boolean
-  ): Promise<PaginatedResponse<Supplier>> {
+  ): Promise<PaginatedResponse<SupplierWithBankDetails>> {
     try {
       const whereClauses = [];
       if (search) {
@@ -791,7 +792,7 @@ class Storage {
         bankDetailsMap.get(detail.supplierId)!.push(detail);
       }
 
-      const dataWithDetails = supplierData.map((supplier) => {
+      const dataWithDetails: SupplierWithBankDetails[] = supplierData.map((supplier) => {
         return {
           ...supplier,
           bankAccountDetails: bankDetailsMap.get(supplier.id) || [],
@@ -820,14 +821,14 @@ class Storage {
     }
   }
 
-  async getSupplier(id: number): Promise<Supplier | undefined> {
+  async getSupplier(id: number): Promise<SupplierWithBankDetails | undefined> {
     try {
-      const [supplier] = await db
+      const [supplierData] = await db
         .select()
         .from(suppliers)
         .where(eq(suppliers.id, id));
 
-      if (!supplier) {
+      if (!supplierData) {
         return undefined;
       }
 
@@ -836,9 +837,12 @@ class Storage {
         .from(supplierBankDetails)
         .where(eq(supplierBankDetails.supplierId, id));
 
-      (supplier as Supplier).bankAccountDetails = bankDetails;
+      const supplierWithDetails: SupplierWithBankDetails = {
+        ...supplierData,
+        bankAccountDetails: bankDetails,
+      };
 
-      return supplier;
+      return supplierWithDetails;
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -852,7 +856,7 @@ class Storage {
     }
   }
 
-  async createSupplier(supplierData: InsertSupplier): Promise<Supplier> {
+  async createSupplier(supplierData: InsertSupplier): Promise<SupplierWithBankDetails> {
     try {
       const { bankAccountDetails, ...supplierInfo } = supplierData;
       const result = await db.transaction(async (tx) => {
@@ -885,7 +889,7 @@ class Storage {
   async updateSupplier(
     id: number,
     supplierData: Partial<InsertSupplier>
-  ): Promise<Supplier | undefined> {
+  ): Promise<SupplierWithBankDetails | undefined> {
     try {
       const { bankAccountDetails, ...supplierInfo } = supplierData;
 
@@ -9946,19 +9950,19 @@ export interface IStorage {
   deleteCustomer(id: number): Promise<boolean>;
 
   // Supplier methods
-  getSuppliers(): Promise<Supplier[]>;
+  getSuppliers(): Promise<SupplierWithBankDetails[]>;
   getSuppliersPaginated(
     page: number,
     limit: number,
     search: string,
     showArchived: boolean
-  ): Promise<PaginatedResponse<Supplier>>;
-  getSupplier(id: number): Promise<Supplier | undefined>;
-  createSupplier(supplierData: InsertSupplier): Promise<Supplier>;
+  ): Promise<PaginatedResponse<SupplierWithBankDetails>>;
+  getSupplier(id: number): Promise<SupplierWithBankDetails | undefined>;
+  createSupplier(supplierData: InsertSupplier): Promise<SupplierWithBankDetails>;
   updateSupplier(
     id: number,
     supplierData: Partial<InsertSupplier>
-  ): Promise<Supplier | undefined>;
+  ): Promise<SupplierWithBankDetails | undefined>;
   deleteSupplier(id: number): Promise<boolean>;
 
   // Employee methods

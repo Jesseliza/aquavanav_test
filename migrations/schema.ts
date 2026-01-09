@@ -227,12 +227,7 @@ export const suppliers = pgTable("suppliers", {
 	phone: text(),
 	address: text(),
 	taxId: text("tax_id"),
-});
-
-export const supplierBankDetails = pgTable("supplier_bank_details", {
-	id: serial().primaryKey().notNull(),
-	supplierId: integer("supplier_id").notNull().references(() => suppliers.id, { onDelete: "cascade" }),
-	accountDetails: text("account_details").notNull(),
+	bankInfo: text("bank_info"),
 });
 
 export const salesInvoices = pgTable("sales_invoices", {
