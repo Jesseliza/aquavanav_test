@@ -822,21 +822,21 @@ class Storage {
 
   async getSupplier(id: number): Promise<Supplier | undefined> {
     try {
-      const result = await db
+      const [supplier] = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.id, id))
-        .leftJoin(supplierBankDetails, eq(suppliers.id, supplierBankDetails.supplierId))
-        .limit(1);
+        .where(eq(suppliers.id, id));
 
-      if (!result.length) {
+      if (!supplier) {
         return undefined;
       }
 
-      const supplier = result[0].suppliers;
-      (supplier as Supplier).bankAccountDetails = result
-        .map(row => row.supplier_bank_details)
-        .filter((detail): detail is SupplierBankDetails => detail !== null);
+      const bankDetails = await db
+        .select()
+        .from(supplierBankDetails)
+        .where(eq(supplierBankDetails.supplierId, id));
+
+      (supplier as Supplier).bankAccountDetails = bankDetails;
 
       return supplier;
     } catch (error: any) {
