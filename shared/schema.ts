@@ -850,7 +850,7 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: tru
     .array(
       z.object({
         id: z.number().optional(),
-        accountDetails: z.string().min(1),
+        accountDetails: z.string(),
       })
     )
     .optional(),
