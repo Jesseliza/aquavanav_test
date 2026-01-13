@@ -144,6 +144,12 @@ export default function PurchaseOrdersIndex() {
     enabled: isAuthenticated,
   });
 
+  useEffect(() => {
+    if (formData.supplierId) {
+      setFormData(prev => ({ ...prev, bankAccount: "" }));
+    }
+  }, [formData.supplierId]);
+
   const suppliers = Array.isArray(suppliersResponse?.data) ? suppliersResponse.data : [];
   const inventoryItems = Array.isArray(inventoryResponse?.data) ? inventoryResponse.data : [];
 
