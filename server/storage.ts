@@ -700,9 +700,9 @@ class Storage {
   }
 
   // Supplier methods
-  async getSuppliers(): Promise<SupplierWithBankDetails[]> {
+  async getAllSuppliers(): Promise<SupplierWithBankDetails[]> {
     try {
-      const allSuppliers = await db.select().from(suppliers);
+      const allSuppliers = await db.select().from(suppliers).orderBy(suppliers.id);
       if (allSuppliers.length === 0) {
         return [];
       }
@@ -727,9 +727,9 @@ class Storage {
     } catch (error: any) {
       await this.createErrorLog({
         message:
-          "Error in getSuppliers: " + (error?.message || "Unknown error"),
+          "Error in getAllSuppliers: " + (error?.message || "Unknown error"),
         stack: error?.stack,
-        component: "getSuppliers",
+        component: "getAllSuppliers",
         severity: "error",
       });
       throw error;
@@ -10019,7 +10019,7 @@ export interface IStorage {
   deleteCustomer(id: number): Promise<boolean>;
 
   // Supplier methods
-  getSuppliers(): Promise<SupplierWithBankDetails[]>;
+  getAllSuppliers(): Promise<SupplierWithBankDetails[]>;
   getSuppliersPaginated(
     page: number,
     limit: number,
