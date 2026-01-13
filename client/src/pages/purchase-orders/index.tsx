@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, FileText, Package, Truck, CheckCircle, XCircle, Clock, Eye, Trash2, Search, Filter, DollarSign, TrendingUp, CreditCard, Printer } from "lucide-react";
-import { InventoryItem } from "@shared/schema";
+import { InventoryItem, type SupplierBankDetails } from "@shared/schema";
 
 interface Supplier {
   id: number;
@@ -25,6 +25,7 @@ interface Supplier {
   contactPerson?: string;
   email?: string;
   phone?: string;
+  bankAccountDetails?: SupplierBankDetails[];
 }
 
 interface PurchaseOrder {
@@ -134,7 +135,7 @@ export default function PurchaseOrdersIndex() {
   });
 
   const { data: suppliersResponse } = useQuery<{ data: Supplier[] }>({
-    queryKey: ["/api/suppliers"],
+    queryKey: ["/api/suppliers/all"],
     enabled: isAuthenticated,
   });
 
@@ -1043,14 +1044,28 @@ export default function PurchaseOrdersIndex() {
 
               <div>
                 <Label htmlFor="bankAccount">Bank Account Details (Optional)</Label>
-                <Textarea
-                  id="bankAccount"
+                <Select
                   value={formData.bankAccount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bankAccount: e.target.value }))}
-                  placeholder="Bank name, account number, SWIFT/IBAN, etc."
-                  className="mt-1"
-                  rows={3}
-                />
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, bankAccount: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select bank account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers
+                      .find(s => s.id === parseInt(formData.supplierId))
+                      ?.bankAccountDetails?.map((detail, index) => (
+                        <React.Fragment key={detail.id}>
+                          <SelectItem value={detail.accountDetails}>
+                            <div className="whitespace-pre-wrap">{detail.accountDetails}</div>
+                          </SelectItem>
+                          {index < (suppliers.find(s => s.id === parseInt(formData.supplierId))?.bankAccountDetails?.length ?? 0) - 1 && (
+                            <hr className="my-1" />
+                          )}
+                        </React.Fragment>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
