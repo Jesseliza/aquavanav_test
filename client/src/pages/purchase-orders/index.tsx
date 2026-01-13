@@ -17,15 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, FileText, Package, Truck, CheckCircle, XCircle, Clock, Eye, Trash2, Search, Filter, DollarSign, TrendingUp, CreditCard, Printer } from "lucide-react";
-import { InventoryItem } from "@shared/schema";
-
-interface Supplier {
-  id: number;
-  name: string;
-  contactPerson?: string;
-  email?: string;
-  phone?: string;
-}
+import { InventoryItem, SupplierWithBankDetails } from "@shared/schema";
 
 interface PurchaseOrder {
   id: number;
@@ -107,6 +99,8 @@ export default function PurchaseOrdersIndex() {
     partial: false,
   });
 
+  const [bankAccounts, setBankAccounts] = useState<{ id: number; accountDetails: string }[]>([]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       setLocation("/login");
@@ -119,12 +113,27 @@ export default function PurchaseOrdersIndex() {
     }
   }, [isAuthenticated, user, setLocation]);
 
+  useEffect(() => {
+    if (formData.supplierId) {
+      const selectedSupplier = suppliers.find(s => s.id === parseInt(formData.supplierId));
+      if (selectedSupplier && selectedSupplier.bankAccountDetails) {
+        setBankAccounts(selectedSupplier.bankAccountDetails);
+      } else {
+        setBankAccounts([]);
+      }
+      // Reset bank account selection when supplier changes
+      setFormData(prev => ({ ...prev, bankAccount: "" }));
+    } else {
+      setBankAccounts([]);
+    }
+  }, [formData.supplierId, suppliers]);
+
   const { data: orders, isLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ["/api/purchase-orders"],
     enabled: isAuthenticated,
   });
 
-  const { data: suppliersResponse } = useQuery<{ data: Supplier[] }>({
+  const { data: suppliersResponse } = useQuery<{ data: SupplierWithBankDetails[] }>({
     queryKey: ["/api/suppliers"],
     enabled: isAuthenticated,
   });
@@ -785,14 +794,22 @@ export default function PurchaseOrdersIndex() {
 
               <div>
                 <Label htmlFor="bankAccount">Bank Account Details (Optional)</Label>
-                <Textarea
-                  id="bankAccount"
+                <Select
                   value={formData.bankAccount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bankAccount: e.target.value }))}
-                  placeholder="Bank name, account number, SWIFT/IBAN, etc."
-                  className="mt-1"
-                  rows={3}
-                />
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, bankAccount: value }))}
+                  disabled={!formData.supplierId || bankAccounts.length === 0}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a bank account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bankAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.accountDetails}>
+                        {account.accountDetails}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
