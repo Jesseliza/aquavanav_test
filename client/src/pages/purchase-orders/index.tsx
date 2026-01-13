@@ -119,7 +119,7 @@ export default function PurchaseOrdersIndex() {
   });
 
   const { data: suppliersResponse } = useQuery<{ data: SupplierWithBankDetails[] }>({
-    queryKey: ["/api/suppliers"],
+    queryKey: ["/api/suppliers/all"],
     enabled: isAuthenticated,
   });
 
@@ -797,7 +797,6 @@ export default function PurchaseOrdersIndex() {
                 <Select
                   value={formData.bankAccount}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, bankAccount: value }))}
-                  disabled={!formData.supplierId || bankAccounts.length === 0}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select a bank account" />

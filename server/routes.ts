@@ -1011,6 +1011,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/suppliers/all", requireAuth, async (req, res) => {
+    try {
+      const result = await storage.getAllSuppliers();
+      res.json({ data: result });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get all suppliers" });
+    }
+  });
+
   app.post(
     "/api/customers",
     requireAuth,
