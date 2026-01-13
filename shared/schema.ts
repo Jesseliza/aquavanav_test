@@ -59,6 +59,7 @@ export const suppliers = pgTable("suppliers", {
   phone: text("phone"),
   address: text("address"),
   taxId: text("tax_id"),
+  // bankInfo: text("bank_info"),
   isArchived: boolean("is_archived").notNull().default(false),
   // UAE VAT Compliance Fields
   vatNumber: text("vat_number"), // 15-digit VAT registration number
@@ -205,6 +206,7 @@ export const projectEmployees = pgTable("project_employees", {
 export const inventoryItems = pgTable("inventory_items", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  sku: text("sku").notNull().unique(),
   description: text("description"),
   category: text("category").notNull(), // consumables, tools, equipment
   unit: text("unit").notNull(),

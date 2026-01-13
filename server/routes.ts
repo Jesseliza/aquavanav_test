@@ -1132,6 +1132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const supplierData = insertSupplierSchema.parse(req.body);
         const supplier = await storage.createSupplier(supplierData);
+        console.log("5=>",supplier);
         res.status(201).json(supplier);
       } catch (error) {
         if (error instanceof ZodError) {
@@ -1151,7 +1152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const id = parseInt(req.params.id);
-        const supplierData = insertSupplierSchema.partial().parse(req.body);
+        const supplierData = req.body;
         const supplier = await storage.updateSupplier(id, supplierData);
 
         if (!supplier) {
@@ -1160,9 +1161,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(supplier);
       } catch (error) {
-        if (error instanceof ZodError) {
-          return res.status(400).json({ message: "Invalid data", errors: error.errors });
-        }
         res.status(500).json({ message: "Failed to update supplier" });
       }
     }
@@ -4545,11 +4543,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       for (const item of items) {
-        if (!item.inventoryItemId || !item.quantity || item.quantity <= 0) {
-          return res.status(400).json({
-            message:
-              "Invalid item data. Each item must have a valid inventory item ID and quantity greater than 0",
-          });
+        if (item.itemType === "service") {
+          if (!item.description || !item.quantity || item.quantity <= 0) {
+            return res.status(400).json({
+              message:
+                "Invalid service item: description and positive quantity are required",
+            });
+          }
+        } else {
+          if (!item.inventoryItemId || !item.quantity || item.quantity <= 0) {
+            return res.status(400).json({
+              message:
+                "Invalid product item: inventory item and positive quantity are required",
+            });
+          }
         }
       }
 
@@ -4591,7 +4598,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const request = await storage.updatePurchaseRequest(id, {
           status: "approved",
-          approvedBy: employee.id,
+          // approvedBy: employee.id,
+          approvedBy: employee ? employee.id : user.id,
           approvalDate: new Date(),
         });
 
@@ -4634,7 +4642,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const request = await storage.updatePurchaseRequest(id, {
           status: "rejected",
-          approvedBy: employee.id,
+          // approvedBy: employee.id,
+          approvedBy: employee ? employee.id : user.id,
           approvalDate: new Date(),
         });
 

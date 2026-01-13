@@ -90,7 +90,6 @@ import {
   type InsertSupplier,
   type SupplierWithBankDetails,
   type SupplierBankDetails,
-  type InsertSupplierBankDetails,
   type SupplierInventoryItem,
   type InsertSupplierInventoryItem,
   type ProjectPhotoGroup,
@@ -857,40 +856,67 @@ class Storage {
     }
   }
 
-  async createSupplier(supplierData: InsertSupplier): Promise<SupplierWithBankDetails> {
-    try {
-      const { bankAccountDetails, ...supplierInfo } = supplierData;
-      const newSupplierWithDetails = await db.transaction(async (tx) => {
-        const [newSupplier] = await tx.insert(suppliers).values(supplierInfo).returning();
+  async createSupplier(
+  supplierData: InsertSupplier
+): Promise<SupplierWithBankDetails> {
+  try {
+    const { bankAccountDetails, ...supplierInfo } = supplierData;
 
-        let newBankDetails: SupplierBankDetails[] = [];
-        if (bankAccountDetails && bankAccountDetails.length > 0) {
-          const detailsToInsert = bankAccountDetails
-            .filter(detail => detail.accountDetails.trim() !== "")
-            .map(detail => ({
-              supplierId: newSupplier.id,
-              accountDetails: detail.accountDetails,
-            }));
-          if (detailsToInsert.length > 0) {
-            newBankDetails = await tx.insert(supplierBankDetails).values(detailsToInsert).returning();
-          }
-        }
+    const newSupplierWithDetails = await db.transaction(async (tx) => {
+      console.log("1 => supplier entry");
 
-        return { ...newSupplier, bankAccountDetails: newBankDetails };
-      });
+      const [newSupplier] = await tx
+        .insert(suppliers)
+        .values(supplierInfo)
+        .returning();
 
-      return newSupplierWithDetails;
-    } catch (error: any) {
-      await this.createErrorLog({
-        message:
-          "Error in createSupplier: " + (error?.message || "Unknown error"),
-        stack: error?.stack,
-        component: "createSupplier",
-        severity: "error",
-      });
-      throw error;
-    }
+      if (!newSupplier) {
+        throw new Error("Supplier insert failed");
+      }
+
+      console.log("2 =>", newSupplier);
+
+      let newBankDetails: SupplierBankDetails[] = [];
+
+      const cleanedBankDetails =
+        bankAccountDetails?.filter(
+          (detail) => detail.accountDetails?.trim() !== ""
+        ) ?? [];
+
+      if (cleanedBankDetails.length > 0) {
+        const detailsToInsert = cleanedBankDetails.map((detail) => ({
+          supplierId: newSupplier.id,
+          accountDetails: detail.accountDetails.trim(),
+        }));
+
+        console.log("3 =>", detailsToInsert);
+
+        newBankDetails = await tx
+          .insert(supplierBankDetails)
+          .values(detailsToInsert)
+          .returning();
+
+        console.log("4 =>", newBankDetails);
+      }
+
+      return {
+        ...newSupplier,
+        bankAccountDetails: newBankDetails,
+      };
+    });
+
+    return newSupplierWithDetails;
+  } catch (error: any) {
+    await this.createErrorLog({
+      message:
+        "Error in createSupplier: " + (error?.message || "Unknown error"),
+      stack: error?.stack,
+      component: "createSupplier",
+      severity: "error",
+    });
+    throw error;
   }
+}
 
   async updateSupplier(
     id: number,
@@ -5380,38 +5406,32 @@ class Storage {
     }
   }
 
-  async getReceivables(): Promise<any[]> {
-    try {
-      const result = await db
-        .select({
-          id: generalLedgerEntries.id,
-          description: generalLedgerEntries.description,
-          amount: generalLedgerEntries.debitAmount, // Aliasing debit_amount as amount
-          customerName: generalLedgerEntries.entityName, // Aliasing entity_name as customerName
-          projectId: generalLedgerEntries.projectId,
-          projectTitle: projects.title, // Selecting from joined projects table
-          invoiceNumber: generalLedgerEntries.invoiceNumber,
-          transactionDate: generalLedgerEntries.transactionDate,
-          dueDate: generalLedgerEntries.dueDate,
-          status: generalLedgerEntries.status,
-          createdAt: generalLedgerEntries.createdAt,
-        })
-        .from(generalLedgerEntries)
-        .leftJoin(projects, eq(generalLedgerEntries.projectId, projects.id))
-        .where(eq(generalLedgerEntries.entryType, "receivable"))
-        .orderBy(desc(generalLedgerEntries.transactionDate));
-
-      return result;
-    } catch (error: any) {
-      await this.createErrorLog({
-        message:
-          "Error in getReceivables: " + (error?.message || "Unknown error"),
-        stack: error?.stack,
-        component: "getReceivables",
-        severity: "error",
-      });
-      throw error;
-    }
+  async getReceivables() {
+    return await db
+      .select({
+        invoiceId: salesInvoices.id,
+        invoiceNumber: salesInvoices.invoiceNumber,
+        customerName: customers.name,
+        totalAmount: salesInvoices.totalAmount,
+        paidAmount: sql<number>`COALESCE(SUM(${invoicePayments.amount}), 0)`,
+        outstandingAmount: sql<number>`
+          ${salesInvoices.totalAmount} -
+          COALESCE(SUM(${invoicePayments.amount}), 0)
+        `,
+        dueDate: salesInvoices.dueDate,
+        status: sql<string>`
+          CASE
+            WHEN COALESCE(SUM(${invoicePayments.amount}), 0) = 0 THEN 'unpaid'
+            WHEN COALESCE(SUM(${invoicePayments.amount}), 0) < ${salesInvoices.totalAmount} THEN 'partially_paid'
+            ELSE 'paid'
+          END
+        `,
+      })
+      .from(salesInvoices)
+      .leftJoin(invoicePayments, eq(invoicePayments.invoiceId, salesInvoices.id))
+      .leftJoin(customers, eq(customers.id, salesInvoices.customerId))
+      .groupBy(salesInvoices.id, customers.name)
+      .orderBy(desc(salesInvoices.dueDate));
   }
 
   // Sales Quotation methods
@@ -6691,9 +6711,13 @@ class Storage {
           projectId: proformaInvoices.projectId,
           status: proformaInvoices.status,
           createdDate: proformaInvoices.createdDate,
+          invoiceDate: proformaInvoices.invoiceDate,
           validUntil: proformaInvoices.validUntil,
           paymentTerms: proformaInvoices.paymentTerms,
           deliveryTerms: proformaInvoices.deliveryTerms,
+          billingAddress: proformaInvoices.billingAddress,
+          bankAccount: proformaInvoices.bankAccount,
+          termsAndConditions: proformaInvoices.termsAndConditions,
           remarks: proformaInvoices.remarks,
           items: proformaInvoices.items,
           subtotal: proformaInvoices.subtotal,
@@ -6734,6 +6758,9 @@ class Storage {
           validUntil: proformaInvoices.validUntil,
           paymentTerms: proformaInvoices.paymentTerms,
           deliveryTerms: proformaInvoices.deliveryTerms,
+          billingAddress: proformaInvoices.billingAddress,
+          bankAccount: proformaInvoices.bankAccount,
+          termsAndConditions: proformaInvoices.termsAndConditions,
           remarks: proformaInvoices.remarks,
           items: proformaInvoices.items,
           subtotal: proformaInvoices.subtotal,
@@ -6779,10 +6806,13 @@ class Storage {
         quotationId: proformaData.quotationId || null,
         status: proformaData.status || "draft",
         validUntil: proformaData.validUntil
-          ? new Date(proformaData.validUntil)
+          ? new Date(proformaData.validUntil).toISOString()
           : null,
+        billingAddress: proformaData.billingAddress,
         paymentTerms: proformaData.paymentTerms || null,
         deliveryTerms: proformaData.deliveryTerms || null,
+        bankAccount: proformaData.bankAccount || null,
+        termsAndConditions: proformaData.termsAndConditions || null,
         remarks: proformaData.remarks || null,
         items: JSON.stringify(proformaData.items || []),
         subtotal: proformaData.subtotal || null,
@@ -6846,18 +6876,24 @@ class Storage {
         updateData.status = proformaData.status;
       if (proformaData.invoiceDate !== undefined)
         updateData.invoiceDate = proformaData.invoiceDate
-          ? new Date(proformaData.invoiceDate)
+          ? new Date(proformaData.invoiceDate).toISOString()
           : null;
+      if (proformaData.billingAddress !== undefined)
+        updateData.billingAddress = proformaData.billingAddress || null;
       if (proformaData.validUntil !== undefined)
         updateData.validUntil = proformaData.validUntil
-          ? new Date(proformaData.validUntil)
-          : null;
+          ? new Date(proformaData.validUntil).toISOString()
+          : null;      
       if (proformaData.paymentTerms !== undefined)
         updateData.paymentTerms = proformaData.paymentTerms || null;
       if (proformaData.deliveryTerms !== undefined)
         updateData.deliveryTerms = proformaData.deliveryTerms || null;
+      if (proformaData.bankAccount !== undefined)
+        updateData.bankAccount = proformaData.bankAccount || null;
       if (proformaData.remarks !== undefined)
         updateData.remarks = proformaData.remarks || null;
+      if (proformaData.termsAndConditions !== undefined)
+        updateData.termsAndConditions = proformaData.termsAndConditions || null;
       if (proformaData.items !== undefined)
         updateData.items = JSON.stringify(proformaData.items || []);
       if (proformaData.subtotal !== undefined)
@@ -7034,7 +7070,7 @@ class Storage {
         })
         .from(purchaseRequests)
         .leftJoin(employees, eq(purchaseRequests.requestedBy, employees.id))
-        .leftJoin(approver, eq(purchaseRequests.approvedBy, employees.id))
+        .leftJoin(approver, eq(purchaseRequests.approvedBy, approver.id))
         .orderBy(desc(purchaseRequests.requestDate));
 
       // Get items for each request
@@ -7044,10 +7080,13 @@ class Storage {
             .select({
               id: purchaseRequestItems.id,
               requestId: purchaseRequestItems.requestId,
+              itemType: purchaseRequestItems.itemType,
               inventoryItemId: purchaseRequestItems.inventoryItemId,
               inventoryItemName: inventoryItems.name,
               inventoryItemUnit: inventoryItems.unit,
+              description: purchaseRequestItems.description,
               quantity: purchaseRequestItems.quantity,
+              unitPrice: purchaseRequestItems.unitPrice,
               notes: purchaseRequestItems.notes,
             })
             .from(purchaseRequestItems)
@@ -7098,7 +7137,7 @@ class Storage {
         })
         .from(purchaseRequests)
         .leftJoin(emp, eq(purchaseRequests.requestedBy, emp.id))
-        .leftJoin(approver, eq(purchaseRequests.approvedBy, emp.id))
+        .leftJoin(approver, eq(purchaseRequests.approvedBy, approver.id))
         .where(eq(purchaseRequests.id, id));
 
       if (!request) return null;
@@ -7107,10 +7146,13 @@ class Storage {
         .select({
           id: purchaseRequestItems.id,
           requestId: purchaseRequestItems.requestId,
+          itemType: purchaseRequestItems.itemType,
           inventoryItemId: purchaseRequestItems.inventoryItemId,
           inventoryItemName: inventoryItems.name,
           inventoryItemUnit: inventoryItems.unit,
+          description: purchaseRequestItems.description,
           quantity: purchaseRequestItems.quantity,
+          unitPrice: purchaseRequestItems.unitPrice,
           notes: purchaseRequestItems.notes,
         })
         .from(purchaseRequestItems)

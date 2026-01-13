@@ -122,8 +122,10 @@ export default function SuppliersIndex() {
     creditLimit: "",
     isVatApplicable: false,
     notes: "",
-    bankAccountDetails: [],
+    bankAccountDetails: [{ accountDetails: "" }],
   });
+  const EMPTY_BANK_ROW = { accountDetails: "" };
+
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -301,7 +303,7 @@ export default function SuppliersIndex() {
       creditLimit: "",
       isVatApplicable: false,
       notes: "",
-    bankAccountDetails: [],
+      bankAccountDetails: [{ accountDetails: "" }],
     });
   };
 
@@ -316,7 +318,10 @@ export default function SuppliersIndex() {
         address: editingSupplier.address || "",
         taxId: editingSupplier.taxId || "",
         category: editingSupplier.category || "",
-      bankAccountDetails: editingSupplier.bankAccountDetails || [],
+        bankAccountDetails:
+          editingSupplier.bankAccountDetails?.length > 0
+            ? editingSupplier.bankAccountDetails
+            : [EMPTY_BANK_ROW],
         // UAE VAT fields
         vatNumber: isNotRegistered ? "" : editingSupplier.vatNumber || "",
         vatRegistrationStatus: editingSupplier.vatRegistrationStatus || "not_registered",
@@ -326,8 +331,8 @@ export default function SuppliersIndex() {
         paymentTerms: editingSupplier.paymentTerms || "30_days",
         currency: editingSupplier.currency || "AED",
         creditLimit: editingSupplier.creditLimit && Number(editingSupplier.creditLimit) > 0
-        ? editingSupplier.creditLimit
-        : "",
+          ? editingSupplier.creditLimit
+          : "",
         isVatApplicable: !isNotRegistered,
         notes: editingSupplier.notes || "",
       });
@@ -336,7 +341,7 @@ export default function SuppliersIndex() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-     const payload = {
+    const payload = {
       ...formData,
       creditLimit:
         formData.creditLimit && Number(formData.creditLimit) > 0
@@ -363,7 +368,7 @@ export default function SuppliersIndex() {
           newFormData.isVatApplicable = true;
           newFormData.vatTreatment = "standard";
         } else {
-            newFormData.isVatApplicable = true;
+          newFormData.isVatApplicable = true;
         }
       }
 
@@ -372,19 +377,26 @@ export default function SuppliersIndex() {
   };
 
   const handleBankAccountChange = (index: number, value: string) => {
-    const newDetails = [...(formData.bankAccountDetails || [])];
-    newDetails[index].accountDetails = value;
+    const newDetails = [...formData.bankAccountDetails];
+    newDetails[index] = { ...newDetails[index], accountDetails: value };
     handleChange("bankAccountDetails", newDetails);
   };
 
   const addBankAccountField = () => {
-    const newDetails = [...(formData.bankAccountDetails || []), { accountDetails: "" }];
-    handleChange("bankAccountDetails", newDetails);
+    handleChange("bankAccountDetails", [
+      ...formData.bankAccountDetails,
+      { accountDetails: "" },
+    ]);
   };
 
   const removeBankAccountField = (index: number) => {
-    const newDetails = [...(formData.bankAccountDetails || [])];
-    newDetails.splice(index, 1);
+    if (formData.bankAccountDetails.length === 1) {
+      // Clear instead of remove
+      handleChange("bankAccountDetails", [{ accountDetails: "" }]);
+      return;
+    }
+
+    const newDetails = formData.bankAccountDetails.filter((_, i) => i !== index);
     handleChange("bankAccountDetails", newDetails);
   };
 
@@ -528,6 +540,7 @@ export default function SuppliersIndex() {
                         variant="destructive"
                         size="sm"
                         onClick={() => removeBankAccountField(index)}
+                        disabled={formData.bankAccountDetails.length === 1}
                       >
                         Remove
                       </Button>
@@ -546,7 +559,7 @@ export default function SuppliersIndex() {
                 {/* UAE VAT Compliance Section */}
                 <div className="space-y-4 border-t pt-4">
                   <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">UAE VAT & Tax Information</h4>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="vatRegistrationStatus">VAT Registration Status</Label>
@@ -643,8 +656,8 @@ export default function SuppliersIndex() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="currency">Currency</Label>
-                      <CurrencySelector 
-                        value={formData.currency} 
+                      <CurrencySelector
+                        value={formData.currency}
                         onChange={(value) => handleChange("currency", value)}
                         variant="major"
                         placeholder="Select currency"
@@ -820,178 +833,183 @@ export default function SuppliersIndex() {
           {suppliers
             .filter(supplier => showArchived ? supplier.isArchived : !supplier.isArchived)
             .map((supplier) => (
-            <Card key={supplier.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                    <div className="h-10 w-10 md:h-12 md:w-12 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Package className="h-5 w-5 md:h-6 md:w-6 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-base md:text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">
-                        {supplier.name}
-                      </h3>
-                      {supplier.contactPerson && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
-                          Contact: {supplier.contactPerson}
-                        </p>
-                      )}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mt-2 space-y-1 sm:space-y-0">
-                        {supplier.category && (
-                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 w-fit">
-                            {supplier.category}
-                          </Badge>
+              <Card key={supplier.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                      <div className="h-10 w-10 md:h-12 md:w-12 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Package className="h-5 w-5 md:h-6 md:w-6 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base md:text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">
+                          {supplier.name}
+                        </h3>
+                        {supplier.contactPerson && (
+                          <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
+                            Contact: {supplier.contactPerson}
+                          </p>
                         )}
-                        <span className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                          Supplier #{supplier.id}
-                        </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mt-2 space-y-1 sm:space-y-0">
+                          {supplier.category && (
+                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 w-fit">
+                              {supplier.category}
+                            </Badge>
+                          )}
+                          <span className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+                            Supplier #{supplier.id}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="text-left lg:text-right">
-                    <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                      Added {new Date(supplier.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-4 md:mt-6">
-                  {supplier.email && (
-                    <div className="flex items-start space-x-2">
-                      <Mail className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Email</p>
-                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 break-all">{supplier.email}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {supplier.phone && (
-                    <div className="flex items-start space-x-2">
-                      <Phone className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Phone</p>
-                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">{supplier.phone}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {supplier.address && (
-                    <div className="flex items-start space-x-2">
-                      <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Address</p>
-                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
-                          {supplier.address}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-start space-x-2">
-                    <Package className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Category</p>
+                    <div className="text-left lg:text-right">
                       <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                        {supplier.category || "Uncategorized"}
+                        Added {new Date(supplier.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Bank Account Details */}
-                {supplier.bankAccountDetails && supplier.bankAccountDetails.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-3">Bank Account Details</h4>
-                    {supplier.bankAccountDetails.map((detail, index) => (
-                      <div key={index} className="mb-2">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{detail.accountDetails}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-4 md:mt-6">
+                    {supplier.email && (
+                      <div className="flex items-start space-x-2">
+                        <Mail className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Email</p>
+                          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 break-all">{supplier.email}</p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
 
-                {/* UAE VAT & Tax Information */}
-                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-3">UAE VAT & Tax Information</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {supplier.vatNumber && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">VAT Number</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">{supplier.vatNumber}</p>
+                    {supplier.phone && (
+                      <div className="flex items-start space-x-2">
+                        <Phone className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Phone</p>
+                          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">{supplier.phone}</p>
+                        </div>
                       </div>
                     )}
-                    {supplier.vatRegistrationStatus && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">VAT Status</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
-                          {supplier.vatRegistrationStatus.replace('_', ' ')}
+
+                    {supplier.address && (
+                      <div className="flex items-start space-x-2">
+                        <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Address</p>
+                          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
+                            {supplier.address}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-start space-x-2">
+                      <Package className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Category</p>
+                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+                          {supplier.category || "Uncategorized"}
                         </p>
                       </div>
-                    )}
-                    {supplier.vatTreatment && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">VAT Treatment</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
-                          {supplier.vatTreatment.replace('_', ' ')}
-                          {supplier.vatTreatment === 'standard' && ' (5%)'}
-                          {supplier.vatTreatment === 'zero_rated' && ' (0%)'}
-                        </p>
-                      </div>
-                    )}
-                    {supplier.supplierType && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Supplier Type</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
-                          {supplier.supplierType.replace('_', ' ')}
-                        </p>
-                      </div>
-                    )}
-                    {supplier.currency && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Currency</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">{supplier.currency}</p>
-                      </div>
-                    )}
-                    {supplier.paymentTerms && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Payment Terms</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
-                          {supplier.paymentTerms.replace('_', ' ')}
-                        </p>
-                      </div>
-                    )}
-                    {supplier.taxId && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Tax ID</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">{supplier.taxId}</p>
-                      </div>
-                    )}
-                    {supplier.creditLimit && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Credit Limit</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          {supplier.currency || 'AED'} {parseFloat(supplier.creditLimit).toLocaleString('en-US', {minimumFractionDigits: 2})}
-                        </p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300">VAT Applicable</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">
-                        {supplier.isVatApplicable ? 'Yes' : 'No'}
-                      </p>
                     </div>
                   </div>
-                  {supplier.notes && (
-                    <div className="mt-3">
-                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Notes</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{supplier.notes}</p>
+
+                  {/* Bank Account Details */}
+                  {supplier.bankAccountDetails && supplier.bankAccountDetails.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-3">Bank Account Details</h4>
+                      {supplier.bankAccountDetails.map((detail, index) => (
+                        <div key={index} className="mb-2 flex gap-2">
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {index + 1}.
+                          </span>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                            {detail.accountDetails}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   )}
-                </div>
 
-                <div className="mt-4 md:mt-6 flex flex-col sm:flex-row sm:justify-end gap-2">
-                  {/* <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => {
+                  {/* UAE VAT & Tax Information */}
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-3">UAE VAT & Tax Information</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {supplier.vatNumber && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">VAT Number</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{supplier.vatNumber}</p>
+                        </div>
+                      )}
+                      {supplier.vatRegistrationStatus && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">VAT Status</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
+                            {supplier.vatRegistrationStatus.replace('_', ' ')}
+                          </p>
+                        </div>
+                      )}
+                      {supplier.vatTreatment && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">VAT Treatment</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
+                            {supplier.vatTreatment.replace('_', ' ')}
+                            {supplier.vatTreatment === 'standard' && ' (5%)'}
+                            {supplier.vatTreatment === 'zero_rated' && ' (0%)'}
+                          </p>
+                        </div>
+                      )}
+                      {supplier.supplierType && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Supplier Type</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
+                            {supplier.supplierType.replace('_', ' ')}
+                          </p>
+                        </div>
+                      )}
+                      {supplier.currency && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Currency</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{supplier.currency}</p>
+                        </div>
+                      )}
+                      {supplier.paymentTerms && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Payment Terms</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
+                            {supplier.paymentTerms.replace('_', ' ')}
+                          </p>
+                        </div>
+                      )}
+                      {supplier.taxId && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Tax ID</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{supplier.taxId}</p>
+                        </div>
+                      )}
+                      {supplier.creditLimit && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Credit Limit</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">
+                            {supplier.currency || 'AED'} {parseFloat(supplier.creditLimit).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">VAT Applicable</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          {supplier.isVatApplicable ? 'Yes' : 'No'}
+                        </p>
+                      </div>
+                    </div>
+                    {supplier.notes && (
+                      <div className="mt-3">
+                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Notes</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{supplier.notes}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 md:mt-6 flex flex-col sm:flex-row sm:justify-end gap-2">
+                    {/* <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => {
                     setLocation(`/suppliers/${supplier.id}/orders`);
                   }}>
                     View Orders
@@ -1001,43 +1019,43 @@ export default function SuppliersIndex() {
                   }}>
                     View Products
                   </Button> */}
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleManageDocuments(supplier)}>
-                    <Files className="h-4 w-4 mr-2" />
-                    Documents
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => {
-                    setEditingSupplier(supplier);
-                    setIsDialogOpen(true);
-                  }}>
-                    Edit Supplier
-                  </Button>
-                  {supplier.isArchived ? (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="w-full sm:w-auto"
-                      onClick={() => unarchiveSupplierMutation.mutate(supplier.id)}
-                      disabled={unarchiveSupplierMutation.isPending}
-                    >
-                      <ArchiveRestore className="h-4 w-4 mr-2" />
-                      {unarchiveSupplierMutation.isPending ? "Unarchiving..." : "Unarchive"}
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleManageDocuments(supplier)}>
+                      <Files className="h-4 w-4 mr-2" />
+                      Documents
                     </Button>
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="w-full sm:w-auto"
-                      onClick={() => archiveSupplierMutation.mutate(supplier.id)}
-                      disabled={archiveSupplierMutation.isPending}
-                    >
-                      <Archive className="h-4 w-4 mr-2" />
-                      {archiveSupplierMutation.isPending ? "Archiving..." : "Archive"}
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => {
+                      setEditingSupplier(supplier);
+                      setIsDialogOpen(true);
+                    }}>
+                      Edit Supplier
                     </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {supplier.isArchived ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={() => unarchiveSupplierMutation.mutate(supplier.id)}
+                        disabled={unarchiveSupplierMutation.isPending}
+                      >
+                        <ArchiveRestore className="h-4 w-4 mr-2" />
+                        {unarchiveSupplierMutation.isPending ? "Unarchiving..." : "Unarchive"}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={() => archiveSupplierMutation.mutate(supplier.id)}
+                        disabled={archiveSupplierMutation.isPending}
+                      >
+                        <Archive className="h-4 w-4 mr-2" />
+                        {archiveSupplierMutation.isPending ? "Archiving..." : "Archive"}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
         </div>
       )}
 

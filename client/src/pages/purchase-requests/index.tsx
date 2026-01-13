@@ -443,7 +443,7 @@ export default function PurchaseRequestsIndex() {
                   </Select>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={applyFilters} className="flex-1">Apply</Button>
+                  {/* <Button onClick={applyFilters} className="flex-1">Apply</Button> */}
                   <Button onClick={clearFilters} variant="outline" className="flex-1">Clear</Button>
                 </div>
               </div>
