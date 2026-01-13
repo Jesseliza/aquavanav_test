@@ -113,21 +113,6 @@ export default function PurchaseOrdersIndex() {
     }
   }, [isAuthenticated, user, setLocation]);
 
-  useEffect(() => {
-    if (formData.supplierId) {
-      const selectedSupplier = suppliers.find(s => s.id === parseInt(formData.supplierId));
-      if (selectedSupplier && selectedSupplier.bankAccountDetails) {
-        setBankAccounts(selectedSupplier.bankAccountDetails);
-      } else {
-        setBankAccounts([]);
-      }
-      // Reset bank account selection when supplier changes
-      setFormData(prev => ({ ...prev, bankAccount: "" }));
-    } else {
-      setBankAccounts([]);
-    }
-  }, [formData.supplierId, suppliers]);
-
   const { data: orders, isLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ["/api/purchase-orders"],
     enabled: isAuthenticated,
@@ -145,6 +130,21 @@ export default function PurchaseOrdersIndex() {
 
   const suppliers = Array.isArray(suppliersResponse?.data) ? suppliersResponse.data : [];
   const inventoryItems = Array.isArray(inventoryResponse?.data) ? inventoryResponse.data : [];
+
+  useEffect(() => {
+    if (formData.supplierId) {
+      const selectedSupplier = suppliers.find(s => s.id === parseInt(formData.supplierId));
+      if (selectedSupplier && selectedSupplier.bankAccountDetails) {
+        setBankAccounts(selectedSupplier.bankAccountDetails);
+      } else {
+        setBankAccounts([]);
+      }
+      // Reset bank account selection when supplier changes
+      setFormData(prev => ({ ...prev, bankAccount: "" }));
+    } else {
+      setBankAccounts([]);
+    }
+  }, [formData.supplierId, suppliers]);
 
   // Auto-calculate total tax amount based on line items
   const calculateTotalTax = () => {
