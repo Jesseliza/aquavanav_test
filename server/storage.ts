@@ -700,9 +700,9 @@ class Storage {
   }
 
   // Supplier methods
-  async getAllSuppliers(): Promise<SupplierWithBankDetails[]> {
+  async getSuppliers(): Promise<SupplierWithBankDetails[]> {
     try {
-      const allSuppliers = await db.select().from(suppliers).orderBy(suppliers.id);
+      const allSuppliers = await db.select().from(suppliers);
       if (allSuppliers.length === 0) {
         return [];
       }
@@ -727,9 +727,9 @@ class Storage {
     } catch (error: any) {
       await this.createErrorLog({
         message:
-          "Error in getAllSuppliers: " + (error?.message || "Unknown error"),
+          "Error in getSuppliers: " + (error?.message || "Unknown error"),
         stack: error?.stack,
-        component: "getAllSuppliers",
+        component: "getSuppliers",
         severity: "error",
       });
       throw error;
@@ -7293,14 +7293,13 @@ class Storage {
             ...order,
             items,
           };
-        })
+        }),
       );
 
       return ordersWithItems;
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          "Error in getPurchaseOrders: " + (error?.message || "Unknown error"),
+        message: "Error in getPurchaseOrders: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseOrders",
         severity: "error",
@@ -7320,12 +7319,20 @@ class Storage {
           status: purchaseOrders.status,
           orderDate: purchaseOrders.orderDate,
           expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+          paymentTerms: purchaseOrders.paymentTerms,
           deliveryTerms: purchaseOrders.deliveryTerms,
+          bankAccount: purchaseOrders.bankAccount,
           subtotal: purchaseOrders.subtotal,
           taxAmount: purchaseOrders.taxAmount,
           totalAmount: purchaseOrders.totalAmount,
           notes: purchaseOrders.notes,
           createdAt: purchaseOrders.createdAt,
+          submittedById: purchaseOrders.submittedById,
+          submittedAt: purchaseOrders.submittedAt,
+          approvedById: purchaseOrders.approvedById,
+          approvedAt: purchaseOrders.approvedAt,
+          rejectionReason: purchaseOrders.rejectionReason,
+          convertedInvoiceId: purchaseOrders.convertedInvoiceId,
         })
         .from(purchaseOrders)
         .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
@@ -7337,9 +7344,7 @@ class Storage {
       return { ...order, items };
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in getPurchaseOrder (id: ${id}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in getPurchaseOrder (id: ${id}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseOrder",
         severity: "error",
@@ -7366,16 +7371,14 @@ class Storage {
         .from(purchaseOrderItems)
         .leftJoin(
           inventoryItems,
-          eq(purchaseOrderItems.inventoryItemId, inventoryItems.id)
+          eq(purchaseOrderItems.inventoryItemId, inventoryItems.id),
         )
         .where(eq(purchaseOrderItems.poId, poId));
 
       return items;
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in getPurchaseOrderItems (poId: ${poId}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in getPurchaseOrderItems (poId: ${poId}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseOrderItems",
         severity: "error",
@@ -7395,9 +7398,7 @@ class Storage {
           poNumber,
           supplierId: orderData.supplierId,
           status: orderData.status || "draft",
-          orderDate: orderData.orderDate
-            ? new Date(orderData.orderDate)
-            : new Date(),
+          orderDate: orderData.orderDate ? new Date(orderData.orderDate) : new Date(),
           expectedDeliveryDate: orderData.expectedDeliveryDate
             ? new Date(orderData.expectedDeliveryDate)
             : null,
@@ -7419,13 +7420,10 @@ class Storage {
           inventoryItemId: item.inventoryItemId || null,
           description: item.description || null,
           quantity: item.quantity,
-          unitPrice: item.unitPrice.toFixed(2),
+          unitPrice: item.unitPrice.toFixed(2) ,
           taxRate: item.taxRate ? item.taxRate.toFixed(2) : "0.00",
           taxAmount: item.taxAmount ? item.taxAmount.toFixed(2) : "0.00",
-          lineTotal: (
-            item.quantity * parseFloat(item.unitPrice) +
-            (item.taxAmount || 0)
-          ).toFixed(2),
+          lineTotal: (item.quantity * parseFloat(item.unitPrice) + (item.taxAmount || 0)).toFixed(2),
         }));
 
         await db.insert(purchaseOrderItems).values(itemsToInsert);
@@ -7434,9 +7432,7 @@ class Storage {
       return this.getPurchaseOrder(order.id);
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          "Error in createPurchaseOrder: " +
-          (error?.message || "Unknown error"),
+        message: "Error in createPurchaseOrder: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseOrder",
         severity: "error",
@@ -7449,29 +7445,56 @@ class Storage {
     try {
       const updateData: any = {};
 
+      if (data.supplierId !== undefined) updateData.supplierId = data.supplierId;
       if (data.status !== undefined) updateData.status = data.status;
+      if (data.orderDate !== undefined) {
+        updateData.orderDate = data.orderDate ? new Date(data.orderDate) : new Date();
+      }
       if (data.expectedDeliveryDate !== undefined) {
         updateData.expectedDeliveryDate = data.expectedDeliveryDate
           ? new Date(data.expectedDeliveryDate)
           : null;
       }
-      if (data.notes !== undefined) updateData.notes = data.notes;
+      if (data.paymentTerms !== undefined) updateData.paymentTerms = data.paymentTerms || null;
+      if (data.deliveryTerms !== undefined) updateData.deliveryTerms = data.deliveryTerms || null;
+      if (data.bankAccount !== undefined) updateData.bankAccount = data.bankAccount || null;
+      if (data.notes !== undefined) updateData.notes = data.notes || null;
       if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
       if (data.taxAmount !== undefined) updateData.taxAmount = data.taxAmount;
-      if (data.totalAmount !== undefined)
-        updateData.totalAmount = data.totalAmount;
+      if (data.totalAmount !== undefined) updateData.totalAmount = data.totalAmount;
 
       await db
         .update(purchaseOrders)
         .set(updateData)
         .where(eq(purchaseOrders.id, id));
 
+      // Update items if provided
+      if (data.items !== undefined && Array.isArray(data.items)) {
+        // Delete existing items
+        await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.poId, id));
+
+        // Insert new items
+        if (data.items.length > 0) {
+          const itemsToInsert = data.items.map((item: any) => ({
+            poId: id,
+            itemType: item.itemType || "product",
+            inventoryItemId: item.inventoryItemId || null,
+            description: item.description || null,
+            quantity: item.quantity,
+            unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice.toFixed(2) : item.unitPrice,
+            taxRate: item.taxRate ? (typeof item.taxRate === 'number' ? item.taxRate.toFixed(2) : item.taxRate) : "0.00",
+            taxAmount: item.taxAmount ? (typeof item.taxAmount === 'number' ? item.taxAmount.toFixed(2) : item.taxAmount) : "0.00",
+            lineTotal: (item.quantity * parseFloat(item.unitPrice) + (item.taxAmount || 0)).toFixed(2),
+          }));
+
+          await db.insert(purchaseOrderItems).values(itemsToInsert);
+        }
+      }
+
       return this.getPurchaseOrder(id);
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in updatePurchaseOrder (id: ${id}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in updatePurchaseOrder (id: ${id}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "updatePurchaseOrder",
         severity: "error",
@@ -7483,23 +7506,161 @@ class Storage {
   async deletePurchaseOrder(id: number): Promise<boolean> {
     try {
       // Delete order items first
-      await db
-        .delete(purchaseOrderItems)
-        .where(eq(purchaseOrderItems.poId, id));
-
+      await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.poId, id));
+      
       // Delete the order
       const result = await db
         .delete(purchaseOrders)
         .where(eq(purchaseOrders.id, id));
-
+        
       return result.rowCount > 0;
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in deletePurchaseOrder (id: ${id}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in deletePurchaseOrder (id: ${id}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "deletePurchaseOrder",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async submitPurchaseOrderForApproval(id: number, userId: number): Promise<any> {
+    try {
+      await db
+        .update(purchaseOrders)
+        .set({
+          status: 'pending_approval',
+          submittedById: userId,
+          submittedAt: new Date(),
+        })
+        .where(eq(purchaseOrders.id, id));
+
+      return this.getPurchaseOrder(id);
+    } catch (error: any) {
+      await this.createErrorLog({
+        message: `Error in submitPurchaseOrderForApproval (id: ${id}): ` + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "submitPurchaseOrderForApproval",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async approvePurchaseOrder(id: number, userId: number): Promise<any> {
+    try {
+      await db
+        .update(purchaseOrders)
+        .set({
+          status: 'approved',
+          approvedById: userId,
+          approvedAt: new Date(),
+        })
+        .where(eq(purchaseOrders.id, id));
+
+      return this.getPurchaseOrder(id);
+    } catch (error: any) {
+      await this.createErrorLog({
+        message: `Error in approvePurchaseOrder (id: ${id}): ` + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "approvePurchaseOrder",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async rejectPurchaseOrder(id: number, userId: number, reason?: string): Promise<any> {
+    try {
+      await db
+        .update(purchaseOrders)
+        .set({
+          status: 'rejected',
+          rejectionReason: reason || null,
+        })
+        .where(eq(purchaseOrders.id, id));
+
+      return this.getPurchaseOrder(id);
+    } catch (error: any) {
+      await this.createErrorLog({
+        message: `Error in rejectPurchaseOrder (id: ${id}): ` + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "rejectPurchaseOrder",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async convertPurchaseOrderToInvoice(id: number, userId: number): Promise<any> {
+    try {
+      // Get the purchase order with items
+      const po = await this.getPurchaseOrder(id);
+      if (!po) {
+        throw new Error("Purchase order not found");
+      }
+
+      if (po.status !== 'approved') {
+        throw new Error("Only approved purchase orders can be converted to invoices");
+      }
+
+      // Generate invoice number
+      const invoiceNumber = `PI-${Date.now()}`;
+
+      // Create the invoice
+      const [invoice] = await db
+        .insert(purchaseInvoices)
+        .values({
+          invoiceNumber,
+          supplierId: po.supplierId,
+          poId: id,
+          status: 'pending',
+          approvalStatus: 'pending',
+          invoiceDate: new Date(),
+          dueDate: po.expectedDeliveryDate || new Date(),
+          paymentTerms: po.paymentTerms,
+          notes: po.notes,
+          subtotal: po.subtotal,
+          taxAmount: po.taxAmount,
+          totalAmount: po.totalAmount,
+          paidAmount: "0",
+          createdBy: userId,
+        })
+        .returning();
+
+      // Copy items from PO to invoice
+      if (po.items && po.items.length > 0) {
+        const invoiceItemsToInsert = po.items.map((item: any) => ({
+          purchaseInvoiceId: invoice.id,
+          itemType: item.itemType || "product",
+          inventoryItemId: item.inventoryItemId || null,
+          description: item.description || null,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          taxRate: item.taxRate || "0.00",
+          taxAmount: item.taxAmount || "0.00",
+          lineTotal: item.lineTotal,
+        }));
+
+        await db.insert(purchaseInvoiceItems).values(invoiceItemsToInsert);
+      }
+
+      // Update the PO status to 'converted' and link the invoice
+      await db
+        .update(purchaseOrders)
+        .set({
+          status: 'converted',
+          convertedInvoiceId: invoice.id,
+        })
+        .where(eq(purchaseOrders.id, id));
+
+      return { invoice, purchaseOrder: await this.getPurchaseOrder(id) };
+    } catch (error: any) {
+      await this.createErrorLog({
+        message: `Error in convertPurchaseOrderToInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "convertPurchaseOrderToInvoice",
         severity: "error",
       });
       throw error;
@@ -7515,17 +7676,25 @@ class Storage {
           supplierId: purchaseInvoices.supplierId,
           supplierName: suppliers.name,
           poId: purchaseInvoices.poId,
+          projectId: purchaseInvoices.projectId,
+          assetInventoryInstanceId: purchaseInvoices.assetInventoryInstanceId,
           status: purchaseInvoices.status,
-          approvalStatus: purchaseInvoices.approvalStatus,
-          approvedBy: purchaseInvoices.approvedBy,
-          approvedAt: purchaseInvoices.approvedAt,
+          paymentStatus: purchaseInvoices.paymentStatus,
           invoiceDate: purchaseInvoices.invoiceDate,
           dueDate: purchaseInvoices.dueDate,
           subtotal: purchaseInvoices.subtotal,
           taxAmount: purchaseInvoices.taxAmount,
           totalAmount: purchaseInvoices.totalAmount,
           paidAmount: purchaseInvoices.paidAmount,
+          paymentTerms: purchaseInvoices.paymentTerms,
+          bankAccount: purchaseInvoices.bankAccount,
           notes: purchaseInvoices.notes,
+          submittedById: purchaseInvoices.submittedById,
+          submittedAt: purchaseInvoices.submittedAt,
+          approvedById: purchaseInvoices.approvedById,
+          approvedAt: purchaseInvoices.approvedAt,
+          rejectionReason: purchaseInvoices.rejectionReason,
+          createdBy: purchaseInvoices.createdBy,
           createdAt: purchaseInvoices.createdAt,
         })
         .from(purchaseInvoices)
@@ -7535,9 +7704,7 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          "Error in getPurchaseInvoices: " +
-          (error?.message || "Unknown error"),
+        message: "Error in getPurchaseInvoices: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseInvoices",
         severity: "error",
@@ -7560,17 +7727,25 @@ class Storage {
           supplierId: purchaseInvoices.supplierId,
           supplierName: suppliers.name,
           poId: purchaseInvoices.poId,
+          projectId: purchaseInvoices.projectId,
+          assetInventoryInstanceId: purchaseInvoices.assetInventoryInstanceId,
           status: purchaseInvoices.status,
-          approvalStatus: purchaseInvoices.approvalStatus,
-          approvedBy: purchaseInvoices.approvedBy,
-          approvedAt: purchaseInvoices.approvedAt,
+          paymentStatus: purchaseInvoices.paymentStatus,
           invoiceDate: purchaseInvoices.invoiceDate,
           dueDate: purchaseInvoices.dueDate,
           subtotal: purchaseInvoices.subtotal,
           taxAmount: purchaseInvoices.taxAmount,
           totalAmount: purchaseInvoices.totalAmount,
           paidAmount: purchaseInvoices.paidAmount,
+          paymentTerms: purchaseInvoices.paymentTerms,
+          bankAccount: purchaseInvoices.bankAccount,
           notes: purchaseInvoices.notes,
+          submittedById: purchaseInvoices.submittedById,
+          submittedAt: purchaseInvoices.submittedAt,
+          approvedById: purchaseInvoices.approvedById,
+          approvedAt: purchaseInvoices.approvedAt,
+          rejectionReason: purchaseInvoices.rejectionReason,
+          createdBy: purchaseInvoices.createdBy,
           createdAt: purchaseInvoices.createdAt,
         })
         .from(purchaseInvoices)
@@ -7579,14 +7754,10 @@ class Storage {
       const conditions = [];
 
       if (filters.startDate) {
-        conditions.push(
-          gte(purchaseInvoices.invoiceDate, new Date(filters.startDate))
-        );
+        conditions.push(gte(purchaseInvoices.invoiceDate, new Date(filters.startDate)));
       }
       if (filters.endDate) {
-        conditions.push(
-          lte(purchaseInvoices.invoiceDate, new Date(filters.endDate))
-        );
+        conditions.push(lte(purchaseInvoices.invoiceDate, new Date(filters.endDate)));
       }
       if (filters.supplierId) {
         conditions.push(eq(purchaseInvoices.supplierId, filters.supplierId));
@@ -7603,9 +7774,7 @@ class Storage {
       return result;
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          "Error in getPurchaseInvoicesFiltered: " +
-          (error?.message || "Unknown error"),
+        message: "Error in getPurchaseInvoicesFiltered: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseInvoicesFiltered",
         severity: "error",
@@ -7626,7 +7795,7 @@ class Storage {
           projectId: purchaseInvoices.projectId,
           assetInventoryInstanceId: purchaseInvoices.assetInventoryInstanceId,
           status: purchaseInvoices.status,
-          approvalStatus: purchaseInvoices.approvalStatus,
+          paymentStatus: purchaseInvoices.paymentStatus,
           invoiceDate: purchaseInvoices.invoiceDate,
           dueDate: purchaseInvoices.dueDate,
           paymentTerms: purchaseInvoices.paymentTerms,
@@ -7636,9 +7805,13 @@ class Storage {
           totalAmount: purchaseInvoices.totalAmount,
           paidAmount: purchaseInvoices.paidAmount,
           notes: purchaseInvoices.notes,
-          createdAt: purchaseInvoices.createdAt,
-          approvedBy: purchaseInvoices.approvedBy,
+          submittedById: purchaseInvoices.submittedById,
+          submittedAt: purchaseInvoices.submittedAt,
+          approvedById: purchaseInvoices.approvedById,
           approvedAt: purchaseInvoices.approvedAt,
+          rejectionReason: purchaseInvoices.rejectionReason,
+          createdBy: purchaseInvoices.createdBy,
+          createdAt: purchaseInvoices.createdAt,
         })
         .from(purchaseInvoices)
         .leftJoin(suppliers, eq(purchaseInvoices.supplierId, suppliers.id))
@@ -7663,16 +7836,14 @@ class Storage {
         .from(purchaseInvoiceItems)
         .leftJoin(
           inventoryItems,
-          eq(purchaseInvoiceItems.inventoryItemId, inventoryItems.id)
+          eq(purchaseInvoiceItems.inventoryItemId, inventoryItems.id),
         )
         .where(eq(purchaseInvoiceItems.invoiceId, id));
 
       return { ...invoice, items };
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in getPurchaseInvoice (id: ${id}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in getPurchaseInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseInvoice",
         severity: "error",
@@ -7692,8 +7863,7 @@ class Storage {
           supplierId: invoiceData.supplierId,
           poId: invoiceData.poId || null,
           projectId: invoiceData.projectId || null,
-          assetInventoryInstanceId:
-            invoiceData.assetInventoryInstanceId || null,
+          assetInventoryInstanceId: invoiceData.assetInventoryInstanceId || null,
           status: invoiceData.status || "pending",
           invoiceDate: new Date(invoiceData.invoiceDate),
           dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : null,
@@ -7728,9 +7898,7 @@ class Storage {
       return this.getPurchaseInvoice(invoice.id);
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          "Error in createPurchaseInvoiceStandalone: " +
-          (error?.message || "Unknown error"),
+        message: "Error in createPurchaseInvoiceStandalone: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseInvoiceStandalone",
         severity: "error",
@@ -7741,7 +7909,7 @@ class Storage {
 
   async createPurchaseInvoiceFromPO(
     poId: number,
-    invoiceData: any
+    invoiceData: any,
   ): Promise<any> {
     try {
       // Get the purchase order
@@ -7791,10 +7959,7 @@ class Storage {
 
         // Update inventory for received items (only for products)
         for (const item of po.items) {
-          if (
-            item.inventoryItemId &&
-            (item.itemType === "product" || !item.itemType)
-          ) {
+          if (item.inventoryItemId && (item.itemType === "product" || !item.itemType)) {
             // Update inventory stock
             const currentItem = await db
               .select()
@@ -7830,11 +7995,32 @@ class Storage {
       return this.getPurchaseInvoice(invoice.id);
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in createPurchaseInvoiceFromPO (poId: ${poId}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in createPurchaseInvoiceFromPO (poId: ${poId}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseInvoiceFromPO",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async submitPurchaseInvoiceForApproval(id: number, userId: number): Promise<any> {
+    try {
+      await db
+        .update(purchaseInvoices)
+        .set({
+          status: 'pending_approval',
+          submittedById: userId,
+          submittedAt: new Date(),
+        })
+        .where(eq(purchaseInvoices.id, id));
+
+      return this.getPurchaseInvoice(id);
+    } catch (error: any) {
+      await this.createErrorLog({
+        message: `Error in submitPurchaseInvoiceForApproval (id: ${id}): ` + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "submitPurchaseInvoiceForApproval",
         severity: "error",
       });
       throw error;
@@ -7853,50 +8039,80 @@ class Storage {
       await db
         .update(purchaseInvoices)
         .set({
-          approvalStatus: "approved",
-          approvedBy: userId,
+          status: "approved",
+          approvedById: userId,
           approvedAt: new Date(),
         })
         .where(eq(purchaseInvoices.id, id));
 
-      // If linked to a project, add amount to project's actual cost
-      if (invoice.projectId) {
-        const [project] = await db
-          .select()
-          .from(projects)
-          .where(eq(projects.id, invoice.projectId));
+      // Get invoice line items
+      const items = await db
+        .select()
+        .from(purchaseInvoiceItems)
+        .where(eq(purchaseInvoiceItems.invoiceId, id));
 
-        if (project) {
-          const currentCost = parseFloat(project.actualCost || "0");
-          const invoiceAmount = parseFloat(invoice.totalAmount);
-          const newCost = currentCost + invoiceAmount;
+      // Process each line item for project/asset allocations
+      for (const item of items) {
+        const lineAmountWithTax = parseFloat(item.lineTotal);
 
-          await db
-            .update(projects)
-            .set({ actualCost: newCost.toFixed(2) })
-            .where(eq(projects.id, invoice.projectId));
+        // If line item is linked to a project, add line item amount to project's actual cost
+        if (item.projectId) {
+          const [project] = await db
+            .select()
+            .from(projects)
+            .where(eq(projects.id, item.projectId));
+
+          if (project) {
+            const currentCost = parseFloat(project.actualCost || "0");
+            const newCost = currentCost + lineAmountWithTax;
+
+            await db
+              .update(projects)
+              .set({ actualCost: newCost.toFixed(2) })
+              .where(eq(projects.id, item.projectId));
+          }
         }
-      }
 
-      // If linked to an asset instance, create a maintenance record
-      if (invoice.assetInventoryInstanceId) {
-        await db.insert(assetInventoryMaintenanceRecords).values({
-          instanceId: invoice.assetInventoryInstanceId,
-          maintenanceCost: invoice.totalAmount,
-          maintenanceDate: new Date(),
-          description: `Purchase Invoice: ${invoice.invoiceNumber} - ${
-            invoice.notes || "Maintenance cost"
-          }`,
-          performedBy: userId,
-        });
+        // If line item is linked to an asset instance, create a maintenance record
+        if (item.assetInstanceId) {
+          await db.insert(assetInventoryMaintenanceRecords).values({
+            instanceId: item.assetInstanceId,
+            maintenanceCost: lineAmountWithTax.toFixed(2),
+            maintenanceDate: new Date(),
+            description: `Purchase Invoice: ${invoice.invoiceNumber} - ${item.description || 'Maintenance cost'}`,
+            performedBy: userId,
+          });
+        }
       }
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in approvePurchaseInvoice (id: ${id}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in approvePurchaseInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "approvePurchaseInvoice",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async rejectPurchaseInvoice(id: number, userId: number, reason?: string): Promise<any> {
+    try {
+      await db
+        .update(purchaseInvoices)
+        .set({
+          status: 'rejected',
+          rejectionReason: reason || null,
+          approvedById: userId,
+          approvedAt: new Date(),
+        })
+        .where(eq(purchaseInvoices.id, id));
+
+      return this.getPurchaseInvoice(id);
+    } catch (error: any) {
+      await this.createErrorLog({
+        message: `Error in rejectPurchaseInvoice (id: ${id}): ` + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "rejectPurchaseInvoice",
         severity: "error",
       });
       throw error;
@@ -7925,8 +8141,7 @@ class Storage {
         throw new Error("Invoice not found");
       }
 
-      const newPaidAmount =
-        parseFloat(invoice.paidAmount || "0") + parseFloat(paymentData.amount);
+      const newPaidAmount = parseFloat(invoice.paidAmount || "0") + parseFloat(paymentData.amount);
       const totalAmount = parseFloat(invoice.totalAmount);
 
       // Determine new status
@@ -7949,9 +8164,7 @@ class Storage {
       return payment;
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          "Error in createPurchaseInvoicePayment: " +
-          (error?.message || "Unknown error"),
+        message: "Error in createPurchaseInvoicePayment: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchaseInvoicePayment",
         severity: "error",
@@ -7979,9 +8192,7 @@ class Storage {
       return payments;
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          `Error in getPurchaseInvoicePayments (invoiceId: ${invoiceId}): ` +
-          (error?.message || "Unknown error"),
+        message: `Error in getPurchaseInvoicePayments (invoiceId: ${invoiceId}): ` + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseInvoicePayments",
         severity: "error",
@@ -7994,8 +8205,7 @@ class Storage {
     try {
       // This would be implemented similar to sales payment files
       // For now, return a basic structure
-      const newFile = {
-        // Added variable to hold the created file data
+      const newFile = { // Added variable to hold the created file data
         id: Date.now(),
         ...fileData,
         uploadedAt: new Date(),
@@ -8003,9 +8213,7 @@ class Storage {
       return newFile; // Return the created file data
     } catch (error: any) {
       await this.createErrorLog({
-        message:
-          "Error in createPurchasePaymentFile: " +
-          (error?.message || "Unknown error"),
+        message: "Error in createPurchasePaymentFile: " + (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "createPurchasePaymentFile",
         severity: "error",
@@ -10019,7 +10227,7 @@ export interface IStorage {
   deleteCustomer(id: number): Promise<boolean>;
 
   // Supplier methods
-  getAllSuppliers(): Promise<SupplierWithBankDetails[]>;
+  getSuppliers(): Promise<SupplierWithBankDetails[]>;
   getSuppliersPaginated(
     page: number,
     limit: number,
@@ -10365,6 +10573,10 @@ export interface IStorage {
   createPurchaseOrder(orderData: any): Promise<any>;
   updatePurchaseOrder(id: number, data: any): Promise<any>;
   deletePurchaseOrder(id: number): Promise<boolean>;
+  submitPurchaseOrderForApproval(id: number, userId: number): Promise<any>;
+  approvePurchaseOrder(id: number, userId: number): Promise<any>;
+  rejectPurchaseOrder(id: number, userId: number, reason?: string): Promise<any>;
+  convertPurchaseOrderToInvoice(id: number, userId: number): Promise<any>;
   getPurchaseInvoices(): Promise<any[]>;
   createPurchaseInvoiceFromPO(poId: number, invoiceData: any): Promise<any>;
 

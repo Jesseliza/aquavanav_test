@@ -1011,15 +1011,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/suppliers/all", requireAuth, async (req, res) => {
-    try {
-      const result = await storage.getAllSuppliers();
-      res.json({ data: result });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to get all suppliers" });
-    }
-  });
-
   app.post(
     "/api/customers",
     requireAuth,
@@ -1133,6 +1124,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/suppliers/all", requireAuth, async (req, res) => {
+    try {
+      const result = await storage.getSuppliers();
+      res.json({ data: result });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get all suppliers" });
+    }
+  });
+
   app.post(
     "/api/suppliers",
     requireAuth,
@@ -1141,7 +1141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const supplierData = insertSupplierSchema.parse(req.body);
         const supplier = await storage.createSupplier(supplierData);
-        console.log("5=>",supplier);
+        console.log("5=>", supplier);
         res.status(201).json(supplier);
       } catch (error) {
         if (error instanceof ZodError) {
@@ -4787,6 +4787,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Purchase Invoices routes
+
+  // Purchase Orders routes
+  app.get(
+    "/api/purchase-orders",
+    requireAuth,
+    requireRole(["admin", "finance", "project_manager"]),
+    async (req, res) => {
+      try {
+        const orders = await storage.getPurchaseOrders();
+        res.json(orders);
+      } catch (error) {
+        console.error("Get purchase orders error:", error);
+        res.json([]); // Return empty array instead of error to prevent reports from failing
+      }
+    }
+  );
+
+  app.get(
+    "/api/purchase-orders/:id",
+    requireAuth,
+    requireRole(["admin", "finance", "project_manager"]),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const order = await storage.getPurchaseOrder(id);
+
+        if (!order) {
+          return res.status(404).json({ message: "Purchase order not found" });
+        }
+
+        res.json(order);
+      } catch (error) {
+        console.error("Get purchase order error:", error);
+        res.status(500).json({ message: "Failed to get purchase order" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/purchase-orders",
+    requireAuth,
+    requireRole(["admin", "finance"]),
+    async (req, res) => {
+      try {
+        const orderData = {
+          ...req.body,
+          createdBy: req.session.userId,
+        };
+
+        const order = await storage.createPurchaseOrder(orderData);
+        res.status(201).json(order);
+      } catch (error) {
+        console.error("Create purchase order error:", error);
+        res.status(500).json({ message: "Failed to create purchase order" });
+      }
+    }
+  );
+
+  app.put(
+    "/api/purchase-orders/:id",
+    requireAuth,
+    requireRole(["admin", "finance"]),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const orderData = req.body;
+
+        const order = await storage.updatePurchaseOrder(id, orderData);
+        if (!order) {
+          return res.status(404).json({ message: "Purchase order not found" });
+        }
+
+        res.json(order);
+      } catch (error) {
+        console.error("Update purchase order error:", error);
+        res.status(500).json({ message: "Failed to update purchase order" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/purchase-orders/:id",
+    requireAuth,
+    requireRole(["admin", "finance"]),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const deleted = await storage.deletePurchaseOrder(id);
+
+        if (!deleted) {
+          return res.status(404).json({ message: "Purchase order not found" });
+        }
+
+        res.json({ message: "Purchase order deleted successfully" });
+      } catch (error) {
+        console.error("Delete purchase order error:", error);
+        res.status(500).json({ message: "Failed to delete purchase order" });
+      }
+    }
+  );
+
+  // Purchase Order Approval routes
+  app.post(
+    "/api/purchase-orders/:id/submit",
+    requireAuth,
+    requireRole(["admin", "finance", "project_manager"]),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const order = await storage.submitPurchaseOrderForApproval(
+          id,
+          req.session.userId!
+        );
+        res.json(order);
+      } catch (error) {
+        console.error("Submit purchase order error:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to submit purchase order for approval" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/purchase-orders/:id/approve",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const order = await storage.approvePurchaseOrder(
+          id,
+          req.session.userId!
+        );
+        res.json(order);
+      } catch (error) {
+        console.error("Approve purchase order error:", error);
+        res.status(500).json({ message: "Failed to approve purchase order" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/purchase-orders/:id/reject",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const { reason } = req.body;
+        const order = await storage.rejectPurchaseOrder(
+          id,
+          req.session.userId!,
+          reason
+        );
+        res.json(order);
+      } catch (error) {
+        console.error("Reject purchase order error:", error);
+        res.status(500).json({ message: "Failed to reject purchase order" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/purchase-orders/:id/convert-to-invoice",
+    requireAuth,
+    requireRole(["admin", "finance"]),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const result = await storage.convertPurchaseOrderToInvoice(
+          id,
+          req.session.userId!
+        );
+        res.json(result);
+      } catch (error: any) {
+        console.error("Convert purchase order to invoice error:", error);
+        res
+          .status(500)
+          .json({
+            message:
+              error.message || "Failed to convert purchase order to invoice",
+          });
+      }
+    }
+  );
+
+  // Purchase Invoices routes
   app.get(
     "/api/purchase-invoices",
     requireAuth,
@@ -4860,6 +5048,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   app.patch(
+    "/api/purchase-invoices/:id/submit",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const invoice = await storage.getPurchaseInvoice(id);
+
+        if (!invoice) {
+          return res
+            .status(404)
+            .json({ message: "Purchase invoice not found" });
+        }
+
+        if (invoice.status !== "draft") {
+          return res
+            .status(400)
+            .json({ message: "Only draft invoices can be submitted" });
+        }
+
+        const updated = await storage.submitPurchaseInvoiceForApproval(
+          id,
+          req.session.userId!
+        );
+        res.json({
+          message: "Purchase invoice submitted for approval",
+          invoice: updated,
+        });
+      } catch (error) {
+        console.error("Submit purchase invoice error:", error);
+        res.status(500).json({ message: "Failed to submit purchase invoice" });
+      }
+    }
+  );
+
+  app.patch(
     "/api/purchase-invoices/:id/approve",
     requireAuth,
     requireRole(["admin"]),
@@ -4874,10 +5097,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .json({ message: "Purchase invoice not found" });
         }
 
-        if (invoice.approvalStatus === "approved") {
+        if (invoice.status === "approved") {
           return res
             .status(400)
             .json({ message: "Invoice is already approved" });
+        }
+
+        if (invoice.status !== "pending_approval") {
+          return res
+            .status(400)
+            .json({ message: "Only pending invoices can be approved" });
         }
 
         await storage.approvePurchaseInvoice(id, req.session.userId!);
@@ -4885,6 +5114,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Approve purchase invoice error:", error);
         res.status(500).json({ message: "Failed to approve purchase invoice" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/purchase-invoices/:id/reject",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const invoice = await storage.getPurchaseInvoice(id);
+
+        if (!invoice) {
+          return res
+            .status(404)
+            .json({ message: "Purchase invoice not found" });
+        }
+
+        if (invoice.status !== "pending_approval") {
+          return res
+            .status(400)
+            .json({ message: "Only pending invoices can be rejected" });
+        }
+
+        const { reason } = req.body;
+        const updated = await storage.rejectPurchaseInvoice(
+          id,
+          req.session.userId!,
+          reason
+        );
+        res.json({ message: "Purchase invoice rejected", invoice: updated });
+      } catch (error) {
+        console.error("Reject purchase invoice error:", error);
+        res.status(500).json({ message: "Failed to reject purchase invoice" });
       }
     }
   );
