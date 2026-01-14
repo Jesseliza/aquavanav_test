@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, FileText, Package, Truck, CheckCircle, XCircle, Clock, Eye, Trash2, Search, Filter, DollarSign, TrendingUp, CreditCard, Printer } from "lucide-react";
+import { Plus, FileText, Package, Truck, CheckCircle, XCircle, Clock, Eye, Trash2, Search, Filter, DollarSign, TrendingUp, CreditCard, Printer, Paperclip } from "lucide-react";
 import { InventoryItem, type SupplierBankDetails } from "@shared/schema";
 
 interface Supplier {
@@ -44,6 +44,7 @@ interface PurchaseOrder {
   totalAmount: string;
   notes?: string;
   items?: PurchaseOrderItem[];
+  files?: PurchaseOrderFile[];
   submittedById?: number;
   submittedAt?: string;
   approvedById?: number;
@@ -63,6 +64,16 @@ interface PurchaseOrderItem {
   quantity: number;
   unitPrice: string;
   lineTotal: string;
+}
+
+interface PurchaseOrderFile {
+  id: number;
+  poId: number;
+  fileName: string;
+  originalName: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
 }
 
 export default function PurchaseOrdersIndex() {
@@ -173,6 +184,7 @@ export default function PurchaseOrdersIndex() {
       const response = await fetch("/api/purchase-orders", {
         method: "POST",
         body: formDataInstance,
+        credentials: 'same-origin',
         // No 'Content-Type' header, browser sets it for FormData
       });
       if (!response.ok) {
@@ -312,6 +324,7 @@ export default function PurchaseOrdersIndex() {
       const response = await fetch(`/api/purchase-orders/${orderId}`, {
         method: "PUT",
         body: formDataInstance,
+        credentials: 'same-origin',
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -1479,6 +1492,38 @@ export default function PurchaseOrdersIndex() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">{viewingOrder.notes}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Attachments */}
+              {viewingOrder.files && viewingOrder.files.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Paperclip className="w-4 h-4" />
+                      Attachments
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {viewingOrder.files.map((file) => (
+                        <li key={file.id}>
+                          <a
+                            href={`/${file.filePath}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                          >
+                            <FileText className="w-4 h-4" />
+                            {file.originalName}
+                            <span className="text-xs text-gray-500">
+                              ({(file.fileSize / 1024).toFixed(2)} KB)
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
                   </CardContent>
                 </Card>
               )}

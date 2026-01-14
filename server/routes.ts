@@ -4739,7 +4739,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: req.session.userId,
         };
 
-        const order = await storage.createPurchaseOrder(orderData);
+        const order = await storage.createPurchaseOrder(
+          orderData,
+          req.files as Express.Multer.File[]
+        );
         res.status(201).json(order);
       } catch (error) {
         console.error("Create purchase order error:", error);
@@ -4762,7 +4765,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           files: req.files,
         };
 
-        const order = await storage.updatePurchaseOrder(id, orderData);
+        const order = await storage.updatePurchaseOrder(
+          id,
+          orderData,
+          req.files as Express.Multer.File[]
+        );
         if (!order) {
           return res.status(404).json({ message: "Purchase order not found" });
         }
