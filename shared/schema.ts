@@ -355,6 +355,18 @@ export const salesQuotationItems = pgTable("sales_quotation_items", {
   lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
 });
 
+// Purchase Order Files table
+export const purchaseOrderFiles = pgTable("purchase_order_files", {
+  id: serial("id").primaryKey(),
+  poId: integer("po_id").notNull().references(() => purchaseOrders.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  originalName: text("original_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
 // Sales Invoices
 export const salesInvoices = pgTable("sales_invoices", {
   id: serial("id").primaryKey(),
@@ -629,7 +641,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   id: serial("id").primaryKey(),
   poNumber: text("po_number").notNull().unique(),
   supplierId: integer("supplier_id").references(() => suppliers.id),
-  status: text("status").notNull().default("draft"), // draft, sent, confirmed, received, cancelled
+  status: text("status").notNull().default("draft"), // draft, pending_approval, approved, rejected, converted
   orderDate: timestamp("order_date").notNull().defaultNow(),
   expectedDeliveryDate: timestamp("expected_delivery_date"),
   paymentTerms: text("payment_terms"),

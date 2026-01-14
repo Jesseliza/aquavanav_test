@@ -168,43 +168,13 @@ export default function PurchaseOrdersIndex() {
   
 
   const createOrderMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const items = orderItems.map(item => {
-        const quantity = parseInt(item.quantity);
-        const unitPrice = parseFloat(item.unitPrice);
-        const taxRate = parseFloat(item.taxRate);
-        const taxAmount = (quantity * unitPrice * taxRate) / 100;
-        
-        return {
-          itemType: item.itemType,
-          inventoryItemId: item.inventoryItemId ? parseInt(item.inventoryItemId) : null,
-          description: item.description || null,
-          quantity,
-          unitPrice,
-          taxRate,
-          taxAmount,
-        };
+    mutationFn: async (formDataInstance: FormData) => {
+      // The body is already FormData, so we pass it directly
+      const response = await fetch("/api/purchase-orders", {
+        method: "POST",
+        body: formDataInstance,
+        // No 'Content-Type' header, browser sets it for FormData
       });
-
-      const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-      const taxAmount = calculateTotalTax();
-      const totalAmount = subtotal + taxAmount;
-
-      const orderData = {
-        supplierId: parseInt(formData.supplierId),
-        orderDate: formData.orderDate,
-        expectedDeliveryDate: formData.expectedDeliveryDate || null,
-        paymentTerms: formData.paymentTerms || null,
-        deliveryTerms: formData.deliveryTerms || null,
-        bankAccount: formData.bankAccount || null,
-        notes: formData.notes || null,
-        subtotal: subtotal.toFixed(2),
-        taxAmount: taxAmount.toFixed(2),
-        totalAmount: totalAmount.toFixed(2),
-        items,
-      };
-
-      const response = await apiRequest("/api/purchase-orders",{method:"POST", body:orderData});
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to create purchase order");
@@ -338,47 +308,11 @@ export default function PurchaseOrdersIndex() {
   });
 
   const updateOrderMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const items = orderItems.map(item => {
-        const quantity = parseInt(item.quantity);
-        const unitPrice = parseFloat(item.unitPrice);
-        const taxRate = parseFloat(item.taxRate);
-        const taxAmount = (quantity * unitPrice * taxRate) / 100;
-
-        return {
-          itemType: item.itemType,
-          inventoryItemId: item.itemType === "product" ? parseInt(item.inventoryItemId!) : null,
-          description: item.itemType === "service" ? item.description : null,
-          quantity,
-          unitPrice,
-          taxRate,
-          taxAmount,
-        };
+    mutationFn: async ({ orderId, formDataInstance }: { orderId: number; formDataInstance: FormData }) => {
+      const response = await fetch(`/api/purchase-orders/${orderId}`, {
+        method: "PUT",
+        body: formDataInstance,
       });
-
-      let subtotal = 0;
-      let taxAmount = 0;
-      items.forEach(item => {
-        subtotal += item.quantity * item.unitPrice;
-        taxAmount += item.taxAmount;
-      });
-      const totalAmount = subtotal + taxAmount;
-
-      const orderData = {
-        supplierId: parseInt(formData.supplierId),
-        orderDate: formData.orderDate,
-        expectedDeliveryDate: formData.expectedDeliveryDate || null,
-        paymentTerms: formData.paymentTerms || null,
-        deliveryTerms: formData.deliveryTerms || null,
-        bankAccount: formData.bankAccount || null,
-        notes: formData.notes || null,
-        subtotal: subtotal.toFixed(2),
-        taxAmount: taxAmount.toFixed(2),
-        totalAmount: totalAmount.toFixed(2),
-        items,
-      };
-
-      const response = await apiRequest(`/api/purchase-orders/${editingOrder!.id}`,{method:"PUT", body:orderData});
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to update purchase order");
@@ -543,10 +477,55 @@ export default function PurchaseOrdersIndex() {
       return;
     }
 
+    const formDataInstance = new FormData();
+
+    // Append main form data
+    formDataInstance.append("supplierId", formData.supplierId);
+    formDataInstance.append("orderDate", formData.orderDate);
+    formDataInstance.append("expectedDeliveryDate", formData.expectedDeliveryDate || "");
+    formDataInstance.append("paymentTerms", formData.paymentTerms || "");
+    formDataInstance.append("deliveryTerms", formData.deliveryTerms || "");
+    formDataInstance.append("bankAccount", formData.bankAccount || "");
+    formDataInstance.append("notes", formData.notes || "");
+
+    // Process and append items as a JSON string
+    const items = orderItems.map(item => {
+      const quantity = parseInt(item.quantity);
+      const unitPrice = parseFloat(item.unitPrice);
+      const taxRate = parseFloat(item.taxRate);
+      const taxAmount = (quantity * unitPrice * taxRate) / 100;
+
+      return {
+        itemType: item.itemType,
+        inventoryItemId: item.inventoryItemId ? parseInt(item.inventoryItemId) : null,
+        description: item.description || null,
+        quantity,
+        unitPrice,
+        taxRate,
+        taxAmount,
+      };
+    });
+    formDataInstance.append("items", JSON.stringify(items));
+
+    // Calculate and append totals
+    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const taxAmount = calculateTotalTax();
+    const totalAmount = subtotal + taxAmount;
+    formDataInstance.append("subtotal", subtotal.toFixed(2));
+    formDataInstance.append("taxAmount", taxAmount.toFixed(2));
+    formDataInstance.append("totalAmount", totalAmount.toFixed(2));
+
+    // Append files
+    if (selectedFiles) {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        formDataInstance.append("files", selectedFiles[i]);
+      }
+    }
+
     if (editingOrder) {
-      updateOrderMutation.mutate(formData);
+      updateOrderMutation.mutate({ orderId: editingOrder.id, formDataInstance });
     } else {
-      createOrderMutation.mutate(formData);
+      createOrderMutation.mutate(formDataInstance);
     }
   };
 
