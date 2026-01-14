@@ -7329,12 +7329,6 @@ class Storage {
           totalAmount: purchaseOrders.totalAmount,
           notes: purchaseOrders.notes,
           createdAt: purchaseOrders.createdAt,
-          submittedById: purchaseOrders.submittedById,
-          submittedAt: purchaseOrders.submittedAt,
-          approvedById: purchaseOrders.approvedById,
-          approvedAt: purchaseOrders.approvedAt,
-          rejectionReason: purchaseOrders.rejectionReason,
-          convertedInvoiceId: purchaseOrders.convertedInvoiceId,
         })
         .from(purchaseOrders)
         .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
