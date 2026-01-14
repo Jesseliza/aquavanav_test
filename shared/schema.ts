@@ -652,6 +652,12 @@ export const purchaseOrders = pgTable("purchase_orders", {
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  submittedById: integer("submitted_by_id").references(() => users.id),
+  submittedAt: timestamp("submitted_at"),
+  approvedById: integer("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  convertedInvoiceId: integer("converted_invoice_id"),
 });
 
 // Purchase Order Items table
