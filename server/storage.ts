@@ -47,6 +47,7 @@ import {
   purchaseRequestItems,
   purchaseOrders,
   purchaseOrderItems,
+  purchaseOrderFiles,
   purchaseInvoices,
   purchaseInvoiceItems,
   purchaseCreditNotes,
@@ -7439,6 +7440,19 @@ class Storage {
         await db.insert(purchaseOrderItems).values(itemsToInsert);
       }
 
+      // Handle file attachments
+      if (orderData.files && orderData.files.length > 0) {
+        const filesToInsert = orderData.files.map((file: any) => ({
+          poId: order.id,
+          fileName: file.filename,
+          originalName: file.originalname,
+          filePath: file.path,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+        }));
+        await db.insert(purchaseOrderFiles).values(filesToInsert);
+      }
+
       return this.getPurchaseOrder(order.id);
     } catch (error: any) {
       await this.createErrorLog({
@@ -7524,6 +7538,19 @@ class Storage {
 
           await db.insert(purchaseOrderItems).values(itemsToInsert);
         }
+      }
+
+      // Handle file attachments
+      if (data.files && data.files.length > 0) {
+        const filesToInsert = data.files.map((file: any) => ({
+          poId: id,
+          fileName: file.filename,
+          originalName: file.originalname,
+          filePath: file.path,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+        }));
+        await db.insert(purchaseOrderFiles).values(filesToInsert);
       }
 
       return this.getPurchaseOrder(id);
