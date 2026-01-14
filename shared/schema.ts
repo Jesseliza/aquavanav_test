@@ -641,7 +641,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   id: serial("id").primaryKey(),
   poNumber: text("po_number").notNull().unique(),
   supplierId: integer("supplier_id").references(() => suppliers.id),
-  status: text("status").notNull().default("draft"), // draft, pending_approval, approved, rejected, converted
+  status: text("status").notNull().default("draft"), // draft, sent, confirmed, received, cancelled
   orderDate: timestamp("order_date").notNull().defaultNow(),
   expectedDeliveryDate: timestamp("expected_delivery_date"),
   paymentTerms: text("payment_terms"),
