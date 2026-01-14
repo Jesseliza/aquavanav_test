@@ -578,6 +578,8 @@ const storage_multer = multer.diskStorage({
       uploadDir = "uploads/projects/vesselimage";
     } else if (req.originalUrl?.includes("/api/employees")) {
       uploadDir = "uploads/employee-documents";
+    } else if (req.originalUrl?.includes("/api/company")) {
+      uploadDir = "uploads/company";
     } else if (req.originalUrl.includes("/api/purchase-orders")) {
       uploadDir = "uploads/purchase-order";
     }
@@ -980,9 +982,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/company",
     requireAuth,
     requireRole(["admin"]),
+    upload.single("companyLogo"),
     async (req, res) => {
       try {
         const companyData = req.body;
+        // ✅ Attach uploaded logo path if present
+        if (req.file) {
+          companyData.logo = `/uploads/company/${req.file.filename}`;
+        }
         const company = await storage.updateCompany(companyData);
         res.json(company);
       } catch (error) {
@@ -4739,10 +4746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: req.session.userId,
         };
 
-        const order = await storage.createPurchaseOrder(
-          orderData,
-          req.files as Express.Multer.File[]
-        );
+        const order = await storage.createPurchaseOrder(orderData);
         res.status(201).json(order);
       } catch (error) {
         console.error("Create purchase order error:", error);
@@ -4765,11 +4769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           files: req.files,
         };
 
-        const order = await storage.updatePurchaseOrder(
-          id,
-          orderData,
-          req.files as Express.Multer.File[]
-        );
+        const order = await storage.updatePurchaseOrder(id, orderData);
         if (!order) {
           return res.status(404).json({ message: "Purchase order not found" });
         }

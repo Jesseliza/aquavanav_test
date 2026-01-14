@@ -19,6 +19,7 @@ export const companies = pgTable("companies", {
   name: text("name").notNull(),
   logo: text("logo"),
   address: text("address"),
+  bankAccount: text("bank_account"),
   phone: text("phone"),
   email: text("email"),
   website: text("website"),
@@ -355,18 +356,6 @@ export const salesQuotationItems = pgTable("sales_quotation_items", {
   lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
 });
 
-// Purchase Order Files table
-export const purchaseOrderFiles = pgTable("purchase_order_files", {
-  id: serial("id").primaryKey(),
-  poId: integer("po_id").notNull().references(() => purchaseOrders.id, { onDelete: "cascade" }),
-  fileName: text("file_name").notNull(),
-  originalName: text("original_name").notNull(),
-  filePath: text("file_path").notNull(),
-  fileSize: integer("file_size"),
-  mimeType: text("mime_type"),
-  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
-});
-
 // Sales Invoices
 export const salesInvoices = pgTable("sales_invoices", {
   id: serial("id").primaryKey(),
@@ -652,12 +641,6 @@ export const purchaseOrders = pgTable("purchase_orders", {
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  submittedById: integer("submitted_by_id").references(() => users.id),
-  submittedAt: timestamp("submitted_at"),
-  approvedById: integer("approved_by_id").references(() => users.id),
-  approvedAt: timestamp("approved_at"),
-  rejectionReason: text("rejection_reason"),
-  convertedInvoiceId: integer("converted_invoice_id"),
 });
 
 // Purchase Order Items table
@@ -672,6 +655,18 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("0"),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
   lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+});
+
+// Purchase Order Files table
+export const purchaseOrderFiles = pgTable("purchase_order_files", {
+  id: serial("id").primaryKey(),
+  poId: integer("po_id").notNull().references(() => purchaseOrders.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  originalName: text("original_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
 });
 
 // Purchase Invoices table

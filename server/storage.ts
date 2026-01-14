@@ -7329,12 +7329,6 @@ class Storage {
           totalAmount: purchaseOrders.totalAmount,
           notes: purchaseOrders.notes,
           createdAt: purchaseOrders.createdAt,
-          submittedById: purchaseOrders.submittedById,
-          submittedAt: purchaseOrders.submittedAt,
-          approvedById: purchaseOrders.approvedById,
-          approvedAt: purchaseOrders.approvedAt,
-          rejectionReason: purchaseOrders.rejectionReason,
-          convertedInvoiceId: purchaseOrders.convertedInvoiceId,
         })
         .from(purchaseOrders)
         .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
@@ -7343,12 +7337,7 @@ class Storage {
       if (!order) return null;
 
       const items = await this.getPurchaseOrderItems(id);
-      const files = await db
-        .select()
-        .from(purchaseOrderFiles)
-        .where(eq(purchaseOrderFiles.poId, id));
-
-      return { ...order, items, files };
+      return { ...order, items };
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -7398,72 +7387,67 @@ class Storage {
     }
   }
 
-  async createPurchaseOrder(
-    orderData: any,
-    files?: Express.Multer.File[]
-  ): Promise<any> {
+  async createPurchaseOrder(orderData: any): Promise<any> {
     try {
       const poNumber = `PO-${Date.now()}`;
 
-      const newOrder = await db.transaction(async (tx) => {
-        // Create the purchase order
-        const [order] = await tx
-          .insert(purchaseOrders)
-          .values({
-            poNumber,
-            supplierId: orderData.supplierId,
-            status: orderData.status || "draft",
-            orderDate: orderData.orderDate
-              ? new Date(orderData.orderDate)
-              : new Date(),
-            expectedDeliveryDate: orderData.expectedDeliveryDate
-              ? new Date(orderData.expectedDeliveryDate)
-              : null,
-            paymentTerms: orderData.paymentTerms || null,
-            deliveryTerms: orderData.deliveryTerms || null,
-            bankAccount: orderData.bankAccount || null,
-            subtotal: orderData.subtotal || "0",
-            taxAmount: orderData.taxAmount || "0",
-            totalAmount: orderData.totalAmount || "0",
-            notes: orderData.notes || null,
-          })
-          .returning();
+      // Create the purchase order
+      const [order] = await db
+        .insert(purchaseOrders)
+        .values({
+          poNumber,
+          supplierId: orderData.supplierId,
+          status: orderData.status || "draft",
+          orderDate: orderData.orderDate
+            ? new Date(orderData.orderDate)
+            : new Date(),
+          expectedDeliveryDate: orderData.expectedDeliveryDate
+            ? new Date(orderData.expectedDeliveryDate)
+            : null,
+          paymentTerms: orderData.paymentTerms || null,
+          deliveryTerms: orderData.deliveryTerms || null,
+          bankAccount: orderData.bankAccount || null,
+          subtotal: orderData.subtotal || "0",
+          taxAmount: orderData.taxAmount || "0",
+          totalAmount: orderData.totalAmount || "0",
+          notes: orderData.notes || null,
+        })
+        .returning();
 
-        // Create order items if provided
-        if (orderData.items && orderData.items.length > 0) {
-          const itemsToInsert = orderData.items.map((item: any) => ({
-            poId: order.id,
-            itemType: item.itemType || "product",
-            inventoryItemId: item.inventoryItemId || null,
-            description: item.description || null,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice.toFixed(2),
-            taxRate: item.taxRate ? item.taxRate.toFixed(2) : "0.00",
-            taxAmount: item.taxAmount ? item.taxAmount.toFixed(2) : "0.00",
-            lineTotal: (
-              item.quantity * parseFloat(item.unitPrice) +
-              (item.taxAmount || 0)
-            ).toFixed(2),
-          }));
+      // Create order items if provided
+      if (orderData.items && orderData.items.length > 0) {
+        const itemsToInsert = orderData.items.map((item: any) => ({
+          poId: order.id,
+          itemType: item.itemType || "product",
+          inventoryItemId: item.inventoryItemId || null,
+          description: item.description || null,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice.toFixed(2),
+          taxRate: item.taxRate ? item.taxRate.toFixed(2) : "0.00",
+          taxAmount: item.taxAmount ? item.taxAmount.toFixed(2) : "0.00",
+          lineTotal: (
+            item.quantity * parseFloat(item.unitPrice) +
+            (item.taxAmount || 0)
+          ).toFixed(2),
+        }));
 
-          await tx.insert(purchaseOrderItems).values(itemsToInsert);
-        }
+        await db.insert(purchaseOrderItems).values(itemsToInsert);
+      }
 
-        if (files && files.length > 0) {
-          const filesToInsert = files.map((file) => ({
-            poId: order.id,
-            fileName: file.filename,
-            originalName: file.originalname,
-            filePath: file.path,
-            fileSize: file.size,
-            mimeType: file.mimetype,
-          }));
-          await tx.insert(purchaseOrderFiles).values(filesToInsert);
-        }
-        return order;
-      });
+      // Handle file attachments
+      if (orderData.files && orderData.files.length > 0) {
+        const filesToInsert = orderData.files.map((file: any) => ({
+          poId: order.id,
+          fileName: file.filename,
+          originalName: file.originalname,
+          filePath: file.path,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+        }));
+        await db.insert(purchaseOrderFiles).values(filesToInsert);
+      }
 
-      return this.getPurchaseOrder(newOrder.id);
+      return this.getPurchaseOrder(order.id);
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -7477,130 +7461,91 @@ class Storage {
     }
   }
 
-  async updatePurchaseOrder(
-    id: number,
-    data: any,
-    files?: Express.Multer.File[]
-  ): Promise<any> {
+  async updatePurchaseOrder(id: number, data: any): Promise<any> {
     try {
-      await db.transaction(async (tx) => {
-        const updateData: any = {};
+      const updateData: any = {};
 
-        if (data.supplierId !== undefined)
-          updateData.supplierId = data.supplierId;
-        if (data.status !== undefined) updateData.status = data.status;
-        if (data.orderDate !== undefined) {
-          updateData.orderDate = data.orderDate
-            ? new Date(data.orderDate)
-            : new Date();
-        }
-        if (data.expectedDeliveryDate !== undefined) {
-          updateData.expectedDeliveryDate = data.expectedDeliveryDate
-            ? new Date(data.expectedDeliveryDate)
-            : null;
-        }
-        if (data.paymentTerms !== undefined)
-          updateData.paymentTerms = data.paymentTerms || null;
-        if (data.deliveryTerms !== undefined)
-          updateData.deliveryTerms = data.deliveryTerms || null;
-        if (data.bankAccount !== undefined)
-          updateData.bankAccount = data.bankAccount || null;
-        if (data.notes !== undefined) updateData.notes = data.notes || null;
-        if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
-        if (data.taxAmount !== undefined) updateData.taxAmount = data.taxAmount;
-        if (data.totalAmount !== undefined)
-          updateData.totalAmount = data.totalAmount;
+      if (data.supplierId !== undefined)
+        updateData.supplierId = data.supplierId;
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.orderDate !== undefined) {
+        updateData.orderDate = data.orderDate
+          ? new Date(data.orderDate)
+          : new Date();
+      }
+      if (data.expectedDeliveryDate !== undefined) {
+        updateData.expectedDeliveryDate = data.expectedDeliveryDate
+          ? new Date(data.expectedDeliveryDate)
+          : null;
+      }
+      if (data.paymentTerms !== undefined)
+        updateData.paymentTerms = data.paymentTerms || null;
+      if (data.deliveryTerms !== undefined)
+        updateData.deliveryTerms = data.deliveryTerms || null;
+      if (data.bankAccount !== undefined)
+        updateData.bankAccount = data.bankAccount || null;
+      if (data.notes !== undefined) updateData.notes = data.notes || null;
+      if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
+      if (data.taxAmount !== undefined) updateData.taxAmount = data.taxAmount;
+      if (data.totalAmount !== undefined)
+        updateData.totalAmount = data.totalAmount;
 
-        await tx
-          .update(purchaseOrders)
-          .set(updateData)
-          .where(eq(purchaseOrders.id, id));
+      await db
+        .update(purchaseOrders)
+        .set(updateData)
+        .where(eq(purchaseOrders.id, id));
 
-        // Update items if provided
-        if (data.items !== undefined && Array.isArray(data.items)) {
-          // Delete existing items
-          await tx
-            .delete(purchaseOrderItems)
-            .where(eq(purchaseOrderItems.poId, id));
+      // Update items if provided
+      if (data.items !== undefined && Array.isArray(data.items)) {
+        // Delete existing items
+        await db
+          .delete(purchaseOrderItems)
+          .where(eq(purchaseOrderItems.poId, id));
 
-          // Insert new items
-          if (data.items.length > 0) {
-            const itemsToInsert = data.items.map((item: any) => ({
-              poId: id,
-              itemType: item.itemType || "product",
-              inventoryItemId: item.inventoryItemId || null,
-              description: item.description || null,
-              quantity: item.quantity,
-              unitPrice:
-                typeof item.unitPrice === "number"
-                  ? item.unitPrice.toFixed(2)
-                  : item.unitPrice,
-              taxRate: item.taxRate
-                ? typeof item.taxRate === "number"
-                  ? item.taxRate.toFixed(2)
-                  : item.taxRate
-                : "0.00",
-              taxAmount: item.taxAmount
-                ? typeof item.taxAmount === "number"
-                  ? item.taxAmount.toFixed(2)
-                  : item.taxAmount
-                : "0.00",
-              lineTotal: (
-                item.quantity * parseFloat(item.unitPrice) +
-                (item.taxAmount || 0)
-              ).toFixed(2),
-            }));
-
-            await tx.insert(purchaseOrderItems).values(itemsToInsert);
-          }
-        }
-
-        // Handle file updates
-        const existingFiles = await tx
-          .select()
-          .from(purchaseOrderFiles)
-          .where(eq(purchaseOrderFiles.poId, id));
-        const keptFileIds = data.existingFiles
-          ? JSON.parse(data.existingFiles).map(Number)
-          : [];
-
-        const filesToDelete = existingFiles.filter(
-          (file) => !keptFileIds.includes(file.id)
-        );
-
-        if (filesToDelete.length > 0) {
-          for (const file of filesToDelete) {
-            try {
-              // Assuming filePath is relative to the project root
-              await fs.unlink(file.filePath);
-            } catch (err: any) {
-              // Log if file doesn't exist but don't fail the transaction
-              if (err.code !== "ENOENT") {
-                console.error(
-                  `Failed to delete file from disk: ${file.filePath}`,
-                  err
-                );
-              }
-            }
-          }
-          const idsToDelete = filesToDelete.map((file) => file.id);
-          await tx
-            .delete(purchaseOrderFiles)
-            .where(inArray(purchaseOrderFiles.id, idsToDelete));
-        }
-
-        if (files && files.length > 0) {
-          const filesToInsert = files.map((file) => ({
+        // Insert new items
+        if (data.items.length > 0) {
+          const itemsToInsert = data.items.map((item: any) => ({
             poId: id,
-            fileName: file.filename,
-            originalName: file.originalname,
-            filePath: file.path,
-            fileSize: file.size,
-            mimeType: file.mimetype,
+            itemType: item.itemType || "product",
+            inventoryItemId: item.inventoryItemId || null,
+            description: item.description || null,
+            quantity: item.quantity,
+            unitPrice:
+              typeof item.unitPrice === "number"
+                ? item.unitPrice.toFixed(2)
+                : item.unitPrice,
+            taxRate: item.taxRate
+              ? typeof item.taxRate === "number"
+                ? item.taxRate.toFixed(2)
+                : item.taxRate
+              : "0.00",
+            taxAmount: item.taxAmount
+              ? typeof item.taxAmount === "number"
+                ? item.taxAmount.toFixed(2)
+                : item.taxAmount
+              : "0.00",
+            lineTotal: (
+              item.quantity * parseFloat(item.unitPrice) +
+              (item.taxAmount || 0)
+            ).toFixed(2),
           }));
-          await tx.insert(purchaseOrderFiles).values(filesToInsert);
+
+          await db.insert(purchaseOrderItems).values(itemsToInsert);
         }
-      });
+      }
+
+        // Handle file attachments
+      if (data.files && data.files.length > 0) {
+        const filesToInsert = data.files.map((file: any) => ({
+          poId: id,
+          fileName: file.filename,
+          originalName: file.originalname,
+          filePath: file.path,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+        }));
+        await db.insert(purchaseOrderFiles).values(filesToInsert);
+      }
 
       return this.getPurchaseOrder(id);
     } catch (error: any) {
@@ -7767,7 +7712,7 @@ class Storage {
       // Copy items from PO to invoice
       if (po.items && po.items.length > 0) {
         const invoiceItemsToInsert = po.items.map((item: any) => ({
-          invoiceId: invoice.id,
+          purchaseInvoiceId: invoice.id,
           itemType: item.itemType || "product",
           inventoryItemId: item.inventoryItemId || null,
           description: item.description || null,
@@ -10748,15 +10693,8 @@ export interface IStorage {
   getPurchaseOrders(): Promise<any[]>;
   getPurchaseOrder(id: number): Promise<any>;
   getPurchaseOrderItems(poId: number): Promise<any[]>;
-  createPurchaseOrder(
-    orderData: any,
-    files?: Express.Multer.File[]
-  ): Promise<any>;
-  updatePurchaseOrder(
-    id: number,
-    data: any,
-    files?: Express.Multer.File[]
-  ): Promise<any>;
+  createPurchaseOrder(orderData: any): Promise<any>;
+  updatePurchaseOrder(id: number, data: any): Promise<any>;
   deletePurchaseOrder(id: number): Promise<boolean>;
   submitPurchaseOrderForApproval(id: number, userId: number): Promise<any>;
   approvePurchaseOrder(id: number, userId: number): Promise<any>;
