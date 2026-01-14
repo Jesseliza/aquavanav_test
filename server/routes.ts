@@ -5122,31 +5122,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  app.post(
-    "/api/purchase-orders/:id/convert-to-invoice",
-    requireAuth,
-    requireRole(["admin", "finance"]),
-    async (req, res) => {
-      try {
-        const poId = parseInt(req.params.id);
-        const invoiceData = {
-          ...req.body,
-          createdBy: req.session.userId,
-        };
-
-        const invoice = await storage.createPurchaseInvoiceFromPO(
-          poId,
-          invoiceData
-        );
-        res.status(201).json(invoice);
-      } catch (error) {
-        console.error("Convert PO to invoice error:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to convert purchase order to invoice" });
-      }
-    }
-  );
 
   // Get supplier inventory items
   app.get("/api/suppliers/:id/suppliers", async (req, res) => {
