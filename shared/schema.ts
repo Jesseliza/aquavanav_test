@@ -641,6 +641,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }),
   rejectionReason: text("rejection_reason"),
+  rejected_at: timestamp("rejected_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -1001,22 +1002,7 @@ export const insertCreditNoteItemSchema = createInsertSchema(creditNoteItems).om
 
 export const insertPurchaseRequestSchema = createInsertSchema(purchaseRequests).omit({ id: true, requestNumber: true, requestDate: true });
 export const insertPurchaseRequestItemSchema = createInsertSchema(purchaseRequestItems).omit({ id: true });
-const purchaseOrdersTable = pgTable("purchase_orders", {
-  id: serial("id").primaryKey(),
-  poNumber: text("po_number").notNull().unique(),
-  supplierId: integer("supplier_id").references(() => suppliers.id),
-  status: text("status").notNull().default("draft"), // draft, sent, confirmed, received, cancelled
-  orderDate: timestamp("order_date").notNull().defaultNow(),
-  expectedDeliveryDate: timestamp("expected_delivery_date"),
-  paymentTerms: text("payment_terms"),
-  deliveryTerms: text("delivery_terms"),
-  notes: text("notes"),
-  subtotal: decimal("subtotal", { precision: 12, scale: 2 }),
-  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
-  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrdersTable).omit({ id: true, poNumber: true, createdAt: true });
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({ id: true, poNumber: true, createdAt: true });
 export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({ id: true });
 export const insertPurchaseInvoiceSchema = createInsertSchema(purchaseInvoices).omit({ id: true, createdAt: true });
 export const insertPurchaseInvoiceItemSchema = createInsertSchema(purchaseInvoiceItems).omit({ id: true });
@@ -1107,7 +1093,7 @@ export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
 export type InsertPurchaseRequest = z.infer<typeof insertPurchaseRequestSchema>;
 export type PurchaseRequestItem = typeof purchaseRequestItems.$inferSelect;
 export type InsertPurchaseRequestItem = z.infer<typeof insertPurchaseRequestItemSchema>;
-export type PurchaseOrder = typeof purchaseOrdersTable.$inferSelect;
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
 export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
 export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type InsertPurchaseOrderItem = z.infer<typeof insertPurchaseOrderItemSchema>;

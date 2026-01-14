@@ -7661,6 +7661,7 @@ class Storage {
         .set({
           status: "rejected",
           rejectionReason: reason,
+          rejected_at: new Date(),
         })
         .where(eq(purchaseOrders.id, id));
 
