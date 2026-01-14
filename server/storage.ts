@@ -7555,6 +7555,40 @@ class Storage {
           }
         }
 
+        // Handle file updates
+        const existingFiles = await tx
+          .select()
+          .from(purchaseOrderFiles)
+          .where(eq(purchaseOrderFiles.poId, id));
+        const keptFileIds = data.existingFiles
+          ? JSON.parse(data.existingFiles).map(Number)
+          : [];
+
+        const filesToDelete = existingFiles.filter(
+          (file) => !keptFileIds.includes(file.id)
+        );
+
+        if (filesToDelete.length > 0) {
+          for (const file of filesToDelete) {
+            try {
+              // Assuming filePath is relative to the project root
+              await fs.unlink(file.filePath);
+            } catch (err: any) {
+              // Log if file doesn't exist but don't fail the transaction
+              if (err.code !== "ENOENT") {
+                console.error(
+                  `Failed to delete file from disk: ${file.filePath}`,
+                  err
+                );
+              }
+            }
+          }
+          const idsToDelete = filesToDelete.map((file) => file.id);
+          await tx
+            .delete(purchaseOrderFiles)
+            .where(inArray(purchaseOrderFiles.id, idsToDelete));
+        }
+
         if (files && files.length > 0) {
           const filesToInsert = files.map((file) => ({
             poId: id,

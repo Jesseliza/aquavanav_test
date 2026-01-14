@@ -121,6 +121,7 @@ export default function PurchaseOrdersIndex() {
   });
 
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [existingFiles, setExistingFiles] = useState<PurchaseOrderFile[]>([]);
 
   const [invoiceData, setInvoiceData] = useState({
     invoiceDate: new Date().toISOString().split('T')[0],
@@ -395,7 +396,11 @@ export default function PurchaseOrdersIndex() {
         unitPrice: item.unitPrice,
         taxRate: "0",
       })));
+    } else {
+      setOrderItems([]);
     }
+
+    setExistingFiles(order.files || []);
     
     setIsDialogOpen(true);
   };
@@ -536,6 +541,8 @@ export default function PurchaseOrdersIndex() {
     }
 
     if (editingOrder) {
+      const keptFileIds = existingFiles.map((file) => file.id);
+      formDataInstance.append("existingFiles", JSON.stringify(keptFileIds));
       updateOrderMutation.mutate({ orderId: editingOrder.id, formDataInstance });
     } else {
       createOrderMutation.mutate(formDataInstance);
@@ -1100,6 +1107,43 @@ export default function PurchaseOrdersIndex() {
                           <span className="text-xs text-gray-400">
                             ({(file.size / 1024 / 1024).toFixed(2)} MB)
                           </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {editingOrder && existingFiles.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">
+                      Currently Attached Files:
+                    </p>
+                    <ul className="space-y-2">
+                      {existingFiles.map((file) => (
+                        <li
+                          key={file.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                        >
+                          <a
+                            href={`/${file.filePath}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline truncate"
+                          >
+                            {file.originalName}
+                          </a>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setExistingFiles(
+                                existingFiles.filter((f) => f.id !== file.id)
+                              )
+                            }
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </li>
                       ))}
                     </ul>
