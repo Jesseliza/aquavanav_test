@@ -1494,12 +1494,14 @@ export default function PurchaseOrdersIndex() {
                       )}
 
                       {viewingOrder.rejectionReason && (
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rejection Reason</label>
-                          <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg">
-                            <p className="text-sm text-red-900 dark:text-red-100 whitespace-pre-wrap">
-                              {viewingOrder.rejectionReason}
-                            </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-3">
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rejection Reason</label>
+                            <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg">
+                              <p className="text-sm text-red-900 dark:text-red-100 whitespace-pre-wrap">
+                                {viewingOrder.rejectionReason}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1552,19 +1554,22 @@ export default function PurchaseOrdersIndex() {
                   <CardContent>
                     <ul className="space-y-2">
                       {viewingOrder.files.map((file) => (
-                        <li key={file.id}>
+                        <li
+                          key={file.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-md"
+                        >
                           <a
                             href={`/${file.filePath}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                            className="flex items-center gap-2 text-sm text-blue-600 hover:underline truncate"
                           >
                             <FileText className="w-4 h-4" />
-                            {file.originalName}
-                            <span className="text-xs text-gray-500">
-                              ({(file.fileSize / 1024).toFixed(2)} KB)
-                            </span>
+                            <span className="truncate">{file.originalName}</span>
                           </a>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                            ({(file.fileSize / 1024).toFixed(2)} KB)
+                          </span>
                         </li>
                       ))}
                     </ul>

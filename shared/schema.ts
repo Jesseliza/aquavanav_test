@@ -640,6 +640,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   subtotal: decimal("subtotal", { precision: 12, scale: 2 }),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
