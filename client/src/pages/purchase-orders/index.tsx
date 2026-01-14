@@ -156,11 +156,6 @@ export default function PurchaseOrdersIndex() {
     enabled: isAuthenticated,
   });
 
-  useEffect(() => {
-    if (formData.supplierId) {
-      setFormData(prev => ({ ...prev, bankAccount: "" }));
-    }
-  }, [formData.supplierId]);
 
   const suppliers = Array.isArray(suppliersResponse?.data) ? suppliersResponse.data : [];
   const inventoryItems = Array.isArray(inventoryResponse?.data) ? inventoryResponse.data : [];
@@ -988,7 +983,7 @@ export default function PurchaseOrdersIndex() {
                   <Label htmlFor="supplierId">Supplier *</Label>
                   <Select
                     value={formData.supplierId}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, supplierId: value }))}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, supplierId: value, bankAccount: "" }))}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select supplier" />
