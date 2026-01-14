@@ -4786,108 +4786,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  // Purchase Invoices routes
-
-  // Purchase Orders routes
-  app.get(
-    "/api/purchase-orders",
-    requireAuth,
-    requireRole(["admin", "finance", "project_manager"]),
-    async (req, res) => {
-      try {
-        const orders = await storage.getPurchaseOrders();
-        res.json(orders);
-      } catch (error) {
-        console.error("Get purchase orders error:", error);
-        res.json([]); // Return empty array instead of error to prevent reports from failing
-      }
-    }
-  );
-
-  app.get(
-    "/api/purchase-orders/:id",
-    requireAuth,
-    requireRole(["admin", "finance", "project_manager"]),
-    async (req, res) => {
-      try {
-        const id = parseInt(req.params.id);
-        const order = await storage.getPurchaseOrder(id);
-
-        if (!order) {
-          return res.status(404).json({ message: "Purchase order not found" });
-        }
-
-        res.json(order);
-      } catch (error) {
-        console.error("Get purchase order error:", error);
-        res.status(500).json({ message: "Failed to get purchase order" });
-      }
-    }
-  );
-
-  app.post(
-    "/api/purchase-orders",
-    requireAuth,
-    requireRole(["admin", "finance"]),
-    async (req, res) => {
-      try {
-        const orderData = {
-          ...req.body,
-          createdBy: req.session.userId,
-        };
-
-        const order = await storage.createPurchaseOrder(orderData);
-        res.status(201).json(order);
-      } catch (error) {
-        console.error("Create purchase order error:", error);
-        res.status(500).json({ message: "Failed to create purchase order" });
-      }
-    }
-  );
-
-  app.put(
-    "/api/purchase-orders/:id",
-    requireAuth,
-    requireRole(["admin", "finance"]),
-    async (req, res) => {
-      try {
-        const id = parseInt(req.params.id);
-        const orderData = req.body;
-
-        const order = await storage.updatePurchaseOrder(id, orderData);
-        if (!order) {
-          return res.status(404).json({ message: "Purchase order not found" });
-        }
-
-        res.json(order);
-      } catch (error) {
-        console.error("Update purchase order error:", error);
-        res.status(500).json({ message: "Failed to update purchase order" });
-      }
-    }
-  );
-
-  app.delete(
-    "/api/purchase-orders/:id",
-    requireAuth,
-    requireRole(["admin", "finance"]),
-    async (req, res) => {
-      try {
-        const id = parseInt(req.params.id);
-        const deleted = await storage.deletePurchaseOrder(id);
-
-        if (!deleted) {
-          return res.status(404).json({ message: "Purchase order not found" });
-        }
-
-        res.json({ message: "Purchase order deleted successfully" });
-      } catch (error) {
-        console.error("Delete purchase order error:", error);
-        res.status(500).json({ message: "Failed to delete purchase order" });
-      }
-    }
-  );
-
   // Purchase Order Approval routes
   app.post(
     "/api/purchase-orders/:id/submit",
@@ -4964,12 +4862,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(result);
       } catch (error: any) {
         console.error("Convert purchase order to invoice error:", error);
-        res
-          .status(500)
-          .json({
-            message:
-              error.message || "Failed to convert purchase order to invoice",
-          });
+        res.status(500).json({
+          message:
+            error.message || "Failed to convert purchase order to invoice",
+        });
       }
     }
   );
