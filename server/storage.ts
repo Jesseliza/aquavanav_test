@@ -7286,13 +7286,18 @@ class Storage {
         .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
         .orderBy(desc(purchaseOrders.createdAt));
 
-      // Get items for each purchase order
+      // Get items and files for each purchase order
       const ordersWithItems = await Promise.all(
         result.map(async (order) => {
           const items = await this.getPurchaseOrderItems(order.id);
+          const files = await db
+            .select()
+            .from(purchaseOrderFiles)
+            .where(eq(purchaseOrderFiles.poId, order.id));
           return {
             ...order,
             items,
+            files,
           };
         })
       );
@@ -7337,7 +7342,12 @@ class Storage {
       if (!order) return null;
 
       const items = await this.getPurchaseOrderItems(id);
-      return { ...order, items };
+      const files = await db
+        .select()
+        .from(purchaseOrderFiles)
+        .where(eq(purchaseOrderFiles.poId, id));
+
+      return { ...order, items, files };
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -7650,7 +7660,7 @@ class Storage {
         .update(purchaseOrders)
         .set({
           status: "rejected",
-          rejectionReason: reason || null,
+          rejectionReason: reason,
         })
         .where(eq(purchaseOrders.id, id));
 
@@ -7712,7 +7722,7 @@ class Storage {
       // Copy items from PO to invoice
       if (po.items && po.items.length > 0) {
         const invoiceItemsToInsert = po.items.map((item: any) => ({
-          purchaseInvoiceId: invoice.id,
+          invoiceId: invoice.id,
           itemType: item.itemType || "product",
           inventoryItemId: item.inventoryItemId || null,
           description: item.description || null,
