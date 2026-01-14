@@ -739,10 +739,8 @@ export const purchaseCreditNotes = pgTable("purchase_credit_notes", {
 // Purchase Invoice Items table
 export const purchaseInvoiceItems = pgTable("purchase_invoice_items", {
   id: serial("id").primaryKey(),
-  purchaseInvoiceId: integer("invoice_id")
-    .references(() => purchaseInvoices.id, { onDelete: "cascade" })
-    .notNull(),
-  itemType: text("item_type").default("product"),
+  invoiceId: integer("invoice_id").notNull().references(() => purchaseInvoices.id, { onDelete: "cascade" }),
+  itemType: text("item_type").notNull().default("product"), // product, service
   inventoryItemId: integer("inventory_item_id").references(() => inventoryItems.id),
   description: text("description"), // For service items or additional details
   quantity: integer("quantity").notNull(),

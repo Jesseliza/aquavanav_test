@@ -844,7 +844,6 @@ export default function PurchaseOrdersIndex() {
                     <TableHead className="min-w-[150px]">Supplier</TableHead>
                     <TableHead className="min-w-[100px]">Order Date</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
-                    <TableHead className="min-w-[150px]">Rejection Reason</TableHead>
                     <TableHead className="min-w-[120px]">Total Amount</TableHead>
                     <TableHead className="min-w-[120px]">Expected Delivery</TableHead>
                     <TableHead className="text-right min-w-[80px]">Actions</TableHead>
@@ -867,9 +866,6 @@ export default function PurchaseOrdersIndex() {
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(order.status)}
-                      </TableCell>
-                      <TableCell>
-                        {order.rejectionReason}
                       </TableCell>
                       <TableCell className="font-semibold text-green-600">
                         {formatCurrency(order.totalAmount)}
