@@ -1,0 +1,1 @@
+ALTER TABLE "projects" RENAME COLUMN "ridging_crew_nos" TO "riding_crew_nos";

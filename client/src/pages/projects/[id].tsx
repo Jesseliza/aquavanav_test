@@ -321,7 +321,7 @@ export default function ProjectDetail() {
     startDate: "",
     plannedEndDate: "",
     actualEndDate: "",
-    ridgingCrewNos: "",
+    ridingCrewNos: "",
     modeOfContract: "",
     workingHours: "",
     ppe: "",
@@ -451,7 +451,7 @@ export default function ProjectDetail() {
         startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
         plannedEndDate: project.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
         actualEndDate: project.actualEndDate ? new Date(project.actualEndDate).toISOString().split('T')[0] : "",
-        ridgingCrewNos: project.ridgingCrewNos || "",
+        ridingCrewNos: project.ridingCrewNos || "",
         modeOfContract: project.modeOfContract || "",
         workingHours: project.workingHours || "",
         ppe: project.ppe || "",
@@ -1223,6 +1223,7 @@ export default function ProjectDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "asset-instance-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] }); // Refresh project cost
+      queryClient.invalidateQueries({ queryKey: ["asset-instances"] });
       toast({
         title: "Asset Instance Removed",
         description: "Asset instance has been removed from the project.",
@@ -1451,7 +1452,7 @@ export default function ProjectDetail() {
     appendIfExists("startDate", editProjectData.startDate);
     appendIfExists("plannedEndDate", editProjectData.plannedEndDate);
     appendIfExists("actualEndDate", editProjectData.actualEndDate);
-    appendIfExists("ridgingCrewNos", editProjectData.ridgingCrewNos);
+    appendIfExists("ridingCrewNos", editProjectData.ridingCrewNos);
     appendIfExists("modeOfContract", editProjectData.modeOfContract);
     appendIfExists("workingHours", editProjectData.workingHours);
     appendIfExists("ppe", editProjectData.ppe);
@@ -1736,11 +1737,11 @@ export default function ProjectDetail() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="editRidgingCrewNos">Ridging Crew Numbers</Label>
+                        <Label htmlFor="editRidingCrewNos">Riding Crew Numbers</Label>
                         <Input
-                          id="editRidgingCrewNos"
-                          value={editProjectData.ridgingCrewNos}
-                          onChange={(e) => setEditProjectData(prev => ({ ...prev, ridgingCrewNos: e.target.value }))}
+                          id="editRidingCrewNos"
+                          value={editProjectData.ridingCrewNos}
+                          onChange={(e) => setEditProjectData(prev => ({ ...prev, ridingCrewNos: e.target.value }))}
                           placeholder="Enter crew numbers..."
                         />
                       </div>
@@ -1749,7 +1750,13 @@ export default function ProjectDetail() {
                         <Label htmlFor="editModeOfContract">Mode of Contract</Label>
                         <Select
                           value={editProjectData.modeOfContract}
-                          onValueChange={(value) => setEditProjectData(prev => ({ ...prev, modeOfContract: value }))}
+                          onValueChange={(value) => {
+                            if (value === "custom") {
+                              setEditProjectData(prev => ({ ...prev, modeOfContract: "" }));
+                            } else {
+                              setEditProjectData(prev => ({ ...prev, modeOfContract: value }));
+                            }
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select contract mode" />
@@ -1760,8 +1767,17 @@ export default function ProjectDetail() {
                             <SelectItem value="cost_plus">Cost Plus</SelectItem>
                             <SelectItem value="day_rate">Day Rate</SelectItem>
                             <SelectItem value="lump_sum">Lump Sum</SelectItem>
+                            <SelectItem value="custom">Custom (Enter below)</SelectItem>
                           </SelectContent>
                         </Select>
+                        {(!editProjectData.modeOfContract || !["fixed_price", "time_and_materials", "cost_plus", "day_rate", "lump_sum"].includes(editProjectData.modeOfContract)) && (
+                          <Input
+                            id="modeOfContractCustom"
+                            value={editProjectData.modeOfContract || ""}
+                            onChange={(e) => setEditProjectData(prev => ({ ...prev, modeOfContract: e.target.value }))}
+                            placeholder="Enter custom contract mode..."
+                          />
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -1988,14 +2004,14 @@ export default function ProjectDetail() {
               )}
 
               {/* Additional Project Details */}
-              {(project.ridgingCrewNos || project.modeOfContract || project.workingHours || project.ppe) && (
+              {(project.ridingCrewNos || project.modeOfContract || project.workingHours || project.ppe) && (
                 <div className="mb-6 space-y-4">
                   <h4 className="font-medium text-slate-900 dark:text-slate-100">Project Details</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {project.ridgingCrewNos && (
+                    {project.ridingCrewNos && (
                       <div>
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Ridging Crew Numbers</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">{project.ridgingCrewNos}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Riding Crew Numbers</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{project.ridingCrewNos}</p>
                       </div>
                     )}
                     {project.modeOfContract && (

@@ -2389,15 +2389,12 @@ class Storage {
 
       // Project asset assignment costs
       let totalAssetRentalCost = 0;
+      const assetAssignments = await db.select().from(projectAssetInstanceAssignments).where(eq(projectAssetInstanceAssignments.projectId, projectId));
 
-      const assetAssignments = await this.getProjectAssetAssignments(projectId);
       for (const assignment of assetAssignments) {
-        const rentalCost = await this.calculateAssetRentalCost(
-          new Date(assignment.startDate),
-          new Date(assignment.endDate),
-          assignment.monthlyRate
-        );
-        totalAssetRentalCost += rentalCost;
+          if (assignment.totalCost) {
+              totalAssetRentalCost += parseFloat(assignment.totalCost);
+          }
       }
       console.log(
         `Total asset rental cost: ${totalAssetRentalCost.toFixed(2)}`

@@ -181,7 +181,7 @@ export const projects = pgTable("projects", {
   totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0"),
   customerId: integer("customer_id").references(() => customers.id),
   locations: json("locations").$type<string[]>().default([]),
-  ridgingCrewNos: text("ridging_crew_nos"),
+  ridingCrewNos: text("riding_crew_nos"),
   modeOfContract: text("mode_of_contract"),
   workingHours: text("working_hours"),
   ppe: text("ppe"),
