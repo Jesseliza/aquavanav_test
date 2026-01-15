@@ -7121,15 +7121,21 @@ class Storage {
   }
 
   // Purchase Request methods
-  async getPurchaseRequests(): Promise<any[]> {
+  async getPurchaseRequests(userId?: number, userRole?: string): Promise<any[]> {
     try {
       const approver = alias(employees, "approver");
+
+      const conditions = [];
+      if (userRole && userRole !== 'admin' && userRole !== 'finance' && userId) {
+        conditions.push(eq(purchaseRequests.requestedBy, userId));
+      }
+
       const result = await db
         .select({
           id: purchaseRequests.id,
           requestNumber: purchaseRequests.requestNumber,
           requestedBy: purchaseRequests.requestedBy,
-          requestedByName: sql<string>`COALESCE(CONCAT(employees.first_name, ' ', employees.last_name), 'Unknown')`,
+          requestedByName: sql<string>`COALESCE(users.username, 'Unknown')`,
           status: purchaseRequests.status,
           urgency: purchaseRequests.urgency,
           reason: purchaseRequests.reason,
@@ -7139,8 +7145,9 @@ class Storage {
           approvalDate: purchaseRequests.approvalDate,
         })
         .from(purchaseRequests)
-        .leftJoin(employees, eq(purchaseRequests.requestedBy, employees.id))
-        .leftJoin(approver, eq(purchaseRequests.approvedBy, approver.id))
+        .leftJoin(users, eq(purchaseRequests.requestedBy, users.id))
+        .leftJoin(approver, eq(purchaseRequests.approvedBy, approver.userId))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(purchaseRequests.requestDate));
 
       // Get items for each request

@@ -4523,7 +4523,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase Requests routes
   app.get("/api/purchase-requests", requireAuth, async (req, res) => {
     try {
-      const requests = await storage.getPurchaseRequests();
+      const { userId, userRole } = req.session;
+      const requests = await storage.getPurchaseRequests(userId, userRole);
       res.json(requests);
     } catch (error) {
       console.error("Get purchase requests error:", error);
