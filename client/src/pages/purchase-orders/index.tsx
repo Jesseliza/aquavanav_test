@@ -141,6 +141,25 @@ export default function PurchaseOrdersIndex() {
     }
   }, [isAuthenticated, user, setLocation]);
 
+  const { data: orders, isLoading } = useQuery<PurchaseOrder[]>({
+    queryKey: ["/api/purchase-orders"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: suppliersResponse } = useQuery<{ data: Supplier[] }>({
+    queryKey: ["/api/suppliers/all"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: inventoryResponse } = useQuery<{ data: InventoryItem[] }>({
+    queryKey: ["/api/inventory"],
+    enabled: isAuthenticated,
+  });
+
+
+  const suppliers = Array.isArray(suppliersResponse?.data) ? suppliersResponse.data : [];
+  const inventoryItems = Array.isArray(inventoryResponse?.data) ? inventoryResponse.data : [];
+
   useEffect(() => {
     if (formData.supplierId && editingOrder === null) {
       const supplier = suppliers.find(s => s.id === parseInt(formData.supplierId));
@@ -166,25 +185,6 @@ export default function PurchaseOrdersIndex() {
       }
     }
   }, [editingOrder, suppliers]);
-
-  const { data: orders, isLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: ["/api/purchase-orders"],
-    enabled: isAuthenticated,
-  });
-
-  const { data: suppliersResponse } = useQuery<{ data: Supplier[] }>({
-    queryKey: ["/api/suppliers/all"],
-    enabled: isAuthenticated,
-  });
-
-  const { data: inventoryResponse } = useQuery<{ data: InventoryItem[] }>({
-    queryKey: ["/api/inventory"],
-    enabled: isAuthenticated,
-  });
-
-
-  const suppliers = Array.isArray(suppliersResponse?.data) ? suppliersResponse.data : [];
-  const inventoryItems = Array.isArray(inventoryResponse?.data) ? inventoryResponse.data : [];
 
   // Auto-calculate total tax amount based on line items
   const calculateTotalTax = () => {
