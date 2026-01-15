@@ -331,8 +331,21 @@ export default function ProjectDetail() {
     additionalField2Description: "",
     additionalField3Title: "",
     additionalField3Description: "",
+        customerId: "",
   });
   const [vesselImageFile, setVesselImageFile] = useState<File | null>(null);
+
+  const { data: customers } = useQuery<any[]>({
+    queryKey: ["/api/customers/all"],
+    queryFn: async () => {
+      const response = await fetch(`/api/customers/all`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch customers");
+      return response.json();
+    },
+    enabled: isAuthenticated,
+  });
 
   const [activityData, setActivityData] = useState<Partial<CreateActivityData>>({
     date: new Date().toISOString().split('T')[0],
@@ -461,6 +474,7 @@ export default function ProjectDetail() {
         additionalField2Description: project.additionalField2Description || "",
         additionalField3Title: project.additionalField3Title || "",
         additionalField3Description: project.additionalField3Description || "",
+        customerId: project.customerId?.toString() || "",
       });
     }
   }, [project, isEditProjectDialogOpen]);
@@ -1465,6 +1479,7 @@ export default function ProjectDetail() {
     appendIfExists("additionalField2Description", editProjectData.additionalField2Description);
     appendIfExists("additionalField3Title", editProjectData.additionalField3Title);
     appendIfExists("additionalField3Description", editProjectData.additionalField3Description);
+    appendIfExists("customerId", editProjectData.customerId);
 
 
     if (vesselImageFile) {
@@ -1616,6 +1631,25 @@ export default function ProjectDetail() {
                         placeholder="Enter vessel name"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="editCustomer">Customer</Label>
+                    <Select
+                      value={editProjectData.customerId}
+                      onValueChange={(value) => setEditProjectData(prev => ({ ...prev, customerId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a customer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers?.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id.toString()}>
+                            {customer.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
