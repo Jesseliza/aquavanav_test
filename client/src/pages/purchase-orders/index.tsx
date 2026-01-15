@@ -160,31 +160,30 @@ export default function PurchaseOrdersIndex() {
   const suppliers = Array.isArray(suppliersResponse?.data) ? suppliersResponse.data : [];
   const inventoryItems = Array.isArray(inventoryResponse?.data) ? inventoryResponse.data : [];
 
-  useEffect(() => {
-    if (formData.supplierId && editingOrder === null) {
-      const supplier = suppliers.find(s => s.id === parseInt(formData.supplierId));
-      if (supplier && supplier.bankAccountDetails) {
-        const selectedBankAccountExists = supplier.bankAccountDetails.some(detail => detail.accountDetails === formData.bankAccount);
-        if (!selectedBankAccountExists) {
-          setFormData(prev => ({ ...prev, bankAccount: "" }));
-        }
-      } else {
-        setFormData(prev => ({ ...prev, bankAccount: "" }));
+  const bankAccountOptions = React.useMemo(() => {
+    const supplier = suppliers.find(s => s.id === parseInt(formData.supplierId));
+    let options = supplier?.bankAccountDetails?.map(detail => ({
+      id: detail.id,
+      accountDetails: detail.accountDetails
+    })) || [];
+
+    if (editingOrder?.bankAccount) {
+      const isBankAccountInOptions = options.some(option => option.accountDetails === editingOrder.bankAccount);
+      if (!isBankAccountInOptions) {
+        options.unshift({ id: 0, accountDetails: editingOrder.bankAccount });
       }
     }
+    return options;
   }, [formData.supplierId, suppliers, editingOrder]);
 
   useEffect(() => {
-    if (editingOrder && suppliers.length > 0) {
-      const supplier = suppliers.find(s => s.id === editingOrder.supplierId);
-      if (supplier && supplier.bankAccountDetails) {
-        const selectedBankAccountExists = supplier.bankAccountDetails.some(detail => detail.accountDetails === editingOrder.bankAccount);
-        if (selectedBankAccountExists) {
-          setFormData(prev => ({ ...prev, bankAccount: editingOrder.bankAccount || "" }));
-        }
-      }
+    if (editingOrder) {
+      setFormData(prev => ({
+        ...prev,
+        bankAccount: editingOrder.bankAccount || "",
+      }));
     }
-  }, [editingOrder, suppliers]);
+  }, [editingOrder]);
 
   // Auto-calculate total tax amount based on line items
   const calculateTotalTax = () => {
@@ -1078,18 +1077,16 @@ export default function PurchaseOrdersIndex() {
                     <SelectValue placeholder="Select bank account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {suppliers
-                      .find(s => s.id === parseInt(formData.supplierId))
-                      ?.bankAccountDetails?.map((detail, index) => (
-                        <React.Fragment key={detail.id}>
-                          <SelectItem value={detail.accountDetails}>
-                            <div className="whitespace-pre-wrap">{detail.accountDetails}</div>
-                          </SelectItem>
-                          {index < (suppliers.find(s => s.id === parseInt(formData.supplierId))?.bankAccountDetails?.length ?? 0) - 1 && (
-                            <hr className="my-1" />
-                          )}
-                        </React.Fragment>
-                      ))}
+                    {bankAccountOptions.map((detail, index) => (
+                      <React.Fragment key={detail.id}>
+                        <SelectItem value={detail.accountDetails}>
+                          <div className="whitespace-pre-wrap">{detail.accountDetails}</div>
+                        </SelectItem>
+                        {index < bankAccountOptions.length - 1 && (
+                          <hr className="my-1" />
+                        )}
+                      </React.Fragment>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
