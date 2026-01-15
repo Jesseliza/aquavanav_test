@@ -141,6 +141,32 @@ export default function PurchaseOrdersIndex() {
     }
   }, [isAuthenticated, user, setLocation]);
 
+  useEffect(() => {
+    if (formData.supplierId && editingOrder === null) {
+      const supplier = suppliers.find(s => s.id === parseInt(formData.supplierId));
+      if (supplier && supplier.bankAccountDetails) {
+        const selectedBankAccountExists = supplier.bankAccountDetails.some(detail => detail.accountDetails === formData.bankAccount);
+        if (!selectedBankAccountExists) {
+          setFormData(prev => ({ ...prev, bankAccount: "" }));
+        }
+      } else {
+        setFormData(prev => ({ ...prev, bankAccount: "" }));
+      }
+    }
+  }, [formData.supplierId, suppliers, editingOrder]);
+
+  useEffect(() => {
+    if (editingOrder && suppliers.length > 0) {
+      const supplier = suppliers.find(s => s.id === editingOrder.supplierId);
+      if (supplier && supplier.bankAccountDetails) {
+        const selectedBankAccountExists = supplier.bankAccountDetails.some(detail => detail.accountDetails === editingOrder.bankAccount);
+        if (selectedBankAccountExists) {
+          setFormData(prev => ({ ...prev, bankAccount: editingOrder.bankAccount || "" }));
+        }
+      }
+    }
+  }, [editingOrder, suppliers]);
+
   const { data: orders, isLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ["/api/purchase-orders"],
     enabled: isAuthenticated,
