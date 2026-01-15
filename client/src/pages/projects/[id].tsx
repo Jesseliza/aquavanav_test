@@ -1199,6 +1199,8 @@ export default function ProjectDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "asset-instance-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] }); // Refresh project cost
+      queryClient.invalidateQueries({ queryKey: ["asset-instances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "revenue"] });
       toast({
         title: "Asset Instance Assigned",
         description: "Asset instance has been assigned to the project successfully.",
@@ -1223,6 +1225,8 @@ export default function ProjectDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "asset-instance-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] }); // Refresh project cost
+      queryClient.invalidateQueries({ queryKey: ["asset-instances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "revenue"] });
       toast({
         title: "Asset Instance Removed",
         description: "Asset instance has been removed from the project.",
