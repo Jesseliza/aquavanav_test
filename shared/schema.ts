@@ -181,7 +181,7 @@ export const projects = pgTable("projects", {
   totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0"),
   customerId: integer("customer_id").references(() => customers.id),
   locations: json("locations").$type<string[]>().default([]),
-  ridingCrewNos: text("riding_crew_nos"),
+  ridgingCrewNos: text("ridging_crew_nos"),
   modeOfContract: text("mode_of_contract"),
   workingHours: text("working_hours"),
   ppe: text("ppe"),
@@ -1058,7 +1058,8 @@ export type EmployeeTrainingRecord = typeof employeeTrainingRecords.$inferSelect
 export type InsertEmployeeTrainingRecord = z.infer<typeof insertEmployeeTrainingRecordSchema>;
 export type EmployeeDocument = typeof employeeDocuments.$inferSelect;
 export type InsertEmployeeDocument = z.infer<typeof insertEmployeeDocumentSchema>;
-export type Project = typeof projects.$inferSelect;
+// export type Project = typeof projects.$inferSelect;
+export type Project = typeof projects.$inferSelect & { customerName?: string };
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;

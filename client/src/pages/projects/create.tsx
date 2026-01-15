@@ -40,7 +40,7 @@ export default function ProjectCreate() {
     locations: [],
     startDate: "",
     plannedEndDate: "",
-    ridingCrewNos: "",
+    ridgingCrewNos: "",
     modeOfContract: "",
     workingHours: "",
     ppe: "",
@@ -110,7 +110,7 @@ export default function ProjectCreate() {
       appendIfExists("locations", data.locations);
       appendIfExists("startDate", data.startDate);
       appendIfExists("plannedEndDate", data.plannedEndDate);
-      appendIfExists("ridingCrewNos", data.ridingCrewNos);
+      appendIfExists("ridgingCrewNos", data.ridgingCrewNos);
       appendIfExists("modeOfContract", data.modeOfContract);
       appendIfExists("workingHours", data.workingHours);
       appendIfExists("ppe", data.ppe);
@@ -461,11 +461,11 @@ export default function ProjectCreate() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="ridingCrewNos">Riding Crew Numbers</Label>
+                  <Label htmlFor="ridgingCrewNos">Ridging Crew Numbers</Label>
                   <Input
-                    id="ridingCrewNos"
-                    value={formData.ridingCrewNos}
-                    onChange={(e) => handleChange("ridingCrewNos", e.target.value)}
+                    id="ridgingCrewNos"
+                    value={formData.ridgingCrewNos}
+                    onChange={(e) => handleChange("ridgingCrewNos", e.target.value)}
                     placeholder="Enter crew numbers..."
                   />
                 </div>
