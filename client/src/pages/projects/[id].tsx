@@ -333,6 +333,8 @@ export default function ProjectDetail() {
     additionalField3Description: "",
         customerId: "",
   });
+  const [isCustomContractMode, setIsCustomContractMode] = useState(false);
+  const [customContractMode, setCustomContractMode] = useState("");
   const [vesselImageFile, setVesselImageFile] = useState<File | null>(null);
 
   const { data: customers } = useQuery<any[]>({
@@ -454,6 +456,9 @@ export default function ProjectDetail() {
   // Initialize edit form data when project loads or dialog opens
   useEffect(() => {
     if (project && isEditProjectDialogOpen) {
+      const standardContractModes = ["fixed_price", "time_and_materials", "cost_plus", "day_rate", "lump_sum"];
+      const isCustom = project.modeOfContract && !standardContractModes.includes(project.modeOfContract);
+
       setEditProjectData({
         title: project.title || "",
         description: project.description || "",
@@ -465,7 +470,7 @@ export default function ProjectDetail() {
         plannedEndDate: project.plannedEndDate ? new Date(project.plannedEndDate).toISOString().split('T')[0] : "",
         actualEndDate: project.actualEndDate ? new Date(project.actualEndDate).toISOString().split('T')[0] : "",
         ridgingCrewNos: project.ridgingCrewNos || "",
-        modeOfContract: project.modeOfContract || "",
+        modeOfContract: isCustom ? "custom" : project.modeOfContract || "",
         workingHours: project.workingHours || "",
         ppe: project.ppe || "",
         additionalField1Title: project.additionalField1Title || "",
@@ -476,6 +481,14 @@ export default function ProjectDetail() {
         additionalField3Description: project.additionalField3Description || "",
         customerId: project.customerId?.toString() || "",
       });
+
+      if (isCustom) {
+        setIsCustomContractMode(true);
+        setCustomContractMode(project.modeOfContract || "");
+      } else {
+        setIsCustomContractMode(false);
+        setCustomContractMode("");
+      }
     }
   }, [project, isEditProjectDialogOpen]);
 
@@ -1470,7 +1483,11 @@ export default function ProjectDetail() {
     appendIfExists("plannedEndDate", editProjectData.plannedEndDate);
     appendIfExists("actualEndDate", editProjectData.actualEndDate);
     appendIfExists("ridgingCrewNos", editProjectData.ridgingCrewNos);
-    appendIfExists("modeOfContract", editProjectData.modeOfContract);
+    if (isCustomContractMode) {
+      appendIfExists("modeOfContract", customContractMode);
+    } else {
+      appendIfExists("modeOfContract", editProjectData.modeOfContract);
+    }
     appendIfExists("workingHours", editProjectData.workingHours);
     appendIfExists("ppe", editProjectData.ppe);
     appendIfExists("additionalField1Title", editProjectData.additionalField1Title);
@@ -1787,7 +1804,15 @@ export default function ProjectDetail() {
                         <Label htmlFor="editModeOfContract">Mode of Contract</Label>
                         <Select
                           value={editProjectData.modeOfContract}
-                          onValueChange={(value) => setEditProjectData(prev => ({ ...prev, modeOfContract: value }))}
+                          onValueChange={(value) => {
+                            if (value === "custom") {
+                              setIsCustomContractMode(true);
+                              setEditProjectData(prev => ({ ...prev, modeOfContract: "custom" }));
+                            } else {
+                              setIsCustomContractMode(false);
+                              setEditProjectData(prev => ({ ...prev, modeOfContract: value }));
+                            }
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select contract mode" />
@@ -1798,8 +1823,17 @@ export default function ProjectDetail() {
                             <SelectItem value="cost_plus">Cost Plus</SelectItem>
                             <SelectItem value="day_rate">Day Rate</SelectItem>
                             <SelectItem value="lump_sum">Lump Sum</SelectItem>
+                            <SelectItem value="custom">Custom</SelectItem>
                           </SelectContent>
                         </Select>
+                        {isCustomContractMode && (
+                          <Input
+                            className="mt-2"
+                            value={customContractMode}
+                            onChange={(e) => setCustomContractMode(e.target.value)}
+                            placeholder="Enter custom contract mode"
+                          />
+                        )}
                       </div>
 
                       <div className="space-y-2">
