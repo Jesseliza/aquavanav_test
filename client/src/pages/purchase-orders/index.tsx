@@ -271,7 +271,7 @@ export default function PurchaseOrdersIndex() {
       toast({
         title: "Order Rejected",
         description: "Purchase order has been rejected.",
-        variant: "destructive",
+        // variant: "destructive",
       });
       setIsRejectDialogOpen(false);
       setRejectionReason("");
