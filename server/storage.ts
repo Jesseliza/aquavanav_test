@@ -10385,21 +10385,6 @@ class Storage {
       throw error;
     }
   }
-
-  async getAllCustomers(): Promise<Customer[]> {
-    try {
-      return await db.select().from(customers).orderBy(desc(customers.id));
-    } catch (error: any) {
-      await this.createErrorLog({
-        message:
-          "Error in getAllCustomers: " + (error?.message || "Unknown error"),
-        stack: error?.stack,
-        component: "getAllCustomers",
-        severity: "error",
-      });
-      throw error;
-    }
-  }
 }
 
 export interface IStorage {
@@ -10433,7 +10418,6 @@ export interface IStorage {
     customerData: Partial<InsertCustomer>
   ): Promise<Customer | undefined>;
   deleteCustomer(id: number): Promise<boolean>;
-  getAllCustomers(): Promise<Customer[]>;
 
   // Supplier methods
   getSuppliers(): Promise<SupplierWithBankDetails[]>;

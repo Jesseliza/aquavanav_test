@@ -331,7 +331,7 @@ export default function ProjectDetail() {
     additionalField2Description: "",
     additionalField3Title: "",
     additionalField3Description: "",
-        customerId: "",
+    customerId: "",
   });
   const [isCustomContractMode, setIsCustomContractMode] = useState(false);
   const [customContractMode, setCustomContractMode] = useState("");
@@ -1651,25 +1651,6 @@ export default function ProjectDetail() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="editCustomer">Customer</Label>
-                    <Select
-                      value={editProjectData.customerId}
-                      onValueChange={(value) => setEditProjectData(prev => ({ ...prev, customerId: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers?.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.id.toString()}>
-                            {customer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="editVesselImoNumber">Vessel IMO Number</Label>
                     <Input
                       id="editVesselImoNumber"
@@ -1735,22 +1716,43 @@ export default function ProjectDetail() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="editStatus">Status</Label>
-                    <Select
-                      value={editProjectData.status}
-                      onValueChange={(value) => setEditProjectData(prev => ({ ...prev, status: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="not_started">Not Started</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="on_hold">On Hold</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="editCustomer">Customer</Label>
+                      <Select
+                        value={editProjectData.customerId}
+                        onValueChange={(value) => setEditProjectData(prev => ({ ...prev, customerId: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a customer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customers?.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id.toString()}>
+                              {customer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="editStatus">Status</Label>
+                      <Select
+                        value={editProjectData.status}
+                        onValueChange={(value) => setEditProjectData(prev => ({ ...prev, status: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="not_started">Not Started</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="on_hold">On Hold</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1823,10 +1825,10 @@ export default function ProjectDetail() {
                             <SelectItem value="cost_plus">Cost Plus</SelectItem>
                             <SelectItem value="day_rate">Day Rate</SelectItem>
                             <SelectItem value="lump_sum">Lump Sum</SelectItem>
-                            <SelectItem value="custom">Custom</SelectItem>
+                            <SelectItem value="custom">Custom (Enter below)</SelectItem>
                           </SelectContent>
                         </Select>
-                        {isCustomContractMode && (
+                        {(isCustomContractMode || !["fixed_price", "time_and_materials", "cost_plus", "day_rate", "lump_sum"].includes(editProjectData.modeOfContract)) && (
                           <Input
                             className="mt-2"
                             value={customContractMode}
@@ -2060,7 +2062,7 @@ export default function ProjectDetail() {
               )}
 
               {/* Additional Project Details */}
-              {(project.ridgingCrewNos || project.modeOfContract || project.workingHours || project.ppe) && (
+              {(project.customerName && project.ridgingCrewNos || project.modeOfContract || project.workingHours || project.ppe) && (
                 <div className="mb-6 space-y-4">
                   <h4 className="font-medium text-slate-900 dark:text-slate-100">Project Details</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
