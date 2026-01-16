@@ -335,7 +335,8 @@ class Storage {
         .where(eq(customers.isArchived, false));
       const totalProjects = await db
         .select({ count: sql<number>`count(*)` })
-        .from(projects);
+        .from(projects)
+        .where(isNotNull(projects.customerId));
 
       return {
         totalCustomers: Number(totalCustomers[0].count),
