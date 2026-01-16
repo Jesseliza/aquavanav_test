@@ -153,6 +153,15 @@ export default function CustomersIndex() {
 
   const customers = customersResponse?.data || [];
 
+  const { data: customerStats } = useQuery<{
+    totalCustomers: number;
+    activeCustomers: number;
+    totalProjects: number;
+    projectsPerCustomer: { customerId: number; projectCount: number }[];
+  }>({
+    queryKey: ["/api/customers/stats"],
+  });
+
   useEffect(() => {
     if (customersResponse?.pagination) {
       setPagination(customersResponse.pagination);
@@ -921,7 +930,7 @@ export default function CustomersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Total Customers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {pagination?.total || 0}
+                  {customerStats?.totalCustomers ?? 0}
                 </p>
               </div>
             </div>
@@ -937,7 +946,7 @@ export default function CustomersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Active Customers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {showArchived ? 0 : (pagination?.total || 0)}
+                  {customerStats?.activeCustomers ?? 0}
                 </p>
               </div>
             </div>
@@ -952,7 +961,9 @@ export default function CustomersIndex() {
               </div>
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Projects</p>
-                <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">0</p>
+                <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {customerStats?.totalProjects ?? 0}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -1071,7 +1082,12 @@ export default function CustomersIndex() {
                       <Ship className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Projects</p>
-                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">0 total projects</p>
+                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+                          {customerStats?.projectsPerCustomer?.find(
+                            (p) => p.customerId === customer.id
+                          )?.projectCount || 0}{" "}
+                          total projects
+                        </p>
                       </div>
                     </div>
                   </div>
