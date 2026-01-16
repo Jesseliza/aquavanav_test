@@ -700,56 +700,6 @@ class Storage {
     }
   }
 
-  async getCustomerStats(): Promise<{
-    totalCustomers: number;
-    activeCustomers: number;
-    totalProjects: number;
-    projectsPerCustomer: { customerId: number; projectCount: number }[];
-  }> {
-    try {
-      const totalCustomersResult = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(customers);
-
-      const activeCustomersResult = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(customers)
-        .where(eq(customers.isArchived, false));
-
-      const totalProjectsResult = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(projects);
-
-      const projectsPerCustomerResult = await db
-        .select({
-          customerId: projects.customerId,
-          projectCount: sql<number>`count(*)`,
-        })
-        .from(projects)
-        .groupBy(projects.customerId)
-        .where(isNotNull(projects.customerId));
-
-      return {
-        totalCustomers: Number(totalCustomersResult[0].count),
-        activeCustomers: Number(activeCustomersResult[0].count),
-        totalProjects: Number(totalProjectsResult[0].count),
-        projectsPerCustomer: projectsPerCustomerResult.map((row) => ({
-          customerId: row.customerId!,
-          projectCount: Number(row.projectCount),
-        })),
-      };
-    } catch (error: any) {
-      await this.createErrorLog({
-        message:
-          "Error in getCustomerStats: " + (error?.message || "Unknown error"),
-        stack: error?.stack,
-        component: "getCustomerStats",
-        severity: "error",
-      });
-      throw error;
-    }
-  }
-
   // Supplier methods
   async getSuppliers(): Promise<SupplierWithBankDetails[]> {
     try {
@@ -10475,12 +10425,7 @@ export interface IStorage {
     customerData: Partial<InsertCustomer>
   ): Promise<Customer | undefined>;
   deleteCustomer(id: number): Promise<boolean>;
-  getCustomerStats(): Promise<{
-    totalCustomers: number;
-    activeCustomers: number;
-    totalProjects: number;
-    projectsPerCustomer: { customerId: number; projectCount: number }[];
-  }>;
+
   // Supplier methods
   getSuppliers(): Promise<SupplierWithBankDetails[]>;
   getSuppliersPaginated(
