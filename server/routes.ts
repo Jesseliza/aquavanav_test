@@ -1030,6 +1030,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/customers/stats", requireAuth, async (req, res) => {
+    try {
+      const stats = await storage.getCustomerStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Get customer stats error:", error);
+      res.status(500).json({ message: "Failed to get customer stats" });
+    }
+  });
+
   app.post(
     "/api/customers",
     requireAuth,
@@ -1866,22 +1876,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project routes
   app.get("/api/projects", requireAuth, async (req, res) => {
     try {
-      let projects = await storage.getProjects();
+      const customerIdParam = req.query.customerId as string;
+      let customerId: number | undefined;
 
-      // Filter by customer for customer role
+      if (customerIdParam) {
+        customerId = parseInt(customerIdParam, 10);
+        if (isNaN(customerId)) {
+          return res.status(400).json({ message: "Invalid customer ID" });
+        }
+      }
+
+      let projects;
       if (req.session.userRole === "customer") {
         const user = await storage.getUser(req.session.userId!);
         if (user) {
           const customers = await storage.getCustomers();
           const customer = customers.find((c) => c.userId === user.id);
           if (customer) {
-            projects = await storage.getProjectsByCustomer(customer.id);
+            // A customer can only see their own projects.
+            projects = await storage.getProjects(customer.id);
+          } else {
+            projects = []; // No customer associated with this user
           }
+        } else {
+          projects = []; // User not found
         }
+      } else {
+        // For other roles, use the customerId from the query if present.
+        projects = await storage.getProjects(customerId);
       }
 
       res.json(projects);
     } catch (error) {
+      console.error("Get projects error:", error);
       res.status(500).json({ message: "Failed to get projects" });
     }
   });

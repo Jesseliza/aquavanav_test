@@ -10,8 +10,12 @@ import { Project } from "@shared/schema";
 import { startTransition } from 'react';
 
 export default function ProjectsIndex() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { isAuthenticated, user } = useAuth();
+
+  // Get customerId from URL query parameters
+  const query = new URLSearchParams(window.location.search);
+  const customerId = query.get("customer");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -20,7 +24,12 @@ export default function ProjectsIndex() {
   }, [isAuthenticated, setLocation]);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: ["/api/projects", customerId],
+    queryFn: async () => {
+      const url = customerId ? `/api/projects?customerId=${customerId}` : "/api/projects";
+      const response = await apiRequest(url);
+      return response.json();
+    },
     enabled: isAuthenticated,
   });
 

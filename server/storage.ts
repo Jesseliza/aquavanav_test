@@ -320,6 +320,39 @@ class Storage {
     return undefined;
   }
 
+  async getCustomerStats(): Promise<{
+    totalCustomers: number;
+    activeCustomers: number;
+    totalProjects: number;
+  }> {
+    try {
+      const totalCustomers = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(customers);
+      const activeCustomers = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(customers)
+        .where(eq(customers.isArchived, false));
+      const totalProjects = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(projects);
+
+      return {
+        totalCustomers: Number(totalCustomers[0].count),
+        activeCustomers: Number(activeCustomers[0].count),
+        totalProjects: Number(totalProjects[0].count),
+      };
+    } catch (error: any) {
+      await this.createErrorLog({
+        message: "Error in getCustomerStats: " + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "getCustomerStats",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
   private async _getPaginatedResults<TData>(
     dataQueryBuilder: Select,
     countQueryBuilder: Select<CountResult>,
@@ -533,7 +566,7 @@ class Storage {
     limit: number,
     search: string,
     showArchived: boolean
-  ): Promise<PaginatedResponse<Customer>> {
+  ): Promise<PaginatedResponse<CustomerWithProjectCount>> {
     try {
       const whereClauses = [];
       if (search) {
@@ -1929,8 +1962,18 @@ class Storage {
   }
 
   // Project methods
-  async getProjects(): Promise<Project[]> {
+  async getProjects(customerId?: number): Promise<Project[]> {
     try {
+      let query = db.select().from(projects).orderBy(projects.id);
+
+      if (customerId) {
+        return await db
+          .select()
+          .from(projects)
+          .where(eq(projects.customerId, customerId))
+          .orderBy(projects.id);
+      }
+
       return await db.select().from(projects).orderBy(projects.id);
     } catch (error: any) {
       await this.createErrorLog({
@@ -10417,7 +10460,7 @@ export interface IStorage {
     limit: number,
     search: string,
     showArchived: boolean
-  ): Promise<PaginatedResponse<Customer>>;
+  ): Promise<PaginatedResponse<CustomerWithProjectCount>>;
   getCustomer(id: number): Promise<Customer | undefined>;
   createCustomer(customerData: InsertCustomer): Promise<Customer>;
   updateCustomer(
@@ -10425,6 +10468,11 @@ export interface IStorage {
     customerData: Partial<InsertCustomer>
   ): Promise<Customer | undefined>;
   deleteCustomer(id: number): Promise<boolean>;
+  getCustomerStats(): Promise<{
+    totalCustomers: number;
+    activeCustomers: number;
+    totalProjects: number;
+  }>;
 
   // Supplier methods
   getSuppliers(): Promise<SupplierWithBankDetails[]>;
@@ -10453,7 +10501,7 @@ export interface IStorage {
   ): Promise<Employee | undefined>;
 
   // Project methods
-  getProjects(): Promise<Project[]>;
+  getProjects(customerId?: number): Promise<Project[]>;
   getProject(id: number): Promise<Project | undefined>;
   getProjectsByCustomer(customerId: number): Promise<Project[]>;
   createProject(projectData: InsertProject): Promise<Project>;
