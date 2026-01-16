@@ -320,6 +320,7 @@ class Storage {
     return undefined;
   }
 
+
   async getCustomerStats(): Promise<{
     totalCustomers: number;
     activeCustomers: number;
@@ -578,24 +579,57 @@ class Storage {
       const conditions =
         whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
-      const dataQueryBuilder = db
-        .select()
-        .from(customers)
-        .where(conditions)
-        .orderBy(customers.id);
-      // Note: original count query had a simpler where clause `eq(customers.isArchived, showArchived)`
-      // This should ideally be consistent. For now, using the combined `conditions` for count.
       const countQueryBuilder = db
         .select({ count: sql<number>`count(*)` })
         .from(customers)
         .where(conditions);
 
-      return this._getPaginatedResults<Customer>(
-        dataQueryBuilder,
-        countQueryBuilder,
-        page,
-        limit
-      );
+      const totalResult = await countQueryBuilder;
+      const total = Number(totalResult[0].count);
+      const totalPages = Math.ceil(total / limit);
+
+      const data = await db
+        .select({
+          id: customers.id,
+          name: customers.name,
+          contactPerson: customers.contactPerson,
+          email: customers.email,
+          phone: customers.phone,
+          address: customers.address,
+          taxId: customers.taxId,
+          userId: customers.userId,
+          isArchived: customers.isArchived,
+          vatNumber: customers.vatNumber,
+          vatRegistrationStatus: customers.vatRegistrationStatus,
+          vatTreatment: customers.vatTreatment,
+          customerType: customers.customerType,
+          taxCategory: customers.taxCategory,
+          paymentTerms: customers.paymentTerms,
+          currency: customers.currency,
+          creditLimit: customers.creditLimit,
+          isVatApplicable: customers.isVatApplicable,
+          notes: customers.notes,
+          createdAt: customers.createdAt,
+          updatedAt: customers.updatedAt,
+          projectCount: sql<number>`count(${projects.id})`.mapWith(Number),
+        })
+        .from(customers)
+        .leftJoin(projects, eq(customers.id, projects.customerId))
+        .where(conditions)
+        .groupBy(customers.id)
+        .orderBy(customers.id)
+        .limit(limit)
+        .offset((page - 1) * limit);
+
+      return {
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -10464,16 +10498,16 @@ export interface IStorage {
   ): Promise<PaginatedResponse<CustomerWithProjectCount>>;
   getCustomer(id: number): Promise<Customer | undefined>;
   createCustomer(customerData: InsertCustomer): Promise<Customer>;
-  updateCustomer(
-    id: number,
-    customerData: Partial<InsertCustomer>
-  ): Promise<Customer | undefined>;
-  deleteCustomer(id: number): Promise<boolean>;
   getCustomerStats(): Promise<{
     totalCustomers: number;
     activeCustomers: number;
     totalProjects: number;
   }>;
+  updateCustomer(
+    id: number,
+    customerData: Partial<InsertCustomer>
+  ): Promise<Customer | undefined>;
+  deleteCustomer(id: number): Promise<boolean>;
 
   // Supplier methods
   getSuppliers(): Promise<SupplierWithBankDetails[]>;

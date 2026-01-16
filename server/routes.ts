@@ -1000,6 +1000,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Customer routes
+  router.get("/api/customers/stats", async (req, res, next) => {
+    try {
+      const stats = await storage.getCustomerStats();
+      res.json(stats);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.get("/api/customers", requireAuth, async (req, res) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
@@ -1027,16 +1036,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get all customers error:", error);
       res.status(500).json({ message: "Failed to get all customers" });
-    }
-  });
-
-  app.get("/api/customers/stats", requireAuth, async (req, res) => {
-    try {
-      const stats = await storage.getCustomerStats();
-      res.json(stats);
-    } catch (error) {
-      console.error("Get customer stats error:", error);
-      res.status(500).json({ message: "Failed to get customer stats" });
     }
   });
 
@@ -1876,14 +1875,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project routes
   app.get("/api/projects", requireAuth, async (req, res) => {
     try {
-      const customerIdParam = req.query.customerId as string;
-      let customerId: number | undefined;
+      const customerId = req.query.customerId
+        ? parseInt(req.query.customerId as string)
+        : undefined;
 
-      if (customerIdParam) {
-        customerId = parseInt(customerIdParam, 10);
-        if (isNaN(customerId)) {
-          return res.status(400).json({ message: "Invalid customer ID" });
-        }
+      if (req.query.customerId && isNaN(customerId!)) {
+        return res.status(400).json({ message: "Invalid customer ID" });
       }
 
       let projects;

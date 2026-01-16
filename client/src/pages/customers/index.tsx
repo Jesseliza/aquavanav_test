@@ -383,7 +383,7 @@ export default function CustomersIndex() {
 
   const handleViewProjects = (customer: Customer) => {
     startTransition(() => {
-      setLocation(`/projects?customer=${customer.id}`);
+      setLocation(`/projects?customerId=${customer.id}`);
     });
   };
 
