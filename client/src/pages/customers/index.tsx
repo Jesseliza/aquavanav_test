@@ -30,6 +30,7 @@ const customerSchema = z.object({
   taxId: z.string().nullable(),
   userId: z.number().nullable(),
   isArchived: z.boolean().optional(),
+  projectCount: z.number().optional(),
   // UAE VAT Compliance Fields
   vatNumber: z.string().nullable(),
   vatRegistrationStatus: z.string().nullable(),
@@ -147,6 +148,19 @@ export default function CustomersIndex() {
         console.error("Error fetching customers:", error);
         throw error;
       }
+    },
+    enabled: isAuthenticated,
+  });
+
+  const { data: stats } = useQuery<{
+    totalCustomers: number;
+    activeCustomers: number;
+    totalProjects: number;
+  }>({
+    queryKey: ["/api/customers/stats"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/customers/stats");
+      return response.json();
     },
     enabled: isAuthenticated,
   });
@@ -921,7 +935,7 @@ export default function CustomersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Total Customers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {pagination?.total || 0}
+                  {stats?.totalCustomers || 0}
                 </p>
               </div>
             </div>
@@ -937,14 +951,14 @@ export default function CustomersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Active Customers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {showArchived ? 0 : (pagination?.total || 0)}
+                  {stats?.activeCustomers || 0}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* <Card>
+        <Card>
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -952,11 +966,11 @@ export default function CustomersIndex() {
               </div>
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Projects</p>
-                <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">0</p>
+                <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">{stats?.totalProjects || 0}</p>
               </div>
             </div>
           </CardContent>
-        </Card> */}
+        </Card>
 
         {/* <Card>
           <CardContent className="p-4 md:p-6">
@@ -1067,13 +1081,13 @@ export default function CustomersIndex() {
                       </div>
                     )}
 
-                    {/* <div className="flex items-start space-x-2">
+                    <div className="flex items-start space-x-2">
                       <Ship className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs md:text-sm font-medium text-slate-900 dark:text-slate-100">Projects</p>
-                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">0 total projects</p>
+                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">{customer.projectCount} total projects</p>
                       </div>
-                    </div> */}
+                    </div>
                   </div>
 
                   {/* UAE VAT & Tax Information */}
