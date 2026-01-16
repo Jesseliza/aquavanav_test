@@ -15,7 +15,7 @@ export default function ProjectsIndex() {
 
   // Get customerId from URL query parameters
   const query = new URLSearchParams(window.location.search);
-  const customerId = query.get("customer");
+  const customerId = query.get("customerId");
 
   useEffect(() => {
     if (!isAuthenticated) {
