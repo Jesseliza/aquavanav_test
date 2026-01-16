@@ -1,5 +1,6 @@
 import { db } from "./db";
 import {
+  getTableColumns,
   eq,
   desc,
   sql,
@@ -320,41 +321,6 @@ class Storage {
     return undefined;
   }
 
-
-  async getCustomerStats(): Promise<{
-    totalCustomers: number;
-    activeCustomers: number;
-    totalProjects: number;
-  }> {
-    try {
-      const totalCustomers = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(customers);
-      const activeCustomers = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(customers)
-        .where(eq(customers.isArchived, false));
-      const totalProjects = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(projects)
-        .where(isNotNull(projects.customerId));
-
-      return {
-        totalCustomers: Number(totalCustomers[0].count),
-        activeCustomers: Number(activeCustomers[0].count),
-        totalProjects: Number(totalProjects[0].count),
-      };
-    } catch (error: any) {
-      await this.createErrorLog({
-        message: "Error in getCustomerStats: " + (error?.message || "Unknown error"),
-        stack: error?.stack,
-        component: "getCustomerStats",
-        severity: "error",
-      });
-      throw error;
-    }
-  }
-
   private async _getPaginatedResults<TData>(
     dataQueryBuilder: Select,
     countQueryBuilder: Select<CountResult>,
@@ -568,7 +534,7 @@ class Storage {
     limit: number,
     search: string,
     showArchived: boolean
-  ): Promise<PaginatedResponse<CustomerWithProjectCount>> {
+  ): Promise<PaginatedResponse<Customer>> {
     try {
       const whereClauses = [];
       if (search) {
@@ -579,57 +545,32 @@ class Storage {
       const conditions =
         whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
+      const customerColumns = getTableColumns(customers);
+
+      const dataQueryBuilder = db
+        .select({
+          ...customerColumns,
+          projectCount: sql<number>`COUNT(${projects.id})`.as("projectCount"),
+        })
+        .from(customers)
+        .leftJoin(projects, eq(projects.customerId, customers.id))
+        .where(conditions)
+        .groupBy(customers.id)
+        .orderBy(customers.id);
+
+      // Note: original count query had a simpler where clause `eq(customers.isArchived, showArchived)`
+      // This should ideally be consistent. For now, using the combined `conditions` for count.
       const countQueryBuilder = db
         .select({ count: sql<number>`count(*)` })
         .from(customers)
         .where(conditions);
 
-      const totalResult = await countQueryBuilder;
-      const total = Number(totalResult[0].count);
-      const totalPages = Math.ceil(total / limit);
-
-      const data = await db
-        .select({
-          id: customers.id,
-          name: customers.name,
-          contactPerson: customers.contactPerson,
-          email: customers.email,
-          phone: customers.phone,
-          address: customers.address,
-          taxId: customers.taxId,
-          userId: customers.userId,
-          isArchived: customers.isArchived,
-          vatNumber: customers.vatNumber,
-          vatRegistrationStatus: customers.vatRegistrationStatus,
-          vatTreatment: customers.vatTreatment,
-          customerType: customers.customerType,
-          taxCategory: customers.taxCategory,
-          paymentTerms: customers.paymentTerms,
-          currency: customers.currency,
-          creditLimit: customers.creditLimit,
-          isVatApplicable: customers.isVatApplicable,
-          notes: customers.notes,
-          createdAt: customers.createdAt,
-          updatedAt: customers.updatedAt,
-          projectCount: sql<number>`count(${projects.id})`.mapWith(Number),
-        })
-        .from(customers)
-        .leftJoin(projects, eq(customers.id, projects.customerId))
-        .where(conditions)
-        .groupBy(customers.id)
-        .orderBy(customers.id)
-        .limit(limit)
-        .offset((page - 1) * limit);
-
-      return {
-        data,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-        },
-      };
+      return this._getPaginatedResults<Customer>(
+        dataQueryBuilder,
+        countQueryBuilder,
+        page,
+        limit
+      );
     } catch (error: any) {
       await this.createErrorLog({
         message:
@@ -658,6 +599,41 @@ class Storage {
           (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getCustomer",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async getCustomerStats(): Promise<{
+    totalCustomers: number;
+    activeCustomers: number;
+    totalProjects: number;
+  }> {
+    try {
+      const totalCustomers = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(customers);
+      const activeCustomers = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(customers)
+        .where(eq(customers.isArchived, false));
+      const totalProjects = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(projects)
+        .where(isNotNull(projects.customerId));
+
+      return {
+        totalCustomers: Number(totalCustomers[0].count),
+        activeCustomers: Number(activeCustomers[0].count),
+        totalProjects: Number(totalProjects[0].count),
+      };
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          "Error in getCustomerStats: " + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "getCustomerStats",
         severity: "error",
       });
       throw error;
@@ -934,7 +910,6 @@ class Storage {
       const { bankAccountDetails, ...supplierInfo } = supplierData;
 
       const newSupplierWithDetails = await db.transaction(async (tx) => {
-
         const [newSupplier] = await tx
           .insert(suppliers)
           .values(supplierInfo)
@@ -957,12 +932,10 @@ class Storage {
             accountDetails: detail.accountDetails.trim(),
           }));
 
-
           newBankDetails = await tx
             .insert(supplierBankDetails)
             .values(detailsToInsert)
             .returning();
-
         }
 
         return {
@@ -1997,18 +1970,8 @@ class Storage {
   }
 
   // Project methods
-  async getProjects(customerId?: number): Promise<Project[]> {
+  async getProjects(): Promise<Project[]> {
     try {
-      let query = db.select().from(projects).orderBy(projects.id);
-
-      if (customerId) {
-        return await db
-          .select()
-          .from(projects)
-          .where(eq(projects.customerId, customerId))
-          .orderBy(projects.id);
-      }
-
       return await db.select().from(projects).orderBy(projects.id);
     } catch (error: any) {
       await this.createErrorLog({
@@ -2492,7 +2455,9 @@ class Storage {
       let totalAssetRentalCost = 0;
 
       // const assetAssignments = await this.getProjectAssetAssignments(projectId);
-      const assetAssignments = await this.getProjectAssetInstanceAssignments(projectId);
+      const assetAssignments = await this.getProjectAssetInstanceAssignments(
+        projectId
+      );
       for (const assignment of assetAssignments) {
         const rentalCost = await this.calculateAssetRentalCost(
           new Date(assignment.startDate),
@@ -7199,13 +7164,21 @@ class Storage {
   }
 
   // Purchase Request methods
-  async getPurchaseRequests(userId?: number, userRole?: string): Promise<any[]> {
+  async getPurchaseRequests(
+    userId?: number,
+    userRole?: string
+  ): Promise<any[]> {
     try {
       const approver = alias(users, "approver");
       // const approver = alias(employees, "approver");
-      
+
       const conditions = [];
-      if (userRole && userRole !== 'admin' && userRole !== 'finance' && userId) {
+      if (
+        userRole &&
+        userRole !== "admin" &&
+        userRole !== "finance" &&
+        userId
+      ) {
         conditions.push(eq(purchaseRequests.requestedBy, userId));
       }
 
@@ -7249,7 +7222,7 @@ class Storage {
             .from(purchaseRequestItems)
             .leftJoin(
               inventoryItems,
-              eq(purchaseRequestItems.inventoryItemId, inventoryItems.id),
+              eq(purchaseRequestItems.inventoryItemId, inventoryItems.id)
             )
             .where(eq(purchaseRequestItems.requestId, request.id));
 
@@ -7257,13 +7230,15 @@ class Storage {
             ...request,
             items,
           };
-        }),
+        })
       );
 
       return requestsWithItems;
     } catch (error: any) {
       await this.createErrorLog({
-        message: "Error in getPurchaseRequests: " + (error?.message || "Unknown error"),
+        message:
+          "Error in getPurchaseRequests: " +
+          (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getPurchaseRequests",
         severity: "error",
@@ -10495,14 +10470,14 @@ export interface IStorage {
     limit: number,
     search: string,
     showArchived: boolean
-  ): Promise<PaginatedResponse<CustomerWithProjectCount>>;
+  ): Promise<PaginatedResponse<Customer>>;
   getCustomer(id: number): Promise<Customer | undefined>;
-  createCustomer(customerData: InsertCustomer): Promise<Customer>;
   getCustomerStats(): Promise<{
     totalCustomers: number;
     activeCustomers: number;
     totalProjects: number;
   }>;
+  createCustomer(customerData: InsertCustomer): Promise<Customer>;
   updateCustomer(
     id: number,
     customerData: Partial<InsertCustomer>
@@ -10536,7 +10511,7 @@ export interface IStorage {
   ): Promise<Employee | undefined>;
 
   // Project methods
-  getProjects(customerId?: number): Promise<Project[]>;
+  getProjects(): Promise<Project[]>;
   getProject(id: number): Promise<Project | undefined>;
   getProjectsByCustomer(customerId: number): Promise<Project[]>;
   createProject(projectData: InsertProject): Promise<Project>;

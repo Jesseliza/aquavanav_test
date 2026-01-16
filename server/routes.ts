@@ -1000,15 +1000,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Customer routes
-  router.get("/api/customers/stats", async (req, res, next) => {
-    try {
-      const stats = await storage.getCustomerStats();
-      res.json(stats);
-    } catch (err) {
-      next(err);
-    }
-  });
-
   app.get("/api/customers", requireAuth, async (req, res) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
@@ -1036,6 +1027,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get all customers error:", error);
       res.status(500).json({ message: "Failed to get all customers" });
+    }
+  });
+
+  app.get("/api/customers/stats", requireAuth, async (req, res) => {
+    try {
+      const stats = await storage.getCustomerStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Get customer stats error:", error);
+      res.status(500).json({ message: "Failed to get customer stats" });
     }
   });
 
@@ -1875,37 +1876,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project routes
   app.get("/api/projects", requireAuth, async (req, res) => {
     try {
-      const customerId = req.query.customerId
-        ? parseInt(req.query.customerId as string)
-        : undefined;
-
-      if (req.query.customerId && isNaN(customerId!)) {
-        return res.status(400).json({ message: "Invalid customer ID" });
-      }
-
+      const customerParam = req.query.customer;
       let projects;
+
+      // CUSTOMER ROLE: force own projects only
       if (req.session.userRole === "customer") {
         const user = await storage.getUser(req.session.userId!);
-        if (user) {
-          const customers = await storage.getCustomers();
-          const customer = customers.find((c) => c.userId === user.id);
-          if (customer) {
-            // A customer can only see their own projects.
-            projects = await storage.getProjects(customer.id);
-          } else {
-            projects = []; // No customer associated with this user
-          }
-        } else {
-          projects = []; // User not found
+        if (!user) {
+          return res.status(403).json({ message: "Unauthorized" });
         }
-      } else {
-        // For other roles, use the customerId from the query if present.
-        projects = await storage.getProjects(customerId);
+
+        const customers = await storage.getCustomers();
+        const customer = customers.find((c) => c.userId === user.id);
+
+        if (!customer) {
+          return res.json([]);
+        }
+
+        projects = await storage.getProjectsByCustomer(customer.id);
+      }
+      //NON-CUSTOMER ROLE + customer filter
+      else if (customerParam) {
+        projects = await storage.getProjectsByCustomer(Number(customerParam));
+      }
+      //NON-CUSTOMER ROLE + no filter
+      else {
+        projects = await storage.getProjects();
       }
 
       res.json(projects);
     } catch (error) {
-      console.error("Get projects error:", error);
       res.status(500).json({ message: "Failed to get projects" });
     }
   });

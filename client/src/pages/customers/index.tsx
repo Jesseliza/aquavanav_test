@@ -152,6 +152,14 @@ export default function CustomersIndex() {
     enabled: isAuthenticated,
   });
 
+  const customers = customersResponse?.data || [];
+
+  useEffect(() => {
+    if (customersResponse?.pagination) {
+      setPagination(customersResponse.pagination);
+    }
+  }, [customersResponse]);
+
   const { data: stats } = useQuery<{
     totalCustomers: number;
     activeCustomers: number;
@@ -164,14 +172,6 @@ export default function CustomersIndex() {
     },
     enabled: isAuthenticated,
   });
-
-  const customers = customersResponse?.data || [];
-
-  useEffect(() => {
-    if (customersResponse?.pagination) {
-      setPagination(customersResponse.pagination);
-    }
-  }, [customersResponse]);
 
   const createCustomerMutation = useMutation({
     mutationFn: async (data: CreateCustomerData) => {
@@ -340,7 +340,7 @@ export default function CustomersIndex() {
           newFormData.isVatApplicable = true;
           newFormData.vatTreatment = "standard";
         } else {
-            newFormData.isVatApplicable = true;
+          newFormData.isVatApplicable = true;
         }
       }
 
@@ -383,7 +383,7 @@ export default function CustomersIndex() {
 
   const handleViewProjects = (customer: Customer) => {
     startTransition(() => {
-      setLocation(`/projects?customerId=${customer.id}`);
+      setLocation(`/projects?customer=${customer.id}`);
     });
   };
 
@@ -749,7 +749,7 @@ export default function CustomersIndex() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-vatRegistrationStatus">VAT Registration Status</Label>
-                      <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
+                    <Select value={formData.vatRegistrationStatus} onValueChange={(value) => handleChange("vatRegistrationStatus", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -761,37 +761,37 @@ export default function CustomersIndex() {
                       </SelectContent>
                     </Select>
                   </div>
-                    {formData.vatRegistrationStatus !== "not_registered" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span>*</span>}</Label>
-                        <Input
-                          id="edit-vatNumber"
-                          value={formData.vatNumber}
-                          onChange={(e) => handleChange("vatNumber", e.target.value)}
-                          placeholder="100123456700003"
-                          required={formData.vatRegistrationStatus === "registered"}
-                        />
-                      </div>
-                    )}
-                    {formData.vatRegistrationStatus !== "not_registered" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-vatTreatment">VAT Treatment</Label>
-                          <Select value={formData.vatTreatment || "standard"} onValueChange={(value) => handleChange("vatTreatment", value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select treatment" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="standard">Standard (5%)</SelectItem>
-                            <SelectItem value="zero_rated">Zero Rated (0%)</SelectItem>
-                            <SelectItem value="exempt">Exempt</SelectItem>
-                            <SelectItem value="out_of_scope">Out of Scope</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {formData.vatRegistrationStatus !== "not_registered" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-vatNumber">VAT Number {formData.vatRegistrationStatus === "registered" && <span>*</span>}</Label>
+                      <Input
+                        id="edit-vatNumber"
+                        value={formData.vatNumber}
+                        onChange={(e) => handleChange("vatNumber", e.target.value)}
+                        placeholder="100123456700003"
+                        required={formData.vatRegistrationStatus === "registered"}
+                      />
+                    </div>
+                  )}
+                  {formData.vatRegistrationStatus !== "not_registered" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-vatTreatment">VAT Treatment</Label>
+                      <Select value={formData.vatTreatment || "standard"} onValueChange={(value) => handleChange("vatTreatment", value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select treatment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">Standard (5%)</SelectItem>
+                          <SelectItem value="zero_rated">Zero Rated (0%)</SelectItem>
+                          <SelectItem value="exempt">Exempt</SelectItem>
+                          <SelectItem value="out_of_scope">Out of Scope</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="edit-customerType">Customer Type</Label>
-                      <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
+                    <Select value={formData.customerType} onValueChange={(value) => handleChange("customerType", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
@@ -925,7 +925,7 @@ export default function CustomersIndex() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 md:gap-6 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center">
@@ -935,7 +935,8 @@ export default function CustomersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Total Customers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {stats?.totalCustomers || 0}
+                  {/* {pagination?.total || 0} */}
+                   {stats?.totalCustomers || 0}
                 </p>
               </div>
             </div>
@@ -951,6 +952,7 @@ export default function CustomersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Active Customers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {/* {showArchived ? 0 : (pagination?.total || 0)} */}
                   {stats?.activeCustomers || 0}
                 </p>
               </div>

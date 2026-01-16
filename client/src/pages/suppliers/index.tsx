@@ -557,7 +557,7 @@ export default function SuppliersIndex() {
                   ))}
                   <Button
                     type="button"
-                    variant="outline"
+                    // variant="outline"
                     size="sm"
                     onClick={addBankAccountField}
                   >

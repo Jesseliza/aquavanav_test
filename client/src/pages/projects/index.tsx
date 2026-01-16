@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +10,19 @@ import { Project } from "@shared/schema";
 import { startTransition } from 'react';
 
 export default function ProjectsIndex() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { isAuthenticated, user } = useAuth();
+  const [location] = useLocation();
+  const [customerId, setCustomerId] = useState<string | null>(null);
 
-  // Get customerId from URL query parameters
-  const query = new URLSearchParams(window.location.search);
-  const customerId = query.get("customerId");
+  useEffect(() => {
+    setCustomerId(
+      new URLSearchParams(window.location.search).get("customer")
+    );
+  }, [location]);
+
+  console.log(customerId);
+
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -23,15 +30,27 @@ export default function ProjectsIndex() {
     }
   }, [isAuthenticated, setLocation]);
 
+  // const { data: projects, isLoading } = useQuery<Project[]>({
+  //   queryKey: ["/api/projects"],
+  //   enabled: isAuthenticated,
+  // });
+
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects", customerId],
     queryFn: async () => {
-      const url = customerId ? `/api/projects?customerId=${customerId}` : "/api/projects";
-      const response = await apiRequest(url);
-      return response.json();
+      const url = customerId
+        ? `/api/projects?customer=${customerId}`
+        : "/api/projects";
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error("Failed to fetch projects");
+      }
+      return res.json();
     },
     enabled: isAuthenticated,
   });
+
 
   if (!isAuthenticated) {
     return null;
@@ -66,7 +85,9 @@ export default function ProjectsIndex() {
     }).format(parseFloat(amount));
   };
 
-  const canCreateProject = user?.role === "admin" || user?.role === "project_manager";
+  const isCustomerFiltered = Boolean(customerId);
+  const canCreateProject = !isCustomerFiltered &&
+    (user?.role === "admin" || user?.role === "project_manager");
 
   return (
     <div className="p-6">
@@ -74,6 +95,20 @@ export default function ProjectsIndex() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Projects</h1>
           <p className="text-slate-600 dark:text-slate-400">Manage marine operations and vessel projects</p>
+
+          {customerId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mb-4"
+              onClick={() => {
+                setCustomerId(null);
+                setLocation("/projects");
+              }}
+            >
+              ← Back to all projects
+            </Button>
+          )}
         </div>
         {canCreateProject && (
           <Button onClick={() => setLocation("/projects/create")}>
@@ -129,8 +164,8 @@ export default function ProjectsIndex() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => startTransition(() => setLocation(`/projects/${project.id}`))}
                     >
@@ -170,7 +205,7 @@ export default function ProjectsIndex() {
 
                 {project.description && (
                   <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <div 
+                    <div
                       className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{ __html: project.description }}
                     />
