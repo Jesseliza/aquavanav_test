@@ -6,3 +6,4 @@ vite.config.ts.*
 *.tar.gz
 dev.log
 npm_output.log
+*.log
