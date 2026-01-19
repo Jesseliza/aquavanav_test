@@ -353,6 +353,35 @@ class Storage {
     }
   }
 
+  async getSupplierStats(): Promise<{
+    totalSuppliers: number;
+    activeSuppliers: number;
+  }> {
+    try {
+      const totalSuppliers = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(suppliers);
+      const activeSuppliers = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(suppliers)
+        .where(eq(suppliers.isArchived, false));
+
+      return {
+        totalSuppliers: Number(totalSuppliers[0].count),
+        activeSuppliers: Number(activeSuppliers[0].count),
+      };
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          "Error in getSupplierStats: " + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "getSupplierStats",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
   // User methods
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
@@ -10486,6 +10515,10 @@ export interface IStorage {
 
   // Supplier methods
   getSuppliers(): Promise<SupplierWithBankDetails[]>;
+  getSupplierStats(): Promise<{
+    totalSuppliers: number;
+    activeSuppliers: number;
+  }>;
   getSuppliersPaginated(
     page: number,
     limit: number,
