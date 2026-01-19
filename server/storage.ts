@@ -356,19 +356,19 @@ class Storage {
   async getSupplierStats(): Promise<{
     totalSuppliers: number;
     activeSuppliers: number;
+    totalArchivedSuppliers: number;
   }> {
     try {
-      const totalSuppliers = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(suppliers);
-      const activeSuppliers = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(suppliers)
-        .where(eq(suppliers.isArchived, false));
+      const [stats] = await db.select({
+        totalSuppliers: sql<number>`count(*)`,
+        activeSuppliers: sql<number>`count(*) filter (where is_archived = false)`,
+        totalArchivedSuppliers: sql<number>`count(*) filter (where is_archived = true)`,
+      }).from(suppliers);
 
       return {
-        totalSuppliers: Number(totalSuppliers[0].count),
-        activeSuppliers: Number(activeSuppliers[0].count),
+        totalSuppliers: Number(stats.totalSuppliers),
+        activeSuppliers: Number(stats.activeSuppliers),
+        totalArchivedSuppliers: Number(stats.totalArchivedSuppliers),
       };
     } catch (error: any) {
       await this.createErrorLog({
@@ -638,24 +638,25 @@ class Storage {
     totalCustomers: number;
     activeCustomers: number;
     totalProjects: number;
+    totalArchivedCustomers: number;
   }> {
     try {
-      const totalCustomers = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(customers);
-      const activeCustomers = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(customers)
-        .where(eq(customers.isArchived, false));
-      const totalProjects = await db
+      const [customerStats] = await db.select({
+        totalCustomers: sql<number>`count(*)`,
+        activeCustomers: sql<number>`count(*) filter (where is_archived = false)`,
+        totalArchivedCustomers: sql<number>`count(*) filter (where is_archived = true)`,
+      }).from(customers);
+
+      const [projectStats] = await db
         .select({ count: sql<number>`count(*)` })
         .from(projects)
         .where(isNotNull(projects.customerId));
 
       return {
-        totalCustomers: Number(totalCustomers[0].count),
-        activeCustomers: Number(activeCustomers[0].count),
-        totalProjects: Number(totalProjects[0].count),
+        totalCustomers: Number(customerStats.totalCustomers),
+        activeCustomers: Number(customerStats.activeCustomers),
+        totalProjects: Number(projectStats.count),
+        totalArchivedCustomers: Number(customerStats.totalArchivedCustomers),
       };
     } catch (error: any) {
       await this.createErrorLog({
@@ -10505,6 +10506,7 @@ export interface IStorage {
     totalCustomers: number;
     activeCustomers: number;
     totalProjects: number;
+    totalArchivedCustomers: number;
   }>;
   createCustomer(customerData: InsertCustomer): Promise<Customer>;
   updateCustomer(
@@ -10518,6 +10520,7 @@ export interface IStorage {
   getSupplierStats(): Promise<{
     totalSuppliers: number;
     activeSuppliers: number;
+    totalArchivedSuppliers: number;
   }>;
   getSuppliersPaginated(
     page: number,
