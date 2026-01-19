@@ -195,6 +195,7 @@ export default function SuppliersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers/stats"] });
       toast({
         title: "Supplier Created",
         description: "The supplier has been added successfully.",
@@ -254,6 +255,7 @@ export default function SuppliersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers/stats"] });
       toast({
         title: "Supplier Archived",
         description: "The supplier has been archived successfully.",
@@ -281,6 +283,7 @@ export default function SuppliersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers/stats"] });
       toast({
         title: "Supplier Unarchived",
         description: "The supplier has been unarchived successfully.",

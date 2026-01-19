@@ -187,6 +187,7 @@ export default function CustomersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers/stats"] });
       toast({
         title: "Customer Created",
         description: "The customer has been added successfully.",
@@ -246,6 +247,7 @@ export default function CustomersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers/stats"] });
       toast({
         title: "Customer Archived",
         description: "The customer has been archived successfully.",
@@ -273,6 +275,7 @@ export default function CustomersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers/stats"] });
       toast({
         title: "Customer Unarchived",
         description: "The customer has been unarchived successfully.",
