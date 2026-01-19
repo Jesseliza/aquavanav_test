@@ -169,6 +169,18 @@ export default function SuppliersIndex() {
     }
   }, [suppliersResponse]);
 
+  const { data: stats } = useQuery<{
+    totalSuppliers: number;
+    activeSuppliers: number;
+  }>({
+    queryKey: ["/api/suppliers/stats"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/suppliers/stats");
+      return response.json();
+    },
+    enabled: isAuthenticated,
+  });
+
   const createSupplierMutation = useMutation({
     mutationFn: async (data: CreateSupplierData) => {
       const response = await apiRequest("/api/suppliers", {
@@ -759,7 +771,7 @@ export default function SuppliersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Total Suppliers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {pagination?.total || 0}
+                  {stats?.totalSuppliers || 0}
                 </p>
               </div>
             </div>
@@ -775,7 +787,7 @@ export default function SuppliersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Active Suppliers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {showArchived ? 0 : (pagination?.total || 0)}
+                  {stats?.activeSuppliers || 0}
                 </p>
               </div>
             </div>
