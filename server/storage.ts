@@ -353,35 +353,6 @@ class Storage {
     }
   }
 
-  async getSupplierStats(): Promise<{
-    totalSuppliers: number;
-    activeSuppliers: number;
-    totalArchivedSuppliers: number;
-  }> {
-    try {
-      const [stats] = await db.select({
-        totalSuppliers: sql<number>`count(*)`,
-        activeSuppliers: sql<number>`count(*) filter (where is_archived = false)`,
-        totalArchivedSuppliers: sql<number>`count(*) filter (where is_archived = true)`,
-      }).from(suppliers);
-
-      return {
-        totalSuppliers: Number(stats.totalSuppliers),
-        activeSuppliers: Number(stats.activeSuppliers),
-        totalArchivedSuppliers: Number(stats.totalArchivedSuppliers),
-      };
-    } catch (error: any) {
-      await this.createErrorLog({
-        message:
-          "Error in getSupplierStats: " + (error?.message || "Unknown error"),
-        stack: error?.stack,
-        component: "getSupplierStats",
-        severity: "error",
-      });
-      throw error;
-    }
-  }
-
   // User methods
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
@@ -653,10 +624,10 @@ class Storage {
         .where(isNotNull(projects.customerId));
 
       return {
-        totalCustomers: Number(customerStats.totalCustomers),
+         totalCustomers: Number(customerStats.totalCustomers),
         activeCustomers: Number(customerStats.activeCustomers),
         totalProjects: Number(projectStats.count),
-        totalArchivedCustomers: Number(customerStats.totalArchivedCustomers),
+        totalArchivedCustomers: Number(customerStats.totalArchivedCustomers), 
       };
     } catch (error: any) {
       await this.createErrorLog({
@@ -927,6 +898,35 @@ class Storage {
           (error?.message || "Unknown error"),
         stack: error?.stack,
         component: "getSupplier",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
+  async getSupplierStats(): Promise<{
+    totalSuppliers: number;
+    activeSuppliers: number;
+    totalArchivedSuppliers: number;
+  }> {
+    try {
+      const [stats] = await db.select({
+        totalSuppliers: sql<number>`count(*)`,
+        activeSuppliers: sql<number>`count(*) filter (where is_archived = false)`,
+        totalArchivedSuppliers: sql<number>`count(*) filter (where is_archived = true)`,
+      }).from(suppliers);
+
+      return {
+        totalSuppliers: Number(stats.totalSuppliers),
+        activeSuppliers: Number(stats.activeSuppliers),
+        totalArchivedSuppliers: Number(stats.totalArchivedSuppliers),
+      };
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          "Error in getSupplierStats: " + (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "getSupplierStats",
         severity: "error",
       });
       throw error;

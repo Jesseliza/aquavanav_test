@@ -195,6 +195,7 @@ export default function SuppliersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers/stats"] });
       toast({
         title: "Supplier Created",
         description: "The supplier has been added successfully.",
@@ -254,6 +255,7 @@ export default function SuppliersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers/stats"] });
       toast({
         title: "Supplier Archived",
         description: "The supplier has been archived successfully.",
@@ -281,6 +283,7 @@ export default function SuppliersIndex() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers/stats"] });
       toast({
         title: "Supplier Unarchived",
         description: "The supplier has been unarchived successfully.",
@@ -772,7 +775,25 @@ export default function SuppliersIndex() {
               <div className="ml-3 md:ml-4">
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Total Suppliers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {/* {pagination?.total || 0} */}
                   {stats?.totalSuppliers || 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 md:p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                <Package className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="ml-3 md:ml-4">
+                <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Active Suppliers</p>
+                <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {/* {showArchived ? 0 : (pagination?.total || 0)} */}
+                  {stats?.activeSuppliers || 0}
                 </p>
               </div>
             </div>
@@ -789,22 +810,6 @@ export default function SuppliersIndex() {
                 <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Archived Suppliers</p>
                 <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {stats?.totalArchivedSuppliers || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 md:p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                <Package className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="ml-3 md:ml-4">
-                <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400">Active Suppliers</p>
-                <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {stats?.activeSuppliers || 0}
                 </p>
               </div>
             </div>
