@@ -28,6 +28,7 @@ import ProfitLossReport from "@/pages/reports/profit-loss";
 import SettingsIndex from "@/pages/settings/index";
 import CurrencySettings from "@/pages/settings/CurrencySettings";
 import UsersIndex from "@/pages/users/index";
+import ProfileIndex from "@/pages/profile/index";
 import NotFound from "@/pages/not-found";
 import { lazy, Suspense } from "react";
 import GeneralLedgerReceivable from "./pages/general-ledger/receivable";
@@ -89,6 +90,7 @@ function Router() {
               <Route path="/settings" component={SettingsIndex} />
               <Route path="/settings/currency" component={CurrencySettings} />
               <Route path="/users" component={UsersIndex} />
+              <Route path="/profile" component={ProfileIndex} />
               <Route component={NotFound} />
 
             </Switch>

@@ -353,6 +353,42 @@ class Storage {
     }
   }
 
+  async changePassword(
+    id: number,
+    currentPassword,
+    newPassword
+  ): Promise<boolean> {
+    try {
+      const user = await this.getUser(id);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const isValidPassword = await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
+      if (!isValidPassword) {
+        throw new Error("Invalid current password");
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await this.updateUser(id, { password: hashedPassword });
+
+      return true;
+    } catch (error: any) {
+      await this.createErrorLog({
+        message:
+          `Error in changePassword (id: ${id}): ` +
+          (error?.message || "Unknown error"),
+        stack: error?.stack,
+        component: "changePassword",
+        severity: "error",
+      });
+      throw error;
+    }
+  }
+
   // User methods
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
@@ -10488,6 +10524,11 @@ export interface IStorage {
     userData: Partial<InsertUser>
   ): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
+  changePassword(
+    id: number,
+    currentPassword,
+    newPassword
+  ): Promise<boolean>;
 
   // Company methods
   getCompany(): Promise<Company | undefined>;

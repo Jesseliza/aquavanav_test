@@ -743,6 +743,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/auth/change-password", requireAuth, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.session.userId;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      await storage.changePassword(userId!, currentPassword, newPassword);
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error: any) {
+      console.error("Change password error:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   // User management routes
   app.get(
     "/api/users",
