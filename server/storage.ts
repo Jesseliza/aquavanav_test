@@ -355,8 +355,8 @@ class Storage {
 
   async changePassword(
     id: number,
-    currentPassword,
-    newPassword
+    currentPassword: string,
+    newPassword: string
   ): Promise<boolean> {
     try {
       const user = await this.getUser(id);
@@ -10526,8 +10526,8 @@ export interface IStorage {
   deleteUser(id: number): Promise<boolean>;
   changePassword(
     id: number,
-    currentPassword,
-    newPassword
+    currentPassword: string,
+    newPassword: string
   ): Promise<boolean>;
 
   // Company methods

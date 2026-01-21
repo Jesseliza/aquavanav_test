@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/request";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function ProfileIndex() {
   const { user } = useAuth();
