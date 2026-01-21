@@ -32,9 +32,12 @@ export default function ProfileIndex() {
     }
 
     try {
-      await apiRequest.post("/api/auth/change-password", {
-        currentPassword: formData.currentPassword,
-        newPassword: formData.newPassword,
+      await apiRequest("/api/auth/change-password", {
+        method: "POST",
+        body: {
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword,
+        },
       });
       toast({
         title: "Success",
